@@ -32,9 +32,7 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       { id: '1', name: 'John Doe', email: 'john@example.com' },
       { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
     ],
-    products: [
-      { id: '1', name: 'Laptop', price: 999.99, category: 'Electronics' },
-    ],
+    products: [{ id: '1', name: 'Laptop', price: 999.99, category: 'Electronics' }],
   };
 
   describe('initializeEmpty behavior', () => {
@@ -81,7 +79,10 @@ describe('LocalStorageConnector - Seed Functionality', () => {
     it('should replace existing data with replace strategy', async () => {
       // First, add some existing data
       const existingConnector = new LocalStorageConnector();
-      await existingConnector.post('users', { name: 'Existing User', email: 'existing@example.com' });
+      await existingConnector.post('users', {
+        name: 'Existing User',
+        email: 'existing@example.com',
+      });
 
       // Now create connector with seed data and replace strategy
       const config: ConnectorConfig = {
@@ -106,7 +107,10 @@ describe('LocalStorageConnector - Seed Functionality', () => {
     it('should append seed data with append strategy', async () => {
       // First, add some existing data
       const existingConnector = new LocalStorageConnector();
-      await existingConnector.post('users', { name: 'Existing User', email: 'existing@example.com' });
+      await existingConnector.post('users', {
+        name: 'Existing User',
+        email: 'existing@example.com',
+      });
 
       // Now create connector with seed data and append strategy
       const config: ConnectorConfig = {
@@ -131,7 +135,10 @@ describe('LocalStorageConnector - Seed Functionality', () => {
     it('should not add seed data to existing collections with merge strategy', async () => {
       // First, add some existing data
       const existingConnector = new LocalStorageConnector();
-      await existingConnector.post('users', { name: 'Existing User', email: 'existing@example.com' });
+      await existingConnector.post('users', {
+        name: 'Existing User',
+        email: 'existing@example.com',
+      });
 
       // Now create connector with seed data and merge strategy
       const config: ConnectorConfig = {
@@ -175,9 +182,7 @@ describe('LocalStorageConnector - Seed Functionality', () => {
   describe('seed data structure', () => {
     it('should add timestamps and IDs to seed data items that lack them', async () => {
       const seedWithoutTimestamps = {
-        users: [
-          { name: 'Test User', email: 'test@example.com' },
-        ],
+        users: [{ name: 'Test User', email: 'test@example.com' }],
       };
 
       const config: ConnectorConfig = {
@@ -247,13 +252,13 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       };
 
       const connector = new LocalStorageConnector(config);
-      
+
       const usersResult = await connector.get('users');
       const productsResult = await connector.get('products');
 
       expect(usersResult.success).toBe(true);
       expect(usersResult.data).toHaveLength(2);
-      
+
       expect(productsResult.success).toBe(true);
       expect(productsResult.data).toHaveLength(1);
       expect(productsResult.data[0].name).toBe('Laptop');

@@ -16,9 +16,7 @@ describe('FetchConnector - Seed Functionality', () => {
       { id: '1', name: 'John Doe', email: 'john@example.com' },
       { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
     ],
-    products: [
-      { id: '1', name: 'Laptop', price: 999.99, category: 'Electronics' },
-    ],
+    products: [{ id: '1', name: 'Laptop', price: 999.99, category: 'Electronics' }],
   };
 
   describe('204 No Content with seed fallback', () => {

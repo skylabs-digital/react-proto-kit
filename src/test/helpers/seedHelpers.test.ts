@@ -12,9 +12,7 @@ describe('Seed Helpers', () => {
       { id: '1', name: 'John Doe', email: 'john@example.com' },
       { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
     ],
-    products: [
-      { id: '1', name: 'Laptop', price: 999.99, category: 'Electronics' },
-    ],
+    products: [{ id: '1', name: 'Laptop', price: 999.99, category: 'Electronics' }],
   };
 
   describe('createDevSeedConfig', () => {
@@ -120,7 +118,7 @@ describe('Seed Helpers', () => {
       const mockData = generateMockData(template, 3);
 
       const timestamps = mockData.map(item => new Date(item.createdAt).getTime());
-      
+
       expect(timestamps[0]).toBeLessThanOrEqual(timestamps[1]);
       expect(timestamps[1]).toBeLessThanOrEqual(timestamps[2]);
     });
