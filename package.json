@@ -2,6 +2,9 @@
   "name": "@skylabs-digital/api-client-service",
   "version": "1.0.0",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "React library for agile development with decoupled backend - generic factory for domain APIs",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
