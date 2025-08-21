@@ -21,7 +21,7 @@ const userApi = createDomainApi('users', UserSchema);
 ### 2. **Helpers para Esquemas Comunes**
 ```typescript
 // PROPUESTA: Helpers para patrones comunes
-import { createEntitySchema, createTimestampedSchema } from '@skylabs/api-client-service';
+import { createEntitySchema, createTimestampedSchema } from '@skylabs-digital/api-client-service';
 
 // Schema con timestamps automáticos
 const UserSchema = createTimestampedSchema({
@@ -43,7 +43,7 @@ const ProductSchema = createEntitySchema({
 ### 3. **Generación Automática de Archivos (Opcional)**
 ```bash
 # CLI tool opcional para generar boilerplate
-npx @skylabs/api-client-service generate user
+npx @skylabs-digital/api-client-service generate user
 # Genera:
 # - schemas/user.schema.ts
 # - api/user.api.ts
@@ -109,7 +109,7 @@ type UserListResponse = InferListResponse<typeof UserSchema>;
 ### 8. **Hooks de Utilidad Comunes**
 ```typescript
 // PROPUESTA: Hooks de utilidad incluidos
-import { useApiStatus, useApiCache, useApiRetry } from '@skylabs/api-client-service';
+import { useApiStatus, useApiCache, useApiRetry } from '@skylabs-digital/api-client-service';
 
 function MyComponent() {
   const { isOnline, hasErrors } = useApiStatus();
@@ -129,7 +129,7 @@ const userApi = createDomainApi('users', UserSchema, {
 ### 10. **Templates para Casos Comunes**
 ```typescript
 // PROPUESTA: Templates predefinidos
-import { createCrudApi, createReadOnlyApi, createCustomApi } from '@skylabs/api-client-service';
+import { createCrudApi, createReadOnlyApi, createCustomApi } from '@skylabs-digital/api-client-service';
 
 // CRUD completo (más común)
 const userApi = createCrudApi('users', UserSchema);

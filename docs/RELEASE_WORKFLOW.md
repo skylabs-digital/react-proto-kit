@@ -154,8 +154,8 @@ yarn type-check         # Verificar tipos
 yarn release            # Release manual (emergencia)
 
 # Verificación
-npm view @skylabs/api-client-service  # Ver info del paquete
-npm info @skylabs/api-client-service versions --json  # Ver todas las versiones
+npm view @skylabs-digital/api-client-service  # Ver info del paquete
+npm info @skylabs-digital/api-client-service versions --json  # Ver todas las versiones
 ```
 
 ## 🚨 **Troubleshooting**

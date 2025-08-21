@@ -7,7 +7,7 @@ A modern, type-safe React library for rapid API development. Build complete CRUD
 Stop writing repetitive API code. This library implements the **90% use case with one line** philosophy:
 
 ```typescript
-import { ApiClientProvider, createEntitySchema, createCrudApi, createCreateSchema, createUpdateSchema, z } from '@skylabs/api-client-service';
+import { ApiClientProvider, createEntitySchema, createCrudApi, createCreateSchema, createUpdateSchema, z } from '@skylabs-digital/api-client-service';
 
 // 1. Define your schema with validation (only manual step)
 const ProductSchema = createEntitySchema({
@@ -66,9 +66,9 @@ function ProductList() {
 ## 📦 **Installation**
 
 ```bash
-npm install @skylabs/api-client-service
+npm install @skylabs-digital/api-client-service
 # or
-yarn add @skylabs/api-client-service
+yarn add @skylabs-digital/api-client-service
 ```
 
 ## 🚀 **Quick Start**
@@ -78,7 +78,7 @@ yarn add @skylabs/api-client-service
 Wrap your app with the API provider:
 
 ```tsx
-import { ApiClientProvider } from '@skylabs/api-client-service';
+import { ApiClientProvider } from '@skylabs-digital/api-client-service';
 
 function App() {
   return (
@@ -92,7 +92,7 @@ function App() {
 ### 2. Define Your Data Schema
 
 ```tsx
-import { createEntitySchema, Type } from '@skylabs/api-client-service';
+import { createEntitySchema, Type } from '@skylabs-digital/api-client-service';
 
 const ProductSchema = createEntitySchema({
   name: Type.String(),
@@ -105,7 +105,7 @@ const ProductSchema = createEntitySchema({
 ### 3. Generate Your API (One Line!)
 
 ```tsx
-import { createCrudApi } from '@skylabs/api-client-service';
+import { createCrudApi } from '@skylabs-digital/api-client-service';
 
 const productApi = createCrudApi('products', ProductSchema);
 // That's it! You now have: useList, useById, useCreate, useUpdate, useDelete
@@ -383,7 +383,7 @@ function ProductList() {
 Built-in testing utilities:
 
 ```typescript
-import { createTestWrapper, mockApiResponse } from '@skylabs/api-client-service/testing';
+import { createTestWrapper, mockApiResponse } from '@skylabs-digital/api-client-service/testing';
 import { render, screen } from '@testing-library/react';
 
 // Test wrapper with localStorage connector
@@ -521,4 +521,4 @@ MIT License - Built for maximum development agility.
 
 ---
 
-**Ready to build faster?** Start with `npm install @skylabs/api-client-service` and create your first API in under 5 minutes! 🚀
+**Ready to build faster?** Start with `npm install @skylabs-digital/api-client-service` and create your first API in under 5 minutes! 🚀
