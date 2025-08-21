@@ -1,3 +1,11 @@
+# [1.1.0](https://github.com/skylabs-digital/api-client-service/compare/v1.0.0...v1.1.0) (2025-08-21)
+
+
+### Features
+
+* add seed data functionality with mock data generation and environment-aware configuration ([561eb9b](https://github.com/skylabs-digital/api-client-service/commit/561eb9b1145f856a4700bca1d78477a31c6847e3))
+* add seed data functionality with mock data generation and environment-aware configuration ([237a92b](https://github.com/skylabs-digital/api-client-service/commit/237a92b8750ecb8714660bedb8662c13a62d71db))
+
 # 1.0.0 (2025-08-21)
 
 
