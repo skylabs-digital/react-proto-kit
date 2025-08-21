@@ -86,7 +86,7 @@ Necesitas configurar estos secrets en tu repositorio GitHub:
 ```bash
 # 1. Crear cuenta en npmjs.com
 # 2. Verificar email
-# 3. Crear organization @skylabs (opcional)
+# 3. Crear organization @skylabs-digital (opcional)
 # 4. Generar automation token
 ```
 

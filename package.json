@@ -1,5 +1,5 @@
 {
-  "name": "@skylabs/api-client-service",
+  "name": "@skylabs-digital/api-client-service",
   "version": "0.1.0",
   "type": "module",
   "description": "React library for agile development with decoupled backend - generic factory for domain APIs",
@@ -45,16 +45,16 @@
     "frontend",
     "backend-agnostic"
   ],
-  "author": "Skylabs",
+  "author": "Skylabs Digital",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/skylabs/api-client-service.git"
+    "url": "https://github.com/skylabs-digital/api-client-service.git"
   },
   "bugs": {
-    "url": "https://github.com/skylabs/api-client-service/issues"
+    "url": "https://github.com/skylabs-digital/api-client-service/issues"
   },
-  "homepage": "https://github.com/skylabs/api-client-service#readme",
+  "homepage": "https://github.com/skylabs-digital/api-client-service#readme",
   "peerDependencies": {
     "react": ">=16.8.0"
   },
