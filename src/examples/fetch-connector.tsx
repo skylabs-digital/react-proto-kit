@@ -1,10 +1,4 @@
-import React from 'react';
-import { 
-  ApiClientProvider, 
-  createEntitySchema, 
-  createCrudApi,
-  Type 
-} from '../index';
+import { ApiClientProvider, createEntitySchema, createCrudApi, Type } from '../index';
 
 // API Schema for external service
 const PostSchema = createEntitySchema({
@@ -45,10 +39,13 @@ function PostList() {
       <button onClick={refetch} style={{ marginLeft: '10px' }}>
         Refresh
       </button>
-      
+
       <div style={{ marginTop: '20px' }}>
         {posts?.map(post => (
-          <div key={post.id} style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0' }}>
+          <div
+            key={post.id}
+            style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0' }}
+          >
             <h3>{post.title}</h3>
             <p>{post.body}</p>
             <small>User ID: {post.userId}</small>
@@ -66,7 +63,7 @@ function PostDetail({ postId }: { postId: string }) {
 
   const handleUpdate = async () => {
     if (!post) return;
-    
+
     try {
       await updatePost.mutate({
         title: post.title + ' (Updated)',
@@ -95,19 +92,23 @@ function PostDetail({ postId }: { postId: string }) {
       <h3>Post Detail</h3>
       <h4>{post.title}</h4>
       <p>{post.body}</p>
-      <p><strong>User ID:</strong> {post.userId}</p>
-      <p><strong>Created:</strong> {new Date(post.createdAt).toLocaleDateString()}</p>
-      
+      <p>
+        <strong>User ID:</strong> {post.userId}
+      </p>
+      <p>
+        <strong>Created:</strong> {new Date(post.createdAt).toLocaleDateString()}
+      </p>
+
       <div style={{ marginTop: '15px' }}>
-        <button 
-          onClick={handleUpdate} 
+        <button
+          onClick={handleUpdate}
           disabled={updatePost.loading}
           style={{ marginRight: '10px' }}
         >
           {updatePost.loading ? 'Updating...' : 'Update Post'}
         </button>
-        <button 
-          onClick={handleDelete} 
+        <button
+          onClick={handleDelete}
           disabled={deletePost.loading}
           style={{ backgroundColor: '#dc3545', color: 'white' }}
         >
@@ -121,7 +122,7 @@ function PostDetail({ postId }: { postId: string }) {
 // Example with real API (JSONPlaceholder)
 export function FetchConnectorExample() {
   return (
-    <ApiClientProvider 
+    <ApiClientProvider
       connectorType="fetch"
       config={{
         baseUrl: 'https://jsonplaceholder.typicode.com',

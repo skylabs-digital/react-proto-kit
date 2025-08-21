@@ -1,11 +1,10 @@
-import React from 'react';
-import { 
-  ApiClientProvider, 
-  createEntitySchema, 
+import {
+  ApiClientProvider,
+  createEntitySchema,
   createCrudApi,
   createReadOnlyApi,
   createCustomApi,
-  Type 
+  Type,
 } from '../index';
 
 // Multiple domain schemas
@@ -21,13 +20,15 @@ const OrderSchema = createEntitySchema({
   status: Type.Union([
     Type.Literal('pending'),
     Type.Literal('completed'),
-    Type.Literal('cancelled')
+    Type.Literal('cancelled'),
   ]),
-  items: Type.Array(Type.Object({
-    productId: Type.String(),
-    quantity: Type.Number(),
-    price: Type.Number(),
-  })),
+  items: Type.Array(
+    Type.Object({
+      productId: Type.String(),
+      quantity: Type.Number(),
+      price: Type.Number(),
+    })
+  ),
 });
 
 const AnalyticsSchema = createEntitySchema({
@@ -49,9 +50,9 @@ function Dashboard() {
   const createUser = userApi.useCreate!();
 
   // Orders tracking
-  const { data: orders } = orderApi.useList!({ 
+  const { data: orders } = orderApi.useList!({
     filters: { status: 'pending' },
-    limit: 10 
+    limit: 10,
   });
 
   // Analytics (read-only)
@@ -150,7 +151,7 @@ function OrderDetail({ orderId }: { orderId: string }) {
       <h3>Order #{order.id.slice(-6)}</h3>
       <p>Status: {order.status}</p>
       <p>Total: ${order.total}</p>
-      
+
       <h4>Items:</h4>
       <ul>
         {order.items.map((item, index) => (
@@ -161,19 +162,13 @@ function OrderDetail({ orderId }: { orderId: string }) {
       </ul>
 
       <div>
-        <button 
-          onClick={() => handleStatusChange('completed')}
-          disabled={updateOrder.loading}
-        >
+        <button onClick={() => handleStatusChange('completed')} disabled={updateOrder.loading}>
           Mark Completed
         </button>
-        <button 
-          onClick={() => handleStatusChange('cancelled')}
-          disabled={updateOrder.loading}
-        >
+        <button onClick={() => handleStatusChange('cancelled')} disabled={updateOrder.loading}>
           Cancel Order
         </button>
-        <button 
+        <button
           onClick={() => deleteOrder.mutate()}
           disabled={deleteOrder.loading}
           style={{ marginLeft: '10px', color: 'red' }}
@@ -188,7 +183,7 @@ function OrderDetail({ orderId }: { orderId: string }) {
 // App with advanced configuration
 export function AdvancedUsageExample() {
   return (
-    <ApiClientProvider 
+    <ApiClientProvider
       connectorType="localStorage"
       config={{
         simulateDelay: 500,
@@ -196,7 +191,7 @@ export function AdvancedUsageExample() {
         pagination: {
           defaultLimit: 20,
           maxLimit: 100,
-        }
+        },
       }}
     >
       <div>

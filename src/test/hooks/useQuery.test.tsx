@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import React from 'react';
+import React, { act } from 'react';
 import { useQuery } from '../../hooks/useQuery';
 import { ApiClientProvider } from '../../provider/ApiClientProvider';
 import { IConnector, ApiResponse } from '../../types';
@@ -45,7 +45,7 @@ describe('useQuery', () => {
       success: true,
       data: mockData,
     };
-    
+
     (mockConnector.get as any).mockResolvedValueOnce(mockResponse);
 
     const { result } = renderHook(() => useQuery('items/1'), {
@@ -71,7 +71,7 @@ describe('useQuery', () => {
       message: 'Item not found',
       error: { code: 'NOT_FOUND' },
     };
-    
+
     (mockConnector.get as any).mockResolvedValueOnce(mockError);
 
     const { result } = renderHook(() => useQuery('items/999'), {
@@ -91,7 +91,7 @@ describe('useQuery', () => {
       success: true,
       data: [],
     };
-    
+
     (mockConnector.get as any).mockResolvedValueOnce(mockResponse);
 
     const params = { page: 1, limit: 10 };
@@ -118,7 +118,7 @@ describe('useQuery', () => {
       success: true,
       data: mockData,
     };
-    
+
     (mockConnector.get as any).mockResolvedValue(mockResponse);
 
     const { result } = renderHook(() => useQuery('items/1'), {
@@ -131,7 +131,9 @@ describe('useQuery', () => {
 
     expect(mockConnector.get).toHaveBeenCalledTimes(1);
 
-    await result.current.refetch();
+    await act(async () => {
+      await result.current.refetch();
+    });
 
     expect(mockConnector.get).toHaveBeenCalledTimes(2);
   });

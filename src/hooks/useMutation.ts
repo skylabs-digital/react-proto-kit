@@ -17,7 +17,7 @@ export function useMutation<TInput, TOutput = void>(
 
       try {
         let response;
-        
+
         switch (method) {
           case 'POST':
             response = await connector.post<TOutput>(endpoint, input);

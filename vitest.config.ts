@@ -5,15 +5,16 @@ import { resolve } from 'path';
 export default defineConfig({
   plugins: [react()],
   test: {
+    globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    watch: false, // Disable watch mode by default
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/',
         'src/test/',
-        'src/examples/',
         '**/*.d.ts',
         '**/*.config.*',
         'dist/',
@@ -27,7 +28,6 @@ export default defineConfig({
         },
       },
     },
-    globals: true,
   },
   resolve: {
     alias: {

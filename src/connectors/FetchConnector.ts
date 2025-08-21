@@ -19,7 +19,7 @@ export class FetchConnector implements IConnector {
 
   private buildUrl(endpoint: string, params?: Record<string, any>): string {
     const url = new URL(endpoint, this.baseUrl);
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -27,7 +27,7 @@ export class FetchConnector implements IConnector {
         }
       });
     }
-    
+
     return url.toString();
   }
 
@@ -115,7 +115,7 @@ export class FetchConnector implements IConnector {
         }
       } catch (error) {
         lastError = error as Error;
-        
+
         if (error instanceof Error && error.name === 'AbortError') {
           return {
             success: false,

@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
-import { resolve } from 'path';
+import { resolve } from 'node:path';
+import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [
@@ -14,7 +15,7 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
+      entry: resolve(fileURLToPath(new URL('.', import.meta.url)), 'src/index.ts'),
       name: 'ApiClientService',
       formats: ['es', 'cjs'],
       fileName: (format) => `index.${format === 'es' ? 'es.js' : 'js'}`,

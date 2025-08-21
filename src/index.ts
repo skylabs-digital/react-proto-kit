@@ -29,7 +29,7 @@ export type {
   SuccessResponse,
   ErrorResponse,
   PaginationMeta,
-  
+
   // Connector types
   ConnectorType,
   IConnector,
@@ -37,22 +37,22 @@ export type {
   FetchInstance,
   RequestInterceptor,
   ResponseInterceptor,
-  
+
   // Domain API types
   DomainApiConfig,
   CustomOperation,
   DomainInterceptors,
   CrudOperation,
-  
+
   // Hook types
   UseQueryResult,
   UseMutationResult,
   UseListResult,
   ListParams,
-  
+
   // Generated API types
   GeneratedCrudApi,
-  
+
   // Type inference helpers
   InferType,
   InferCreateType,
@@ -61,5 +61,5 @@ export type {
 } from './types';
 
 // Re-export TypeBox for convenience
-export { Type, Static } from '@sinclair/typebox';
+export { Type, type Static } from '@sinclair/typebox';
 export type { TSchema } from '@sinclair/typebox';

@@ -1,10 +1,4 @@
-import React from 'react';
-import { 
-  ApiClientProvider, 
-  createEntitySchema, 
-  createCrudApi, 
-  Type 
-} from '../index';
+import { ApiClientProvider, createEntitySchema, createCrudApi, Type } from '../index';
 
 // 1. Define your schema (only manual step)
 const ProductSchema = createEntitySchema({
@@ -85,7 +79,7 @@ function ProductDetail({ productId }: { productId: string }) {
       <p>Price: ${product.price}</p>
       <p>Category: {product.category}</p>
       <p>In Stock: {product.inStock ? 'Yes' : 'No'}</p>
-      
+
       <button onClick={handleUpdate} disabled={updateProduct.loading}>
         Update Price
       </button>

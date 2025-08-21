@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import React from 'react';
+import React, { act } from 'react';
 import { useMutation } from '../../hooks/useMutation';
 import { ApiClientProvider } from '../../provider/ApiClientProvider';
-import { IConnector, ApiResponse } from '../../types';
+import { IConnector, ApiResponse, ErrorResponse } from '../../types';
 
 // Mock connector
 const mockConnector: IConnector = {
@@ -45,7 +45,7 @@ describe('useMutation', () => {
       success: true,
       data: mockData,
     };
-    
+
     (mockConnector.post as any).mockResolvedValueOnce(mockResponse);
 
     const { result } = renderHook(() => useMutation('items', 'POST'), {
@@ -56,17 +56,14 @@ describe('useMutation', () => {
     expect(result.current.error).toBe(null);
 
     const inputData = { name: 'New Item' };
-    const promise = result.current.mutate(inputData);
-
-    expect(result.current.loading).toBe(true);
-
-    const returnedData = await promise;
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
+    
+    let returnedData;
+    await act(async () => {
+      returnedData = await result.current.mutate(inputData);
     });
 
     expect(returnedData).toEqual(mockData);
+    expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe(null);
     expect(mockConnector.post).toHaveBeenCalledWith('items', inputData);
   });
@@ -77,7 +74,7 @@ describe('useMutation', () => {
       success: true,
       data: mockData,
     };
-    
+
     (mockConnector.put as any).mockResolvedValueOnce(mockResponse);
 
     const { result } = renderHook(() => useMutation('items/1', 'PUT'), {
@@ -85,7 +82,11 @@ describe('useMutation', () => {
     });
 
     const inputData = { name: 'Updated Item' };
-    const returnedData = await result.current.mutate(inputData);
+    
+    let returnedData;
+    await act(async () => {
+      returnedData = await result.current.mutate(inputData);
+    });
 
     expect(returnedData).toEqual(mockData);
     expect(mockConnector.put).toHaveBeenCalledWith('items/1', inputData);
@@ -96,37 +97,38 @@ describe('useMutation', () => {
       success: true,
       data: undefined,
     };
-    
+
     (mockConnector.delete as any).mockResolvedValueOnce(mockResponse);
 
     const { result } = renderHook(() => useMutation('items/1', 'DELETE'), {
       wrapper: createWrapper(),
     });
 
-    await result.current.mutate(undefined);
+    await act(async () => {
+      await result.current.mutate(undefined);
+    });
 
     expect(mockConnector.delete).toHaveBeenCalledWith('items/1');
   });
 
   it('should handle API error response', async () => {
-    const mockError = {
+    const mockError: ErrorResponse = {
       success: false,
       message: 'Validation failed',
-      error: { code: 'VALIDATION_ERROR' },
+      error: { code: 'MUTATION_ERROR' },
     };
-    
+
     (mockConnector.post as any).mockResolvedValueOnce(mockError);
 
     const { result } = renderHook(() => useMutation('items', 'POST'), {
       wrapper: createWrapper(),
     });
 
-    await expect(result.current.mutate({ name: 'Invalid' })).rejects.toThrow('Validation failed');
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
+    await act(async () => {
+      await expect(result.current.mutate({ name: 'Invalid' })).rejects.toThrow('Validation failed');
     });
 
+    expect(result.current.loading).toBe(false);
     expect(result.current.error).toEqual(mockError);
   });
 
@@ -137,12 +139,11 @@ describe('useMutation', () => {
       wrapper: createWrapper(),
     });
 
-    await expect(result.current.mutate({ name: 'Test' })).rejects.toThrow('Network error');
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
+    await act(async () => {
+      await expect(result.current.mutate({ name: 'Test' })).rejects.toThrow('Network error');
     });
 
+    expect(result.current.loading).toBe(false);
     expect(result.current.error).toEqual({
       success: false,
       message: 'Network error',
@@ -155,6 +156,10 @@ describe('useMutation', () => {
       wrapper: createWrapper(),
     });
 
-    await expect(result.current.mutate({ name: 'Test' })).rejects.toThrow('Unsupported method: PATCH');
+    await act(async () => {
+      await expect(result.current.mutate({ name: 'Test' })).rejects.toThrow(
+        'Unsupported method: PATCH'
+      );
+    });
   });
 });

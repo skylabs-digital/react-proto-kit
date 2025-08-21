@@ -43,11 +43,11 @@ export interface ConnectorConfig {
   timeout?: number;
   retries?: number;
   fetchInstance?: FetchInstance;
-  
+
   // LocalStorage Connector
   simulateDelay?: number;
   errorRate?: number;
-  
+
   // Global config
   errorHandling?: 'throw' | 'return';
   caching?: boolean;

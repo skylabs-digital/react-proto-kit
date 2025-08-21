@@ -24,7 +24,7 @@ export function useQuery<T>(
 
     try {
       const response = await connector.get<T>(endpoint, params);
-      
+
       if (response.success) {
         setData(response.data);
       } else {

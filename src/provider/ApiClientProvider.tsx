@@ -40,11 +40,7 @@ export const ApiClientProvider: React.FC<ApiClientProviderProps> = ({
     [connector, config]
   );
 
-  return (
-    <ApiClientContext.Provider value={contextValue}>
-      {children}
-    </ApiClientContext.Provider>
-  );
+  return <ApiClientContext.Provider value={contextValue}>{children}</ApiClientContext.Provider>;
 };
 
 export const useApiClient = (): ApiClientContextValue => {

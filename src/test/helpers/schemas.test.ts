@@ -63,9 +63,9 @@ describe('Schema Helpers', () => {
 
       expect(api.useList).toBeDefined();
       expect(api.useById).toBeDefined();
-      expect(api.useCreate).toBeUndefined();
-      expect(api.useUpdate).toBeUndefined();
-      expect(api.useDelete).toBeUndefined();
+      expect((api as any).useCreate).toBeUndefined();
+      expect((api as any).useUpdate).toBeUndefined();
+      expect((api as any).useDelete).toBeUndefined();
     });
   });
 
@@ -89,13 +89,7 @@ describe('Schema Helpers', () => {
         name: Type.String(),
       });
 
-      const api = createCustomApi('items', schema, [
-        'list',
-        'byId',
-        'create',
-        'update',
-        'delete',
-      ]);
+      const api = createCustomApi('items', schema, ['list', 'byId', 'create', 'update', 'delete']);
 
       expect(api.useList).toBeDefined();
       expect(api.useById).toBeDefined();

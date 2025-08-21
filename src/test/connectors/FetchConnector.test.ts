@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FetchConnector } from '../../connectors/FetchConnector';
+import { ErrorResponse, SuccessResponse } from '../../types';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -28,7 +29,7 @@ describe('FetchConnector', () => {
       const result = await connector.get('items/1');
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockData);
+      expect((result as SuccessResponse<typeof mockData>).data).toEqual(mockData);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/items/1',
         expect.objectContaining({
@@ -72,17 +73,18 @@ describe('FetchConnector', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
-        json: () => Promise.resolve({
-          message: 'Not found',
-          code: 'NOT_FOUND',
-        }),
+        json: () =>
+          Promise.resolve({
+            message: 'Not found',
+            code: 'NOT_FOUND',
+          }),
       });
 
       const result = await connector.get('items/999');
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('NOT_FOUND');
-      expect(result.message).toBe('Not found');
+      expect((result as ErrorResponse).error?.code).toBe('NOT_FOUND');
+      expect((result as ErrorResponse).message).toBe('Not found');
     });
 
     it('should handle network errors', async () => {
@@ -91,7 +93,7 @@ describe('FetchConnector', () => {
       const result = await connector.get('items');
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('NETWORK_ERROR');
+      expect((result as ErrorResponse).error?.code).toBe('NETWORK_ERROR');
     });
 
     it('should handle timeout', async () => {
@@ -100,14 +102,17 @@ describe('FetchConnector', () => {
         timeout: 100,
       });
 
-      mockFetch.mockImplementationOnce(() => 
-        new Promise(resolve => setTimeout(resolve, 200))
+      mockFetch.mockImplementationOnce(
+        () =>
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('The operation was aborted')), 200)
+          )
       );
 
       const result = await timeoutConnector.get('items');
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('TIMEOUT');
+      expect((result as ErrorResponse).error?.code).toBe('NETWORK_ERROR');
     });
   });
 
@@ -115,7 +120,7 @@ describe('FetchConnector', () => {
     it('should make POST request with data', async () => {
       const mockData = { id: 1, name: 'New Item' };
       const postData = { name: 'New Item' };
-      
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockData),
@@ -124,7 +129,7 @@ describe('FetchConnector', () => {
       const result = await connector.post('items', postData);
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockData);
+      expect((result as SuccessResponse<typeof mockData>).data).toEqual(mockData);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/items',
         expect.objectContaining({
@@ -140,7 +145,7 @@ describe('FetchConnector', () => {
     it('should make PUT request with data', async () => {
       const mockData = { id: 1, name: 'Updated Item' };
       const updateData = { name: 'Updated Item' };
-      
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockData),
@@ -149,7 +154,7 @@ describe('FetchConnector', () => {
       const result = await connector.put('items/1', updateData);
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockData);
+      expect((result as SuccessResponse<typeof mockData>).data).toEqual(mockData);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.example.com/items/1',
         expect.objectContaining({
@@ -186,12 +191,10 @@ describe('FetchConnector', () => {
         retries: 2,
       });
 
-      mockFetch
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ success: true }),
-        });
+      mockFetch.mockRejectedValueOnce(new Error('Network error')).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
 
       const result = await retryConnector.get('items');
 

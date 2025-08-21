@@ -142,9 +142,7 @@ describe('LocalStorageConnector', () => {
   describe('put', () => {
     it('should update existing item', async () => {
       const existingData = {
-        products: [
-          { id: '1', name: 'Old Name', price: 100, createdAt: '2023-01-01' },
-        ],
+        products: [{ id: '1', name: 'Old Name', price: 100, createdAt: '2023-01-01' }],
       };
       mockLocalStorage.getItem.mockReturnValue(JSON.stringify(existingData));
 

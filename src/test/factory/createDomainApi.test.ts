@@ -54,10 +54,7 @@ describe('createDomainApi', () => {
         category: Type.String(),
         priority: Type.Number(),
       }),
-      status: Type.Union([
-        Type.Literal('active'),
-        Type.Literal('inactive'),
-      ]),
+      status: Type.Union([Type.Literal('active'), Type.Literal('inactive')]),
     });
 
     const config = {
