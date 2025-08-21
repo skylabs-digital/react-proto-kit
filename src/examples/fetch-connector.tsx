@@ -1,10 +1,10 @@
-import { ApiClientProvider, createEntitySchema, createCrudApi, Type } from '../index';
+import { ApiClientProvider, createEntitySchema, createCrudApi, z } from '../index';
 
 // API Schema for external service
 const PostSchema = createEntitySchema({
-  title: Type.String(),
-  body: Type.String(),
-  userId: Type.Number(),
+  title: z.string(),
+  body: z.string(),
+  userId: z.number(),
 });
 
 // Create API for external service
