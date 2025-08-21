@@ -51,9 +51,11 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(2);
-      expect(result.data[0].name).toBe('John Doe');
-      expect(result.data[1].name).toBe('Jane Smith');
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect((result.data as any)[0].name).toBe('John Doe');
+        expect((result.data as any)[1].name).toBe('Jane Smith');
+      }
     });
 
     it('should not initialize when initializeEmpty is false', async () => {
@@ -71,7 +73,9 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(0);
+      if (result.success) {
+        expect(result.data).toHaveLength(0);
+      }
     });
   });
 
@@ -99,9 +103,11 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(2);
-      expect(result.data.find((u: any) => u.name === 'Existing User')).toBeUndefined();
-      expect(result.data.find((u: any) => u.name === 'John Doe')).toBeDefined();
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect((result.data as any).find((u: any) => u.name === 'Existing User')).toBeUndefined();
+        expect((result.data as any).find((u: any) => u.name === 'John Doe')).toBeDefined();
+      }
     });
 
     it('should append seed data with append strategy', async () => {
@@ -127,9 +133,11 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(3); // 1 existing + 2 seed
-      expect(result.data.find((u: any) => u.name === 'Existing User')).toBeDefined();
-      expect(result.data.find((u: any) => u.name === 'John Doe')).toBeDefined();
+      if (result.success) {
+        expect(result.data).toHaveLength(3); // 1 existing + 2 seed
+        expect((result.data as any).find((u: any) => u.name === 'Existing User')).toBeDefined();
+        expect((result.data as any).find((u: any) => u.name === 'John Doe')).toBeDefined();
+      }
     });
 
     it('should not add seed data to existing collections with merge strategy', async () => {
@@ -155,8 +163,10 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(1); // Only existing data
-      expect(result.data[0].name).toBe('Existing User');
+      if (result.success) {
+        expect(result.data).toHaveLength(1); // Only existing data
+        expect((result.data as any)[0].name).toBe('Existing User');
+      }
     });
 
     it('should add seed data to empty collections with merge strategy', async () => {
@@ -174,8 +184,10 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(2);
-      expect(result.data[0].name).toBe('John Doe');
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect((result.data as any)[0].name).toBe('John Doe');
+      }
     });
   });
 
@@ -199,11 +211,13 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0]).toHaveProperty('id');
-      expect(result.data[0]).toHaveProperty('createdAt');
-      expect(result.data[0]).toHaveProperty('updatedAt');
-      expect(result.data[0].name).toBe('Test User');
+      if (result.success) {
+        expect(result.data).toHaveLength(1);
+        expect((result.data as any)[0]).toHaveProperty('id');
+        expect((result.data as any)[0]).toHaveProperty('createdAt');
+        expect((result.data as any)[0]).toHaveProperty('updatedAt');
+        expect((result.data as any)[0].name).toBe('Test User');
+      }
     });
 
     it('should preserve existing IDs and timestamps in seed data', async () => {
@@ -233,9 +247,11 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data[0].id).toBe('custom-id');
-      expect(result.data[0].createdAt).toBe('2024-01-01T00:00:00Z');
-      expect(result.data[0].updatedAt).toBe('2024-01-02T00:00:00Z');
+      if (result.success) {
+        expect((result.data as any)[0].id).toBe('custom-id');
+        expect((result.data as any)[0].createdAt).toBe('2024-01-01T00:00:00Z');
+        expect((result.data as any)[0].updatedAt).toBe('2024-01-02T00:00:00Z');
+      }
     });
   });
 
@@ -257,11 +273,15 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const productsResult = await connector.get('products');
 
       expect(usersResult.success).toBe(true);
-      expect(usersResult.data).toHaveLength(2);
+      if (usersResult.success) {
+        expect(usersResult.data).toHaveLength(2);
+      }
 
       expect(productsResult.success).toBe(true);
-      expect(productsResult.data).toHaveLength(1);
-      expect(productsResult.data[0].name).toBe('Laptop');
+      if (productsResult.success) {
+        expect(productsResult.data).toHaveLength(1);
+        expect((productsResult.data as any)[0].name).toBe('Laptop');
+      }
     });
   });
 
@@ -271,7 +291,9 @@ describe('LocalStorageConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(0);
+      if (result.success) {
+        expect(result.data).toHaveLength(0);
+      }
     });
   });
 });

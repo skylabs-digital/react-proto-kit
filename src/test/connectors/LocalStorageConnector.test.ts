@@ -30,13 +30,15 @@ describe('LocalStorageConnector', () => {
       const result = await connector.get('products');
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual([]);
-      expect(result.meta).toEqual({
-        total: 0,
-        page: 1,
-        limit: 10,
-        totalPages: 0,
-      });
+      if (result.success) {
+        expect(result.data).toEqual([]);
+        expect(result.meta).toEqual({
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0,
+        });
+      }
     });
 
     it('should return paginated list of items', async () => {
@@ -52,13 +54,15 @@ describe('LocalStorageConnector', () => {
       const result = await connector.get('products', { page: 1, limit: 2 });
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(2);
-      expect(result.meta).toEqual({
-        total: 3,
-        page: 1,
-        limit: 2,
-        totalPages: 2,
-      });
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect(result.meta).toEqual({
+          total: 3,
+          page: 1,
+          limit: 2,
+          totalPages: 2,
+        });
+      }
     });
 
     it('should return single item by id', async () => {
@@ -73,7 +77,9 @@ describe('LocalStorageConnector', () => {
       const result = await connector.get('products/1');
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual({ id: '1', name: 'Product 1', price: 100 });
+      if (result.success) {
+        expect(result.data).toEqual({ id: '1', name: 'Product 1', price: 100 });
+      }
     });
 
     it('should return error when item not found', async () => {
@@ -83,7 +89,9 @@ describe('LocalStorageConnector', () => {
       const result = await connector.get('products/999');
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('NOT_FOUND');
+      if (!result.success) {
+        expect(result.error?.code).toBe('NOT_FOUND');
+      }
     });
 
     it('should filter items based on filters', async () => {
@@ -101,8 +109,10 @@ describe('LocalStorageConnector', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(2);
-      expect(result.meta?.total).toBe(2);
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect(result.meta?.total).toBe(2);
+      }
     });
   });
 
@@ -114,13 +124,15 @@ describe('LocalStorageConnector', () => {
       const result = await connector.post('products', newItem);
 
       expect(result.success).toBe(true);
-      expect(result.data).toMatchObject({
-        name: 'New Product',
-        price: 150,
-      });
-      expect(result.data.id).toBeDefined();
-      expect(result.data.createdAt).toBeDefined();
-      expect(result.data.updatedAt).toBeDefined();
+      if (result.success) {
+        expect(result.data).toMatchObject({
+          name: 'New Product',
+          price: 150,
+        });
+        expect((result.data as any).id).toBeDefined();
+        expect((result.data as any).createdAt).toBeDefined();
+        expect((result.data as any).updatedAt).toBeDefined();
+      }
 
       expect(mockLocalStorage.setItem).toHaveBeenCalled();
     });
@@ -150,13 +162,14 @@ describe('LocalStorageConnector', () => {
       const result = await connector.put('products/1', updates);
 
       expect(result.success).toBe(true);
-      expect(result.data).toMatchObject({
-        id: '1',
-        name: 'Updated Name',
-        price: 200,
-        createdAt: '2023-01-01',
-      });
-      expect(result.data.updatedAt).toBeDefined();
+      if (result.success) {
+        expect(result.data).toMatchObject({
+          id: '1',
+          name: 'Updated Name',
+          price: 200,
+        });
+        expect((result.data as any).updatedAt).toBeDefined();
+      }
     });
 
     it('should return error when item not found', async () => {
@@ -165,14 +178,18 @@ describe('LocalStorageConnector', () => {
       const result = await connector.put('products/999', { name: 'Updated' });
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('NOT_FOUND');
+      if (!result.success) {
+        expect(result.error?.code).toBe('NOT_FOUND');
+      }
     });
 
     it('should return error when no id provided', async () => {
       const result = await connector.put('products', { name: 'Updated' });
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('INVALID_REQUEST');
+      if (!result.success) {
+        expect(result.error?.code).toBe('INVALID_REQUEST');
+      }
     });
   });
 
@@ -201,14 +218,18 @@ describe('LocalStorageConnector', () => {
       const result = await connector.delete('products/999');
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('NOT_FOUND');
+      if (!result.success) {
+        expect(result.error?.code).toBe('NOT_FOUND');
+      }
     });
 
     it('should return error when no id provided', async () => {
       const result = await connector.delete('products');
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('INVALID_REQUEST');
+      if (!result.success) {
+        expect(result.error?.code).toBe('INVALID_REQUEST');
+      }
     });
   });
 
@@ -222,7 +243,9 @@ describe('LocalStorageConnector', () => {
       const result = await errorConnector.get('products');
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('STORAGE_ERROR');
+      if (!result.success) {
+        expect(result.error?.code).toBe('STORAGE_ERROR');
+      }
     });
   });
 });

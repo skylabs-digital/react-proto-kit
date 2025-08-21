@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Type } from '@sinclair/typebox';
+import { z } from 'zod';
 import { createDomainApi } from '../../factory/createDomainApi';
 import { createEntitySchema } from '../../helpers/schemas';
 
@@ -11,8 +11,8 @@ vi.mock('../../hooks/useMutation');
 describe('createDomainApi', () => {
   it('should create API with all CRUD operations', () => {
     const schema = createEntitySchema({
-      name: Type.String(),
-      price: Type.Number(),
+      name: z.string(),
+      price: z.number(),
     });
 
     const config = {
@@ -31,7 +31,7 @@ describe('createDomainApi', () => {
 
   it('should use correct entity name for endpoints', () => {
     const schema = createEntitySchema({
-      title: Type.String(),
+      title: z.string(),
     });
 
     const config = {
@@ -48,13 +48,13 @@ describe('createDomainApi', () => {
 
   it('should handle complex schemas', () => {
     const schema = createEntitySchema({
-      name: Type.String(),
-      tags: Type.Array(Type.String()),
-      metadata: Type.Object({
-        category: Type.String(),
-        priority: Type.Number(),
+      name: z.string(),
+      tags: z.array(z.string()),
+      metadata: z.object({
+        category: z.string(),
+        priority: z.number(),
       }),
-      status: Type.Union([Type.Literal('active'), Type.Literal('inactive')]),
+      status: z.union([z.literal('active'), z.literal('inactive')]),
     });
 
     const config = {

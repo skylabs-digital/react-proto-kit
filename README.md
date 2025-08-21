@@ -1,74 +1,113 @@
-# API Client Service
+# 🚀 **React Proto Kit**
 
-A modern, type-safe React library for rapid API development. Build complete CRUD operations with a single line of code and focus on your business logic, not boilerplate.
+*Complete React prototyping toolkit - from idea to working prototype in minutes*
 
-## 🚀 **Why API Client Service?**
+A modern, type-safe React library for rapid prototyping. Build complete applications with APIs, forms, and navigation using minimal code. Focus on your business logic, not boilerplate.
 
-Stop writing repetitive API code. This library implements the **90% use case with one line** philosophy:
+## 🎯 **Complete Prototyping Solution**
+
+**Three powerful modules in one kit:**
+- 🔌 **API Module** - CRUD operations with automatic validation
+- 📝 **Forms Module** - Type-safe forms with Zod validation  
+- 🧭 **Navigation Module** - URL state management
+
+## ⚡ **The 90% use case with minimal code** philosophy:
 
 ```typescript
-import { ApiClientProvider, createEntitySchema, createCrudApi, createCreateSchema, createUpdateSchema, z } from '@skylabs-digital/api-client-service';
+import { 
+  ApiClientProvider, 
+  createCrudApi,
+  useFormData,
+  useUrlSelector,
+  z 
+} from '@skylabs-digital/react-proto-kit';
 
-// 1. Define your schema with validation (only manual step)
-const ProductSchema = createEntitySchema({
+// 1. Define your schema with Zod (shared across API, forms, validation)
+const ProductSchema = z.object({
+  id: z.string(),
   name: z.string().min(1, 'Name is required'),
   price: z.number().positive('Price must be positive'),
   category: z.string().min(1, 'Category is required'),
   inStock: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
-// 2. Generate create/update schemas with automatic validation
-const ProductCreateSchema = createCreateSchema(ProductSchema);
-const ProductUpdateSchema = createUpdateSchema(ProductSchema);
+// 2. Complete prototype in 3 lines
+const productApi = createCrudApi('products', ProductSchema);
+const { values, errors, handleSubmit, handleInputChange } = useFormData(ProductSchema);
+const [selectedId, setSelectedId] = useUrlSelector('productId');
 
-// 3. Create API with validation
-const productApi = createCrudApi('products', ProductSchema, {
-  createSchema: ProductCreateSchema,
-  updateSchema: ProductUpdateSchema,
-});
-
-// 4. Use in components with automatic validation
-function ProductList() {
+// 3. Use in components with automatic validation
+function ProductManager() {
   const { data: products, loading, error } = productApi.useList();
   const createProduct = productApi.useCreate();
 
-  const handleCreate = async () => {
+  const onSubmit = handleSubmit(async (data) => {
     try {
       // Automatic validation before API call
-      await createProduct.mutate({
-        name: 'New Product',
-        price: 99.99,
-        category: 'Electronics',
-        inStock: true,
-      });
+      await createProduct.mutate(data);
+      setSelectedId(null); // Clear selection
     } catch (error) {
-      // Handle validation errors
-      if (createProduct.error?.type === 'VALIDATION') {
-        console.log('Validation errors:', createProduct.error.validation);
-      }
+      console.error('Failed to create product:', error);
     }
-  };
+  });
 
-  // ... rest of component
+  return (
+    <div>
+      <form onSubmit={onSubmit}>
+        <input 
+          name="name" 
+          placeholder="Product name"
+          value={values.name || ''} 
+          onChange={handleInputChange} 
+        />
+        {errors.name && <span className="error">{errors.name}</span>}
+        
+        <input 
+          name="price" 
+          type="number" 
+          placeholder="Price"
+          value={values.price || ''} 
+          onChange={handleInputChange} 
+        />
+        {errors.price && <span className="error">{errors.price}</span>}
+        
+        <button type="submit">Create Product</button>
+      </form>
+      
+      {products?.map(product => (
+        <div 
+          key={product.id} 
+          onClick={() => setSelectedId(product.id)}
+          className={selectedId === product.id ? 'selected' : ''}
+        >
+          <h3>{product.name} - ${product.price}</h3>
+          <p>Category: {product.category}</p>
+        </div>
+      ))}
+    </div>
+  );
 }
 ```
 
 ## ✨ **Key Features**
 
 - **🎯 One-Line APIs**: Complete CRUD operations generated automatically
-- **🔧 Smart Conventions**: Auto-generates create/update schemas from your base schema
-- **📦 Schema Helpers**: Built-in helpers for common patterns (timestamps, IDs, etc.)
-- **🎨 Flexible Templates**: CRUD, read-only, or custom operation sets
-- **⚡ Type-Safe**: Full TypeScript support with runtime validation
+- **🔌 API Module**: Auto-generates CRUD operations with type safety
+- **📝 Forms Module**: Validated forms with automatic error handling
+- **🧭 Navigation Module**: URL state management with type inference
+- **⚡ Unified Validation**: Single Zod schema for API, forms, and navigation
+- **🔧 Smart Conventions**: Auto-generates create/update schemas
 - **🔌 Environment-Aware**: localStorage for development, HTTP for production
 - **🧪 Test-Friendly**: Built-in mocking and testing utilities
 
 ## 📦 **Installation**
 
 ```bash
-npm install @skylabs-digital/api-client-service
+npm install @skylabs-digital/react-proto-kit
 # or
-yarn add @skylabs-digital/api-client-service
+yarn add @skylabs-digital/react-proto-kit
 ```
 
 ## 🚀 **Quick Start**
@@ -78,7 +117,7 @@ yarn add @skylabs-digital/api-client-service
 Wrap your app with the API provider:
 
 ```tsx
-import { ApiClientProvider } from '@skylabs-digital/api-client-service';
+import { ApiClientProvider } from '@skylabs-digital/react-proto-kit';
 
 function App() {
   return (
@@ -92,7 +131,7 @@ function App() {
 ### 2. Define Your Data Schema
 
 ```tsx
-import { createEntitySchema, Type } from '@skylabs-digital/api-client-service';
+import { createEntitySchema, Type } from '@skylabs-digital/react-proto-kit';
 
 const ProductSchema = createEntitySchema({
   name: Type.String(),
@@ -105,17 +144,46 @@ const ProductSchema = createEntitySchema({
 ### 3. Generate Your API (One Line!)
 
 ```tsx
-import { createCrudApi } from '@skylabs-digital/api-client-service';
+import { createCrudApi } from '@skylabs-digital/react-proto-kit';
 
 const productApi = createCrudApi('products', ProductSchema);
 // That's it! You now have: useList, useById, useCreate, useUpdate, useDelete
 ```
 
-### 4. Use in Your Components
+### 4. Complete Component Example
 
 ```tsx
 function ProductManager() {
+  // API operations
   const { data: products, loading, error } = productApi.useList();
+  const { mutate: createProduct } = productApi.useCreate();
+  
+  // Form handling
+  const { values, errors, handleInputChange, handleSubmit } = useFormData(ProductSchema);
+  
+  // URL state
+  const [selectedId, setSelectedId] = useUrlSelector('productId');
+  
+  const onSubmit = handleSubmit(async (data) => {
+    await createProduct(data);
+    setSelectedId(null); // Clear selection after create
+  });
+  
+  return (
+    <div>
+      <form onSubmit={onSubmit}>
+        <input name="name" onChange={handleInputChange} />
+        {errors.name && <span>{errors.name}</span>}
+        <button type="submit">Create</button>
+      </form>
+      
+      {products?.map(product => (
+        <div key={product.id} onClick={() => setSelectedId(product.id)}>
+          {product.name}
+        </div>
+      ))}
+    </div>
+  );
   const createProduct = productApi.useCreate();
   const updateProduct = productApi.useUpdate();
   const deleteProduct = productApi.useDelete();
@@ -278,6 +346,94 @@ const currentConfig = apiConfig[process.env.NODE_ENV as keyof typeof apiConfig];
 <ApiClientProvider {...currentConfig} />
 ```
 
+## 📝 **Forms Module**
+
+Type-safe forms with automatic validation using Zod schemas:
+
+```tsx
+import { useFormData, createFormHandler } from '@skylabs-digital/react-proto-kit';
+import { z } from 'zod';
+
+// Define schema with Zod
+const ProductSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().positive('Price must be positive'),
+  category: z.string().min(1, 'Category is required'),
+  inStock: z.boolean(),
+});
+
+// Option 1: Direct hook usage
+function ProductForm() {
+  const { 
+    values, 
+    errors, 
+    handleInputChange, 
+    handleSubmit,
+    isValid,
+    isDirty 
+  } = useFormData(ProductSchema);
+
+  const onSubmit = handleSubmit(async (data) => {
+    // Data is automatically validated
+    await productApi.useCreate().mutate(data);
+  });
+
+  return (
+    <form onSubmit={onSubmit}>
+      <input 
+        name="name" 
+        value={values.name || ''} 
+        onChange={handleInputChange} 
+      />
+      {errors.name && <span>{errors.name}</span>}
+      
+      <button type="submit" disabled={!isValid}>
+        Create Product
+      </button>
+    </form>
+  );
+}
+
+// Option 2: Factory pattern (consistent with createCrudApi)
+const productForm = createFormHandler(ProductSchema);
+const form = productForm.useForm();
+```
+
+**Supported input types:**
+- `text`, `email`, `password` → `string`
+- `number` → `number`
+- `checkbox` → `boolean`
+- `textarea` → `string`
+- `select` → `string`
+
+**Key features:**
+- ✅ **Automatic validation** with Zod schemas
+- ✅ **Real-time validation** on field changes
+- ✅ **Type safety** with full TypeScript support
+- ✅ **Form state management** (isDirty, isValid)
+- ✅ **Error handling** per field and general errors
+- ✅ **Integration** with API module
+
+## 🧭 **Navigation Module**
+
+Type-safe URL parameter management:
+
+```tsx
+import { useUrlSelector } from '@skylabs-digital/react-proto-kit';
+
+// Single values
+const [productId, setProductId] = useUrlSelector('productId');
+// productId: string | undefined
+
+// Array values
+const [tags, setTags] = useUrlSelector('tags', String, { multiple: true });
+// tags: string[] | undefined
+
+// With type transformation
+const [page, setPage] = useUrlSelector('page', Number);
+// page: number | undefined
+```
+
 ## 🌱 **Seed Data & Mock Development**
 
 Initialize your endpoints with seed data for rapid development and testing:
@@ -285,7 +441,7 @@ Initialize your endpoints with seed data for rapid development and testing:
 ### Basic Seed Configuration
 
 ```tsx
-import { createDevSeedConfig } from '@skylabs-digital/api-client-service';
+import { createDevSeedConfig } from '@skylabs-digital/react-proto-kit';
 
 const seedData = {
   products: [
@@ -317,7 +473,7 @@ const seedData = {
 ### Environment-Aware Seeding
 
 ```tsx
-import { createEnvironmentSeedConfig } from '@skylabs-digital/api-client-service';
+import { createEnvironmentSeedConfig } from '@skylabs-digital/react-proto-kit';
 
 const config = {
   baseUrl: process.env.REACT_APP_API_URL,
@@ -334,7 +490,7 @@ import {
   createFallbackSeedConfig, // Only for 204 responses
   createInitSeedConfig,     // Only for localStorage initialization
   generateMockData          // Generate mock data from templates
-} from '@skylabs-digital/api-client-service';
+} from '@skylabs-digital/react-proto-kit';
 
 // Generate mock data
 const mockUsers = generateMockData({
@@ -464,7 +620,7 @@ function ProductList() {
 Built-in testing utilities:
 
 ```typescript
-import { createTestWrapper, mockApiResponse } from '@skylabs-digital/api-client-service/testing';
+import { createTestWrapper, mockApiResponse } from '@skylabs-digital/react-proto-kit/testing';
 import { render, screen } from '@testing-library/react';
 
 // Test wrapper with localStorage connector
@@ -580,6 +736,7 @@ const commentApi = createCrudApi('comments', CommentSchema);
 ## 📚 **Documentation**
 
 - **[Usage Guide](./docs/USAGE_GUIDE.md)** - Comprehensive examples and patterns
+- **[Forms Guide](./docs/FORMS.md)** - Complete forms module documentation with examples
 - **[Architecture](./docs/ARCHITECTURE.md)** - Technical architecture details
 - **[Schemas](./docs/SCHEMAS.md)** - Advanced schema patterns and validation
 - **[Developer Experience](./docs/DEVELOPER_EXPERIENCE.md)** - Agility features and roadmap
@@ -602,4 +759,4 @@ MIT License - Built for maximum development agility.
 
 ---
 
-**Ready to build faster?** Start with `npm install @skylabs-digital/api-client-service` and create your first API in under 5 minutes! 🚀
+**Ready to prototype faster?** Start with `npm install @skylabs-digital/react-proto-kit` and create your first prototype in under 5 minutes! 🚀

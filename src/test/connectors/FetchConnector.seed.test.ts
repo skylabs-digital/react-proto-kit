@@ -42,8 +42,10 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(seedData.users);
-      expect(result.message).toBe('Using seed data for 204 response');
+      if (result.success) {
+        expect(result.data).toEqual(seedData.users);
+        expect(result.message).toBe('Using seed data for 204 response');
+      }
     });
 
     it('should return null when API returns 204 and useOnNoContent is false', async () => {
@@ -68,7 +70,9 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toBeNull();
+      if (result.success) {
+        expect(result.data).toBeNull();
+      }
     });
 
     it('should return null when API returns 204 and no seed configuration', async () => {
@@ -87,7 +91,9 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toBeNull();
+      if (result.success) {
+        expect(result.data).toBeNull();
+      }
     });
   });
 
@@ -114,8 +120,10 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(Array.isArray(result.data)).toBe(true);
-      expect(result.data).toHaveLength(2);
+      if (result.success) {
+        expect(Array.isArray(result.data)).toBe(true);
+        expect(result.data).toHaveLength(2);
+      }
     });
 
     it('should return single item seed data for item endpoints', async () => {
@@ -140,7 +148,9 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.get('users/1');
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(seedData.users[0]);
+      if (result.success) {
+        expect(result.data).toEqual(seedData.users[0]);
+      }
     });
 
     it('should return null for non-existent item in seed data', async () => {
@@ -165,7 +175,9 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.get('users/999');
 
       expect(result.success).toBe(true);
-      expect(result.data).toBeNull();
+      if (result.success) {
+        expect(result.data).toBeNull();
+      }
     });
 
     it('should return null for non-existent collection in seed data', async () => {
@@ -190,7 +202,9 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.get('orders');
 
       expect(result.success).toBe(true);
-      expect(result.data).toBeNull();
+      if (result.success) {
+        expect(result.data).toBeNull();
+      }
     });
   });
 
@@ -219,8 +233,10 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.get('users');
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(apiData);
-      expect(result.data).not.toEqual(seedData.users);
+      if (result.success) {
+        expect(result.data).toEqual(apiData);
+        expect(result.data).not.toEqual(seedData.users);
+      }
     });
 
     it('should return error responses normally, ignoring seed', async () => {
@@ -272,7 +288,9 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.post('users', { name: 'New User' });
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(seedData.users);
+      if (result.success) {
+        expect(result.data).toEqual(seedData.users);
+      }
     });
 
     it('should handle 204 responses for PUT operations with seed', async () => {
@@ -297,7 +315,9 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.put('users/1', { name: 'Updated User' });
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(seedData.users[0]);
+      if (result.success) {
+        expect(result.data).toEqual(seedData.users[0]);
+      }
     });
 
     it('should handle 204 responses for DELETE operations with seed', async () => {
@@ -322,7 +342,9 @@ describe('FetchConnector - Seed Functionality', () => {
       const result = await connector.delete('users/1');
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(seedData.users[0]);
+      if (result.success) {
+        expect(result.data).toEqual(seedData.users[0]);
+      }
     });
   });
 });

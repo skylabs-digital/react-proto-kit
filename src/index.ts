@@ -1,9 +1,18 @@
 // Main exports
 export { ApiClientProvider, useApiClient } from './provider/ApiClientProvider';
 
-// Connectors
-export { LocalStorageConnector } from './connectors/LocalStorageConnector';
-export { FetchConnector } from './connectors/FetchConnector';
+// Export main API functionality
+export * from './factory/createDomainApi';
+export * from './connectors/FetchConnector';
+export * from './connectors/LocalStorageConnector';
+export * from './helpers/schemas';
+export * from './helpers/seedHelpers';
+
+// Export navigation functionality
+export * from './navigation';
+
+// Export forms functionality
+export * from './forms';
 
 // Hooks
 export { useQuery } from './hooks/useQuery';
