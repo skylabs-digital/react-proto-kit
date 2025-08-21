@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/skylabs-digital/api-client-service/compare/v1.2.0...v1.3.0) (2025-08-21)
+
+
+### Features
+
+* add forms module with validation and URL state management ([09369d5](https://github.com/skylabs-digital/api-client-service/commit/09369d51524c3a1881f03d50602bb01c2a5cb972))
+
 # [1.2.0](https://github.com/skylabs-digital/api-client-service/compare/v1.1.0...v1.2.0) (2025-08-21)
 
 
