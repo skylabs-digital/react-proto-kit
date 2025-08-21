@@ -31,6 +31,31 @@ export class FetchConnector implements IConnector {
     return url.toString();
   }
 
+  private getSeedDataForEndpoint(endpoint: string): any {
+    if (!this.config.seed?.data) {
+      return null;
+    }
+
+    // Extract collection name from endpoint (e.g., "users/123" -> "users")
+    const collection = endpoint.split('/')[0] || endpoint;
+    const seedData = this.config.seed.data[collection];
+
+    if (!seedData) {
+      return null;
+    }
+
+    // If endpoint has ID, return single item, otherwise return array
+    const parts = endpoint.split('/').filter(Boolean);
+    if (parts.length > 1) {
+      // Single item request
+      const id = parts[1];
+      return seedData.find((item: any) => item.id === id) || null;
+    } else {
+      // List request
+      return seedData;
+    }
+  }
+
   private async executeRequest<T>(
     method: string,
     endpoint: string,
@@ -88,6 +113,26 @@ export class FetchConnector implements IConnector {
           for (const interceptor of this.config.fetchInstance.interceptors.response) {
             processedResponse = await interceptor(processedResponse);
           }
+        }
+
+        // Handle 204 No Content with seed data
+        if (processedResponse.status === 204) {
+          if (this.config.seed?.behavior?.useOnNoContent) {
+            const seedData = this.getSeedDataForEndpoint(endpoint);
+            if (seedData) {
+              return {
+                success: true,
+                data: seedData,
+                message: 'Using seed data for 204 response',
+              };
+            }
+          }
+
+          // Return null/undefined for 204 if no seed or seed disabled
+          return {
+            success: true,
+            data: null as T,
+          };
         }
 
         const responseData = await processedResponse.json();

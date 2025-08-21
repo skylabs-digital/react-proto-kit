@@ -216,7 +216,17 @@ Perfect for prototyping and development:
   config={{
     simulateDelay: 500,    // Simulate network delay
     errorRate: 0.1,        // 10% error rate for testing
-    persistData: true      // Keep data between sessions
+    seed: {                // Initialize with mock data
+      data: {
+        products: [
+          { id: '1', name: 'Sample Product', price: 99.99, category: 'Electronics' }
+        ]
+      },
+      behavior: {
+        initializeEmpty: true,
+        mergeStrategy: 'replace'
+      }
+    }
   }} 
 />
 ```
@@ -235,7 +245,13 @@ For real APIs:
       'Content-Type': 'application/json'
     },
     timeout: 10000,
-    retries: 3
+    retries: 3,
+    seed: {                // Optional: fallback data for 204 responses
+      data: { products: [] },
+      behavior: {
+        useOnNoContent: true
+      }
+    }
   }} 
 />
 ```
@@ -260,6 +276,71 @@ const apiConfig = {
 const currentConfig = apiConfig[process.env.NODE_ENV as keyof typeof apiConfig];
 
 <ApiClientProvider {...currentConfig} />
+```
+
+## 🌱 **Seed Data & Mock Development**
+
+Initialize your endpoints with seed data for rapid development and testing:
+
+### Basic Seed Configuration
+
+```tsx
+import { createDevSeedConfig } from '@skylabs-digital/api-client-service';
+
+const seedData = {
+  products: [
+    { id: '1', name: 'Laptop', price: 999.99, category: 'Electronics' },
+    { id: '2', name: 'Coffee Mug', price: 15.99, category: 'Kitchen' }
+  ],
+  users: [
+    { id: '1', name: 'John Doe', email: 'john@example.com' }
+  ]
+};
+
+<ApiClientProvider 
+  connectorType="localStorage"
+  config={{
+    seed: createDevSeedConfig(seedData)
+  }}
+/>
+```
+
+### Seed Behaviors
+
+**LocalStorage Connector:**
+- `initializeEmpty: true` - Seeds empty collections on startup
+- `mergeStrategy: 'replace' | 'merge' | 'append'` - How to handle existing data
+
+**Fetch Connector:**
+- `useOnNoContent: true` - Returns seed data when API responds with 204 No Content
+
+### Environment-Aware Seeding
+
+```tsx
+import { createEnvironmentSeedConfig } from '@skylabs-digital/api-client-service';
+
+const config = {
+  baseUrl: process.env.REACT_APP_API_URL,
+  seed: createEnvironmentSeedConfig(seedData, process.env.NODE_ENV)
+  // Only seeds in development/staging, not production
+};
+```
+
+### Seed Helpers
+
+```tsx
+import { 
+  createDevSeedConfig,      // Full dev setup with all behaviors
+  createFallbackSeedConfig, // Only for 204 responses
+  createInitSeedConfig,     // Only for localStorage initialization
+  generateMockData          // Generate mock data from templates
+} from '@skylabs-digital/api-client-service';
+
+// Generate mock data
+const mockUsers = generateMockData({
+  name: 'User',
+  email: 'user@example.com'
+}, 10); // Creates 10 mock users with incremental IDs
 ```
 
 ## 📦 **Schema Helpers**

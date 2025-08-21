@@ -24,6 +24,15 @@ export {
   createUpdateSchema,
 } from './helpers/schemas';
 
+// Seed helpers
+export {
+  createDevSeedConfig,
+  createFallbackSeedConfig,
+  createInitSeedConfig,
+  generateMockData,
+  createEnvironmentSeedConfig,
+} from './helpers/seedHelpers';
+
 // Types
 export type {
   // Core types
@@ -45,6 +54,9 @@ export type {
   CustomOperation,
   DomainInterceptors,
   CrudOperation,
+
+  // Seed types
+  SeedConfig,
 
   // Hook types
   UseQueryResult,

@@ -12,6 +12,9 @@ export class LocalStorageConnector implements IConnector {
       ...config,
     };
     this.storageKey = 'api_client_data';
+
+    // Initialize seed data if configured
+    this.initializeSeedData();
   }
 
   private async simulateDelay(): Promise<void> {
@@ -51,6 +54,42 @@ export class LocalStorageConnector implements IConnector {
 
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
+
+  private initializeSeedData(): void {
+    if (!this.config.seed?.data || !this.config.seed?.behavior?.initializeEmpty) {
+      return;
+    }
+
+    const existingData = this.getStorageData();
+    const seedData = this.config.seed.data;
+    const mergeStrategy = this.config.seed.behavior?.mergeStrategy || 'merge';
+
+    Object.entries(seedData).forEach(([collection, items]) => {
+      const existingCollection = existingData[collection] || [];
+
+      if (existingCollection.length === 0 || mergeStrategy === 'replace') {
+        // Initialize empty collection or replace existing
+        existingData[collection] = items.map(item => ({
+          ...item,
+          id: item.id || this.generateId(),
+          createdAt: item.createdAt || new Date().toISOString(),
+          updatedAt: item.updatedAt || new Date().toISOString(),
+        }));
+      } else if (mergeStrategy === 'append') {
+        // Append seed data to existing
+        const newItems = items.map(item => ({
+          ...item,
+          id: item.id || this.generateId(),
+          createdAt: item.createdAt || new Date().toISOString(),
+          updatedAt: item.updatedAt || new Date().toISOString(),
+        }));
+        existingData[collection] = [...existingCollection, ...newItems];
+      }
+      // For 'merge' strategy with existing data, we don't add seed data
+    });
+
+    this.setStorageData(existingData);
   }
 
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {

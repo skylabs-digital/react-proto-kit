@@ -53,6 +53,24 @@ export interface ConnectorConfig {
   caching?: boolean;
   devMode?: boolean;
   pagination?: PaginationConfig;
+
+  // Seed configuration
+  seed?: SeedConfig;
+}
+
+export interface SeedConfig {
+  // Seed data by endpoint/collection
+  data?: Record<string, any[]>;
+
+  // Seed behavior configuration
+  behavior?: {
+    // For FetchConnector: use seed data when endpoint returns 204
+    useOnNoContent?: boolean;
+    // For LocalStorageConnector: initialize empty collections with seed data
+    initializeEmpty?: boolean;
+    // Global: whether to merge seed with existing data or replace
+    mergeStrategy?: 'replace' | 'merge' | 'append';
+  };
 }
 
 export interface FetchInstance {
