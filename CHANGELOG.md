@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/skylabs-digital/api-client-service/compare/v1.1.0...v1.2.0) (2025-08-21)
+
+
+### Features
+
+* trigger release for npm organization ([3227c93](https://github.com/skylabs-digital/api-client-service/commit/3227c930ca2069ee9a9f3715f12bc343f93e32d5))
+
 # [1.1.0](https://github.com/skylabs-digital/api-client-service/compare/v1.0.0...v1.1.0) (2025-08-21)
 
 
