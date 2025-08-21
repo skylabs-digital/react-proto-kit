@@ -7,22 +7,49 @@ A modern, type-safe React library for rapid API development. Build complete CRUD
 Stop writing repetitive API code. This library implements the **90% use case with one line** philosophy:
 
 ```typescript
-// 1. Define your data structure
+import { ApiClientProvider, createEntitySchema, createCrudApi, createCreateSchema, createUpdateSchema, z } from '@skylabs/api-client-service';
+
+// 1. Define your schema with validation (only manual step)
 const ProductSchema = createEntitySchema({
-  name: Type.String(),
-  price: Type.Number(),
-  category: Type.String()
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().positive('Price must be positive'),
+  category: z.string().min(1, 'Category is required'),
+  inStock: z.boolean(),
 });
 
-// 2. Generate complete API (one line!)
-const productApi = createCrudApi('products', ProductSchema);
+// 2. Generate create/update schemas with automatic validation
+const ProductCreateSchema = createCreateSchema(ProductSchema);
+const ProductUpdateSchema = createUpdateSchema(ProductSchema);
 
-// 3. Use anywhere in your app (zero configuration)
+// 3. Create API with validation
+const productApi = createCrudApi('products', ProductSchema, {
+  createSchema: ProductCreateSchema,
+  updateSchema: ProductUpdateSchema,
+});
+
+// 4. Use in components with automatic validation
 function ProductList() {
-  const { data: products, loading } = productApi.useList();
+  const { data: products, loading, error } = productApi.useList();
   const createProduct = productApi.useCreate();
-  
-  // That's it! Full CRUD ready to use
+
+  const handleCreate = async () => {
+    try {
+      // Automatic validation before API call
+      await createProduct.mutate({
+        name: 'New Product',
+        price: 99.99,
+        category: 'Electronics',
+        inStock: true,
+      });
+    } catch (error) {
+      // Handle validation errors
+      if (createProduct.error?.type === 'VALIDATION') {
+        console.log('Validation errors:', createProduct.error.validation);
+      }
+    }
+  };
+
+  // ... rest of component
 }
 ```
 

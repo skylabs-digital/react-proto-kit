@@ -1,13 +1,13 @@
-import { TSchema } from '@sinclair/typebox';
+import { z } from 'zod';
 import { DomainApiConfig, GeneratedCrudApi, ListParams, InferType } from '../types';
 import { useQuery } from '../hooks/useQuery';
 import { useList } from '../hooks/useList';
 import { useMutation } from '../hooks/useMutation';
 
-export function createDomainApi<T extends TSchema>(
+export function createDomainApi<T extends z.ZodSchema>(
   config: DomainApiConfig<T>
 ): GeneratedCrudApi<InferType<T>> {
-  const { entity } = config;
+  const { entity, createSchema, updateSchema } = config;
 
   return {
     useList: (params?: ListParams) => {
@@ -19,11 +19,15 @@ export function createDomainApi<T extends TSchema>(
     },
 
     useCreate: () => {
-      return useMutation<Partial<InferType<T>>, InferType<T>>(entity, 'POST');
+      return useMutation<Partial<InferType<T>>, InferType<T>>(entity, 'POST', createSchema);
     },
 
     useUpdate: (id: string) => {
-      return useMutation<Partial<InferType<T>>, InferType<T>>(`${entity}/${id}`, 'PUT');
+      return useMutation<Partial<InferType<T>>, InferType<T>>(
+        `${entity}/${id}`,
+        'PUT',
+        updateSchema
+      );
     },
 
     useDelete: (id: string) => {

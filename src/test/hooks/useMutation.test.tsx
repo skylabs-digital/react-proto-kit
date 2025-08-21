@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import React, { act } from 'react';
 import { useMutation } from '../../hooks/useMutation';
 import { ApiClientProvider } from '../../provider/ApiClientProvider';
@@ -56,7 +56,7 @@ describe('useMutation', () => {
     expect(result.current.error).toBe(null);
 
     const inputData = { name: 'New Item' };
-    
+
     let returnedData;
     await act(async () => {
       returnedData = await result.current.mutate(inputData);
@@ -82,7 +82,7 @@ describe('useMutation', () => {
     });
 
     const inputData = { name: 'Updated Item' };
-    
+
     let returnedData;
     await act(async () => {
       returnedData = await result.current.mutate(inputData);

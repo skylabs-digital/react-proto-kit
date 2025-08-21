@@ -1,15 +1,29 @@
-import { ApiClientProvider, createEntitySchema, createCrudApi, Type } from '../index';
+import {
+  ApiClientProvider,
+  createEntitySchema,
+  createCrudApi,
+  createCreateSchema,
+  createUpdateSchema,
+  z,
+} from '../index';
 
 // 1. Define your schema (only manual step)
 const ProductSchema = createEntitySchema({
-  name: Type.String(),
-  price: Type.Number(),
-  category: Type.String(),
-  inStock: Type.Boolean(),
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().positive('Price must be positive'),
+  category: z.string().min(1, 'Category is required'),
+  inStock: z.boolean(),
 });
 
-// 2. Create API with one line
-const productApi = createCrudApi('products', ProductSchema);
+// 2. Generate create/update schemas with validation
+const ProductCreateSchema = createCreateSchema(ProductSchema);
+const ProductUpdateSchema = createUpdateSchema(ProductSchema);
+
+// 3. Create API with validation
+const productApi = createCrudApi('products', ProductSchema, {
+  createSchema: ProductCreateSchema,
+  updateSchema: ProductUpdateSchema,
+});
 
 // 3. Use in components (zero config)
 function ProductList() {

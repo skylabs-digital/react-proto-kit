@@ -1,27 +1,27 @@
-import { Type, TSchema, Static } from '@sinclair/typebox';
+import { z } from 'zod';
 import { createDomainApi } from '../factory/createDomainApi';
 import { DomainApiConfig, GeneratedCrudApi, InferType } from '../types';
 
 // Schema helpers for common patterns
-export function createEntitySchema<T extends Record<string, TSchema>>(properties: T) {
-  return Type.Object({
-    id: Type.String(),
-    createdAt: Type.String({ format: 'date-time' }),
-    updatedAt: Type.String({ format: 'date-time' }),
+export function createEntitySchema<T extends z.ZodRawShape>(properties: T) {
+  return z.object({
+    id: z.string(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
     ...properties,
   });
 }
 
-export function createTimestampedSchema<T extends Record<string, TSchema>>(properties: T) {
-  return Type.Object({
-    createdAt: Type.String({ format: 'date-time' }),
-    updatedAt: Type.String({ format: 'date-time' }),
+export function createTimestampedSchema<T extends z.ZodRawShape>(properties: T) {
+  return z.object({
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
     ...properties,
   });
 }
 
 // CRUD API factory - the main helper for maximum agility
-export function createCrudApi<T extends TSchema>(
+export function createCrudApi<T extends z.ZodSchema>(
   entity: string,
   schema: T,
   options?: Partial<DomainApiConfig<T>>
@@ -36,7 +36,7 @@ export function createCrudApi<T extends TSchema>(
 }
 
 // Specialized API factories
-export function createReadOnlyApi<T extends TSchema>(
+export function createReadOnlyApi<T extends z.ZodSchema>(
   entity: string,
   schema: T
 ): Pick<GeneratedCrudApi<InferType<T>>, 'useList' | 'useById'> {
@@ -47,7 +47,7 @@ export function createReadOnlyApi<T extends TSchema>(
   };
 }
 
-export function createCustomApi<T extends TSchema>(
+export function createCustomApi<T extends z.ZodSchema>(
   entity: string,
   schema: T,
   operations: ('list' | 'byId' | 'create' | 'update' | 'delete')[]
@@ -64,6 +64,18 @@ export function createCustomApi<T extends TSchema>(
   return customApi;
 }
 
+// Schema generation helpers
+export function createCreateSchema<T extends z.ZodObject<any>>(entitySchema: T) {
+  return entitySchema.omit({ id: true, createdAt: true, updatedAt: true });
+}
+
+export function createUpdateSchema<T extends z.ZodObject<any>>(entitySchema: T) {
+  return entitySchema.omit({ id: true, createdAt: true, updatedAt: true }).partial();
+}
+
 // Type inference helpers for auto-generated schemas
-export type InferCreateType<T extends TSchema> = Omit<Static<T>, 'id' | 'createdAt' | 'updatedAt'>;
-export type InferUpdateType<T extends TSchema> = Partial<InferCreateType<T>>;
+export type InferCreateType<T extends z.ZodSchema> = Omit<
+  z.infer<T>,
+  'id' | 'createdAt' | 'updatedAt'
+>;
+export type InferUpdateType<T extends z.ZodSchema> = Partial<InferCreateType<T>>;

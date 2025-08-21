@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
+import { z } from 'zod';
 import { UseMutationResult, ErrorResponse } from '../types';
 import { useApiClient } from '../provider/ApiClientProvider';
 
 export function useMutation<TInput, TOutput = void>(
   endpoint: string,
-  method: 'POST' | 'PUT' | 'DELETE' = 'POST'
+  method: 'POST' | 'PUT' | 'DELETE' = 'POST',
+  schema?: z.ZodSchema
 ): UseMutationResult<TInput, TOutput> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
@@ -16,6 +18,30 @@ export function useMutation<TInput, TOutput = void>(
       setError(null);
 
       try {
+        // Validate input with Zod schema if provided
+        if (schema) {
+          try {
+            schema.parse(input);
+          } catch (validationError) {
+            if (validationError instanceof z.ZodError) {
+              const errorResponse: ErrorResponse = {
+                success: false,
+                message: 'Validation failed',
+                error: { code: 'VALIDATION_ERROR' },
+                type: 'VALIDATION',
+                validation: validationError.issues.reduce((acc: Record<string, string>, err) => {
+                  const path = err.path.join('.');
+                  acc[path] = err.message;
+                  return acc;
+                }, {}),
+              };
+              setError(errorResponse);
+              throw new Error('Validation failed');
+            }
+            throw validationError;
+          }
+        }
+
         let response;
 
         switch (method) {
@@ -51,7 +77,7 @@ export function useMutation<TInput, TOutput = void>(
         setLoading(false);
       }
     },
-    [connector, endpoint, method]
+    [connector, endpoint, method, schema]
   );
 
   return {

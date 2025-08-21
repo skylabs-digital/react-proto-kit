@@ -20,6 +20,8 @@ export {
   createCrudApi,
   createReadOnlyApi,
   createCustomApi,
+  createCreateSchema,
+  createUpdateSchema,
 } from './helpers/schemas';
 
 // Types
@@ -60,6 +62,5 @@ export type {
   InferListResponse,
 } from './types';
 
-// Re-export TypeBox for convenience
-export { Type, type Static } from '@sinclair/typebox';
-export type { TSchema } from '@sinclair/typebox';
+// Re-export Zod for convenience
+export { z } from 'zod';

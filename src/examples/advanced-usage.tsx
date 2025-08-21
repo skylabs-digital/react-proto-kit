@@ -4,37 +4,33 @@ import {
   createCrudApi,
   createReadOnlyApi,
   createCustomApi,
-  Type,
+  z,
 } from '../index';
 
 // Multiple domain schemas
 const UserSchema = createEntitySchema({
-  name: Type.String(),
-  email: Type.String({ format: 'email' }),
-  role: Type.Union([Type.Literal('admin'), Type.Literal('user')]),
+  name: z.string(),
+  email: z.email(),
+  role: z.enum(['admin', 'user']),
 });
 
 const OrderSchema = createEntitySchema({
-  userId: Type.String(),
-  total: Type.Number(),
-  status: Type.Union([
-    Type.Literal('pending'),
-    Type.Literal('completed'),
-    Type.Literal('cancelled'),
-  ]),
-  items: Type.Array(
-    Type.Object({
-      productId: Type.String(),
-      quantity: Type.Number(),
-      price: Type.Number(),
+  userId: z.string(),
+  total: z.number(),
+  status: z.enum(['pending', 'completed', 'cancelled']),
+  items: z.array(
+    z.object({
+      productId: z.string(),
+      quantity: z.number(),
+      price: z.number(),
     })
   ),
 });
 
 const AnalyticsSchema = createEntitySchema({
-  metric: Type.String(),
-  value: Type.Number(),
-  date: Type.String({ format: 'date' }),
+  metric: z.string(),
+  value: z.number(),
+  date: z.string(),
 });
 
 // Different API patterns

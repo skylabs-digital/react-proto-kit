@@ -1,4 +1,4 @@
-import { TSchema, Static } from '@sinclair/typebox';
+import { z } from 'zod';
 
 // Base types
 export type ApiResponse<T = any> = SuccessResponse<T> | ErrorResponse;
@@ -83,12 +83,12 @@ export interface RequestConfig {
 }
 
 // Domain API types
-export interface DomainApiConfig<T extends TSchema = TSchema> {
+export interface DomainApiConfig<T extends z.ZodSchema = z.ZodSchema> {
   entity: string;
   schema: T;
-  createSchema?: TSchema;
-  updateSchema?: TSchema;
-  listSchema?: TSchema;
+  createSchema?: z.ZodSchema;
+  updateSchema?: z.ZodSchema;
+  listSchema?: z.ZodSchema;
   customOperations?: Record<string, CustomOperation>;
   interceptors?: DomainInterceptors;
   pagination?: PaginationConfig;
@@ -97,8 +97,8 @@ export interface DomainApiConfig<T extends TSchema = TSchema> {
 export interface CustomOperation {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   endpoint: string;
-  inputSchema?: TSchema;
-  outputSchema?: TSchema;
+  inputSchema?: z.ZodSchema;
+  outputSchema?: z.ZodSchema;
 }
 
 export interface DomainInterceptors {
@@ -143,7 +143,10 @@ export interface ListParams {
 }
 
 // Type inference helpers
-export type InferType<T extends TSchema> = Static<T>;
-export type InferCreateType<T extends TSchema> = Omit<Static<T>, 'id' | 'createdAt' | 'updatedAt'>;
-export type InferUpdateType<T extends TSchema> = Partial<InferCreateType<T>>;
-export type InferListResponse<T extends TSchema> = SuccessResponse<Static<T>[]>;
+export type InferType<T extends z.ZodSchema> = z.infer<T>;
+export type InferCreateType<T extends z.ZodSchema> = Omit<
+  z.infer<T>,
+  'id' | 'createdAt' | 'updatedAt'
+>;
+export type InferUpdateType<T extends z.ZodSchema> = Partial<InferCreateType<T>>;
+export type InferListResponse<T extends z.ZodSchema> = SuccessResponse<z.infer<T>[]>;
