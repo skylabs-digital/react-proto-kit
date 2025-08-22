@@ -25,14 +25,18 @@ export class InvalidationManager {
   }
 
   invalidate(entity: string, data?: any) {
-    // Always invalidate the entity itself, even without rules
     const rule = this.rules.get(entity);
-    const shouldInvalidate = !rule?.condition || rule.condition(data);
 
+    // If there's a condition and it fails, don't invalidate anything
+    if (rule?.condition && !rule.condition(data)) {
+      return [];
+    }
+
+    // Start with the entity itself
     let invalidatedEntities = [entity];
 
-    // Add related entities if rule exists and condition passes
-    if (rule && shouldInvalidate) {
+    // Add related entities if rule exists
+    if (rule) {
       invalidatedEntities = [entity, ...rule.invalidates];
     }
 

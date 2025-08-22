@@ -54,7 +54,7 @@ function TodoForm({ onTodoAdded }: { onTodoAdded: () => void }) {
         />
         {errors.text && <span className="error-message">{errors.text}</span>}
       </div>
-      <button type="submit" disabled={loading || !values.text?.trim()}>
+      <button type="submit" className="btn btn-primary" disabled={loading || !values.text?.trim()}>
         {loading ? 'Adding...' : 'Add Todo'}
       </button>
     </form>

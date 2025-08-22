@@ -1,6 +1,5 @@
 /// <reference types="vitest/globals" />
-import { act } from 'react';
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { z } from 'zod';
 import { useMutationWithGlobalState } from '../../hooks/useMutationWithGlobalState';
 import { createTestWrapper } from '../helpers/testUtils';

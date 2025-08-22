@@ -1,4 +1,5 @@
-import React, { Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ApiClientProvider, GlobalStateProvider } from '../../../src';
 import { Header } from './components/Header';
 import { BlogStats, CategoriesList, RecentActivity } from './components/Sidebar';
@@ -23,66 +24,68 @@ function HomePage() {
 
 function App() {
   return (
-    <ApiClientProvider connectorType="localStorage">
-      <GlobalStateProvider>
-        <div className="app">
-          <Header />
+    <BrowserRouter>
+      <ApiClientProvider connectorType="localStorage">
+        <GlobalStateProvider>
+          <div className="app">
+            <Header />
 
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route
-              path="/posts/new"
-              element={
-                <div className="main">
-                  <PostForm />
-                  <aside className="sidebar">
-                    <BlogStats />
-                  </aside>
-                </div>
-              }
-            />
-            <Route
-              path="/posts/:slug/edit"
-              element={
-                <div className="main">
-                  <PostForm />
-                  <aside className="sidebar">
-                    <BlogStats />
-                  </aside>
-                </div>
-              }
-            />
-            <Route
-              path="/posts/:slug"
-              element={
-                <div className="main">
-                  <PostDetail />
-                  <aside className="sidebar">
-                    <BlogStats />
-                    <CategoriesList />
-                  </aside>
-                </div>
-              }
-            />
-            <Route
-              path="/categories"
-              element={
-                <div className="main">
-                  <div className="content">
-                    <h2>Categories</h2>
-                    <p>Category management coming soon...</p>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route
+                path="/posts/new"
+                element={
+                  <div className="main">
+                    <PostForm />
+                    <aside className="sidebar">
+                      <BlogStats />
+                    </aside>
                   </div>
-                  <aside className="sidebar">
-                    <BlogStats />
-                    <CategoriesList />
-                  </aside>
-                </div>
-              }
-            />
-          </Routes>
-        </div>
-      </GlobalStateProvider>
-    </ApiClientProvider>
+                }
+              />
+              <Route
+                path="/posts/:slug/edit"
+                element={
+                  <div className="main">
+                    <PostForm />
+                    <aside className="sidebar">
+                      <BlogStats />
+                    </aside>
+                  </div>
+                }
+              />
+              <Route
+                path="/posts/:slug"
+                element={
+                  <div className="main">
+                    <PostDetail />
+                    <aside className="sidebar">
+                      <BlogStats />
+                      <CategoriesList />
+                    </aside>
+                  </div>
+                }
+              />
+              <Route
+                path="/categories"
+                element={
+                  <div className="main">
+                    <div className="content">
+                      <h2>Categories</h2>
+                      <p>Category management coming soon...</p>
+                    </div>
+                    <aside className="sidebar">
+                      <BlogStats />
+                      <CategoriesList />
+                    </aside>
+                  </div>
+                }
+              />
+            </Routes>
+          </div>
+        </GlobalStateProvider>
+      </ApiClientProvider>
+    </BrowserRouter>
   );
 }
 

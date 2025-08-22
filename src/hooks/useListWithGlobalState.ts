@@ -5,6 +5,9 @@ import { useEntityState } from '../context/GlobalStateProvider';
 import { globalInvalidationManager } from '../context/InvalidationManager';
 import { debugLogger } from '../utils/debug';
 
+// Global request deduplication map
+const pendingRequests = new Map<string, Promise<any>>();
+
 export function useListWithGlobalState<T>(
   entity: string,
   params?: ListParams,
@@ -36,28 +39,59 @@ export function useListWithGlobalState<T>(
       return;
     }
 
+    // Create unique request key for deduplication
+    const requestKey = `${entity}:${cacheKey}`;
+
+    // Check if there's already a pending request for this data
+    if (pendingRequests.has(requestKey)) {
+      debugLogger.logRequest('GET', entity, null);
+      try {
+        await pendingRequests.get(requestKey);
+        return;
+      } catch {
+        // If the pending request failed, we'll try again below
+        pendingRequests.delete(requestKey);
+      }
+    }
+
     debugLogger.logCacheMiss(entity, cacheKey);
     entityState.actions.setLoading(cacheKey, true);
     entityState.actions.setError(cacheKey, null);
 
-    try {
-      const response = await connector.get<T[]>(entity, params);
+    // Create and store the request promise
+    const requestPromise = (async () => {
+      try {
+        const response = await connector.get<T[]>(entity, params);
 
-      if (response.success) {
-        // Atomic update - only replace data when new data is available
-        entityState.actions.setList(cacheKey, response.data);
-      } else {
-        entityState.actions.setError(cacheKey, response as ErrorResponse);
+        if (response.success) {
+          // Atomic update - only replace data when new data is available
+          entityState.actions.setList(cacheKey, response.data);
+        } else {
+          entityState.actions.setError(cacheKey, response as ErrorResponse);
+        }
+        return response;
+      } catch (err) {
+        const errorResponse: ErrorResponse = {
+          success: false,
+          message: err instanceof Error ? err.message : 'Unknown error',
+          error: { code: 'UNKNOWN_ERROR' },
+        };
+        entityState.actions.setError(cacheKey, errorResponse);
+        throw err;
+      } finally {
+        entityState.actions.setLoading(cacheKey, false);
+        // Clean up the pending request
+        pendingRequests.delete(requestKey);
       }
-    } catch (err) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: err instanceof Error ? err.message : 'Unknown error',
-        error: { code: 'UNKNOWN_ERROR' },
-      };
-      entityState.actions.setError(cacheKey, errorResponse);
-    } finally {
-      entityState.actions.setLoading(cacheKey, false);
+    })();
+
+    // Store the promise for deduplication
+    pendingRequests.set(requestKey, requestPromise);
+
+    try {
+      await requestPromise;
+    } catch {
+      // Error already handled above
     }
   }, [
     connector,

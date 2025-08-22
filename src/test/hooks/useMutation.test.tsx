@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
-import React, { act } from 'react';
+import { renderHook, act } from '@testing-library/react';
+import React from 'react';
 import { useMutation } from '../../hooks/useMutation';
 import { ApiClientProvider } from '../../provider/ApiClientProvider';
 import { IConnector, ApiResponse, ErrorResponse } from '../../types';

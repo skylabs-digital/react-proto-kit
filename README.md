@@ -237,6 +237,7 @@ Explore complete working examples that demonstrate the power of Global Context:
 ### 📝 **TODO Apps**
 - **[TODO with Global Context](./examples/todo-with-global-context/)** - Simple, clean, automatic synchronization
 - **[TODO without Global Context](./examples/todo-without-global-context/)** - Complex, manual state management
+- **[TODO with Backend](./examples/todo-with-backend/)** - Full-stack app with Express.js backend and real-time sync
 
 ### 📰 **Blog Platforms** 
 - **[Blog with Global Context](./examples/blog-with-global-context/)** - Advanced multi-entity app with real-time sync
@@ -245,8 +246,13 @@ Explore complete working examples that demonstrate the power of Global Context:
 **Run any example:**
 ```bash
 cd examples/[example-name]
-npm install
-npm run dev
+yarn install
+yarn dev
+
+# For backend example:
+cd examples/todo-with-backend
+yarn install
+yarn start  # Runs both backend and frontend
 ```
 
 Compare the examples to see the dramatic difference in code complexity and user experience!
@@ -266,12 +272,14 @@ yarn add api-client-service
 Wrap your app with the API provider:
 
 ```tsx
-import { ApiClientProvider } from '@skylabs-digital/react-proto-kit';
+import { ApiClientProvider, GlobalStateProvider } from 'api-client-service';
 
 function App() {
   return (
     <ApiClientProvider connectorType="localStorage"> {/* Dev mode */}
-      <YourApp />
+      <GlobalStateProvider>
+        <YourApp />
+      </GlobalStateProvider>
     </ApiClientProvider>
   );
 }
@@ -280,35 +288,39 @@ function App() {
 ### 2. Define Your Data Schema
 
 ```tsx
-import { createEntitySchema, Type } from '@skylabs-digital/react-proto-kit';
+import { z } from 'zod';
 
-const ProductSchema = createEntitySchema({
-  name: Type.String(),
-  price: Type.Number(),
-  category: Type.String(),
-  description: Type.Optional(Type.String())
+const productSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().positive('Price must be positive'),
+  category: z.string().min(1, 'Category is required'),
+  description: z.string().optional()
 });
 ```
 
 ### 3. Generate Your API (One Line!)
 
 ```tsx
-import { createCrudApi } from '@skylabs-digital/react-proto-kit';
+import { createDomainApi } from 'api-client-service';
 
-const productApi = createCrudApi('products', ProductSchema);
+const productApi = createDomainApi('products', productSchema, {
+  globalState: true,  // Enable automatic synchronization
+  optimistic: true    // Instant UI updates
+});
 // That's it! You now have: useList, useById, useCreate, useUpdate, useDelete
 ```
 
 ### 4. Complete Component Example
 
-```tsx
 function ProductManager() {
   // API operations
   const { data: products, loading, error } = productApi.useList();
   const { mutate: createProduct } = productApi.useCreate();
+  const { mutate: updateProduct } = productApi.useUpdate();
+  const { mutate: deleteProduct } = productApi.useDelete();
   
   // Form handling
-  const { values, errors, handleInputChange, handleSubmit } = useFormData(ProductSchema);
+  const { values, errors, handleInputChange, handleSubmit } = useFormData(productSchema);
   
   // URL state
   const [selectedId, setSelectedId] = useUrlSelector('productId');
@@ -317,43 +329,16 @@ function ProductManager() {
     await createProduct(data);
     setSelectedId(null); // Clear selection after create
   });
-  
-  return (
-    <div>
-      <form onSubmit={onSubmit}>
-        <input name="name" onChange={handleInputChange} />
-        {errors.name && <span>{errors.name}</span>}
-        <button type="submit">Create</button>
-      </form>
-      
-      {products?.map(product => (
-        <div key={product.id} onClick={() => setSelectedId(product.id)}>
-          {product.name}
-        </div>
-      ))}
-    </div>
-  );
-  const createProduct = productApi.useCreate();
-  const updateProduct = productApi.useUpdate();
-  const deleteProduct = productApi.useDelete();
-
-  const handleCreate = async () => {
-    await createProduct.mutate({
-      name: 'New Product',
-      price: 99.99,
-      category: 'Electronics'
-    });
-  };
 
   const handleUpdate = async (id: string) => {
-    await updateProduct.mutate(id, {
+    await updateProduct(id, {
       name: 'Updated Product',
       price: 149.99
     });
   };
 
   const handleDelete = async (id: string) => {
-    await deleteProduct.mutate(id);
+    await deleteProduct(id);
   };
 
   if (loading) return <div>Loading products...</div>;
@@ -361,10 +346,15 @@ function ProductManager() {
 
   return (
     <div>
-      <button onClick={handleCreate}>Add Product</button>
+      <form onSubmit={onSubmit}>
+        <input name="name" value={values.name || ''} onChange={handleInputChange} />
+        {errors.name && <span>{errors.name}</span>}
+        <button type="submit">Create Product</button>
+      </form>
+      
       <div>
         {products?.map(product => (
-          <div key={product.id}>
+          <div key={product.id} onClick={() => setSelectedId(product.id)}>
             <h3>{product.name} - ${product.price}</h3>
             <p>{product.category}</p>
             <button onClick={() => handleUpdate(product.id)}>Update</button>
