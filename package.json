@@ -53,12 +53,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/skylabs-digital/api-client-service.git"
+    "url": "https://github.com/skylabs-digital/react-proto-kit.git"
   },
   "bugs": {
-    "url": "https://github.com/skylabs-digital/api-client-service/issues"
+    "url": "https://github.com/skylabs-digital/react-proto-kit/issues"
   },
-  "homepage": "https://github.com/skylabs-digital/api-client-service#readme",
+  "homepage": "https://github.com/skylabs-digital/react-proto-kit#readme",
   "peerDependencies": {
     "react": ">=16.8.0",
     "react-router-dom": ">=6.0.0"
