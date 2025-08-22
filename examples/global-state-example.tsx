@@ -1,5 +1,6 @@
+import React from 'react';
 import { z } from 'zod';
-import { GlobalStateProvider, createDomainApi } from '../index';
+import { GlobalStateProvider, createDomainApi } from '../src/index';
 
 // Define schemas
 const userSchema = z.object({
@@ -20,29 +21,17 @@ const bookSchema = z.object({
 });
 
 // Create APIs with global state
-const usersApi = createDomainApi(
-  {
-    entity: 'users',
-    schema: userSchema,
-  },
-  {
-    globalState: true,
-    optimistic: true,
-    cacheTime: 5 * 60 * 1000, // 5 minutes
-  }
-);
+const usersApi = createDomainApi('users', userSchema, {
+  globalState: true,
+  optimistic: true,
+  cacheTime: 5 * 60 * 1000, // 5 minutes
+});
 
-const booksApi = createDomainApi(
-  {
-    entity: 'books',
-    schema: bookSchema,
-  },
-  {
-    globalState: true,
-    invalidateRelated: ['users'], // Invalidate users when books change
-    optimistic: true,
-  }
-);
+const booksApi = createDomainApi('books', bookSchema, {
+  globalState: true,
+  invalidateRelated: ['users'], // Invalidate users when books change
+  optimistic: true,
+});
 
 // Components
 function UsersList() {

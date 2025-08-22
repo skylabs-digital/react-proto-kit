@@ -1,8 +1,6 @@
 import React from 'react';
 import { z } from 'zod';
-import { ApiClientProvider } from '../provider/ApiClientProvider';
-import { createDomainApi } from '../factory/createDomainApi';
-import { createDevSeedConfig } from '../helpers/seedHelpers';
+import { ApiClientProvider, createDevSeedConfig, createDomainApi } from '../src';
 
 // Simple test schema
 const UserSchema = z.object({
@@ -35,10 +33,7 @@ const testSeedData = {
 
 // Test component
 const TestContent: React.FC = () => {
-  const userApi = createDomainApi({
-    entity: 'users',
-    schema: UserSchema,
-  });
+  const userApi = createDomainApi('users', UserSchema);
 
   const { data: users, loading, error } = userApi.useList!();
 

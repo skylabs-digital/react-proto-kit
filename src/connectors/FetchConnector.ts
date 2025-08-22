@@ -1,4 +1,5 @@
 import { IConnector, ApiResponse, ConnectorConfig, RequestConfig } from '../types';
+import { debugLogger } from '../utils/debug';
 
 export class FetchConnector implements IConnector {
   private config: ConnectorConfig;
@@ -62,7 +63,12 @@ export class FetchConnector implements IConnector {
     data?: any,
     params?: Record<string, any>
   ): Promise<ApiResponse<T>> {
+    const startTime = Date.now();
     const url = this.buildUrl(endpoint, params);
+
+    // Debug log request
+    debugLogger.logRequest(method, endpoint, data);
+
     const requestConfig: RequestInit = {
       method,
       headers: {
@@ -148,18 +154,28 @@ export class FetchConnector implements IConnector {
         }
 
         // Handle different response formats
+        let finalResponse;
         if (responseData.success !== undefined) {
           // API already returns our format
-          return responseData;
+          finalResponse = responseData;
         } else {
           // Wrap raw data in our format
-          return {
+          finalResponse = {
             success: true,
             data: responseData,
           };
         }
+
+        // Debug log successful response
+        const duration = Date.now() - startTime;
+        debugLogger.logResponse(method, endpoint, finalResponse, duration);
+
+        return finalResponse;
       } catch (error) {
         lastError = error as Error;
+
+        // Debug log error
+        debugLogger.logError(method, endpoint, error);
 
         if (error instanceof Error && error.name === 'AbortError') {
           return {

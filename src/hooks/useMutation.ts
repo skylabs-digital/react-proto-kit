@@ -35,8 +35,17 @@ export function useMutation<TInput, TOutput = void>(
                   return acc;
                 }, {}),
               };
+
+              // Debug logging for validation errors
+              console.group('🚫 Validation Error');
+              console.error('Input data:', input);
+              console.error('Schema validation failed:', validationError.issues);
+              console.error('Formatted errors:', errorResponse.validation);
+              console.groupEnd();
+
               setError(errorResponse);
-              throw new Error('Validation failed');
+              setLoading(false);
+              return Promise.reject(errorResponse);
             }
             throw validationError;
           }

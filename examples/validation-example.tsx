@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   ApiClientProvider,
   createEntitySchema,
@@ -5,7 +6,7 @@ import {
   createCreateSchema,
   createUpdateSchema,
   z,
-} from '../index';
+} from '../src/index';
 
 // 1. Define schema with complex validations
 const UserSchema = createEntitySchema({

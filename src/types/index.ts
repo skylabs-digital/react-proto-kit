@@ -157,12 +157,12 @@ export interface UseListResult<T> extends UseQueryResult<T[]> {
 
 // Generated API types
 export interface GeneratedCrudApi<T> {
-  useList?: (params?: ListParams) => UseListResult<T>;
-  useQuery?: (id: string) => UseQueryResult<T>;
-  useById?: (id: string) => UseQueryResult<T>;
-  useCreate?: () => UseMutationResult<any, T>;
-  useUpdate?: (id: string) => UseMutationResult<any, T>;
-  useDelete?: (id: string) => UseMutationResult<void>;
+  useList: (params?: ListParams) => UseListResult<T>;
+  useQuery: (id: string) => UseQueryResult<T>;
+  useById: (id: string) => UseQueryResult<T>;
+  useCreate: () => UseMutationResult<any, T>;
+  useUpdate: (id: string) => UseMutationResult<any, T>;
+  useDelete: (id: string) => UseMutationResult<void>;
 }
 
 export interface ListParams {

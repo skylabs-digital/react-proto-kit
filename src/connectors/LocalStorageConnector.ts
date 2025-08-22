@@ -1,4 +1,5 @@
 import { IConnector, ApiResponse, ConnectorConfig, SuccessResponse, ErrorResponse } from '../types';
+import { debugLogger } from '../utils/debug';
 
 export class LocalStorageConnector implements IConnector {
   private config: ConnectorConfig;
@@ -93,6 +94,9 @@ export class LocalStorageConnector implements IConnector {
   }
 
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
+    const startTime = Date.now();
+    debugLogger.logRequest('GET', endpoint, params);
+
     await this.simulateDelay();
 
     if (this.shouldSimulateError()) {
@@ -101,6 +105,7 @@ export class LocalStorageConnector implements IConnector {
         message: 'Simulated localStorage error',
         error: { code: 'STORAGE_ERROR' },
       };
+      debugLogger.logResponse('GET', endpoint, error, Date.now() - startTime);
       return error;
     }
 
@@ -112,16 +117,20 @@ export class LocalStorageConnector implements IConnector {
       // Get single item
       const item = collectionData.find((item: any) => item.id === id);
       if (!item) {
-        return {
+        const errorResponse: ErrorResponse = {
           success: false,
           message: 'Item not found',
           error: { code: 'NOT_FOUND' },
         };
+        debugLogger.logResponse('GET', endpoint, errorResponse, Date.now() - startTime);
+        return errorResponse;
       }
-      return {
+      const successResponse: SuccessResponse<T> = {
         success: true,
         data: item as T,
       };
+      debugLogger.logResponse('GET', endpoint, successResponse, Date.now() - startTime);
+      return successResponse;
     } else {
       // Get list with optional pagination and filtering
       let filteredData = [...collectionData];
@@ -153,19 +162,25 @@ export class LocalStorageConnector implements IConnector {
         },
       };
 
+      debugLogger.logResponse('GET', endpoint, response, Date.now() - startTime);
       return response;
     }
   }
 
   async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const startTime = Date.now();
+    debugLogger.logRequest('POST', endpoint, data);
+
     await this.simulateDelay();
 
     if (this.shouldSimulateError()) {
-      return {
+      const errorResponse: ErrorResponse = {
         success: false,
         message: 'Simulated localStorage error',
         error: { code: 'STORAGE_ERROR' },
       };
+      debugLogger.logResponse('POST', endpoint, errorResponse, Date.now() - startTime);
+      return errorResponse;
     }
 
     const { collection } = this.parseEndpoint(endpoint);
@@ -183,31 +198,40 @@ export class LocalStorageConnector implements IConnector {
     storageData[collection] = collectionData;
     this.setStorageData(storageData);
 
-    return {
+    const successResponse: SuccessResponse<T> = {
       success: true,
       data: newItem as T,
       message: 'Item created successfully',
     };
+    debugLogger.logResponse('POST', endpoint, successResponse, Date.now() - startTime);
+    return successResponse;
   }
 
   async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const startTime = Date.now();
+    debugLogger.logRequest('PUT', endpoint, data);
+
     await this.simulateDelay();
 
     if (this.shouldSimulateError()) {
-      return {
+      const errorResponse: ErrorResponse = {
         success: false,
         message: 'Simulated localStorage error',
         error: { code: 'STORAGE_ERROR' },
       };
+      debugLogger.logResponse('PUT', endpoint, errorResponse, Date.now() - startTime);
+      return errorResponse;
     }
 
     const { collection, id } = this.parseEndpoint(endpoint);
     if (!id) {
-      return {
+      const errorResponse: ErrorResponse = {
         success: false,
         message: 'ID is required for update operation',
         error: { code: 'INVALID_REQUEST' },
       };
+      debugLogger.logResponse('PUT', endpoint, errorResponse, Date.now() - startTime);
+      return errorResponse;
     }
 
     const storageData = this.getStorageData();
@@ -232,31 +256,40 @@ export class LocalStorageConnector implements IConnector {
     storageData[collection] = collectionData;
     this.setStorageData(storageData);
 
-    return {
+    const successResponse: SuccessResponse<T> = {
       success: true,
       data: updatedItem as T,
       message: 'Item updated successfully',
     };
+    debugLogger.logResponse('PUT', endpoint, successResponse, Date.now() - startTime);
+    return successResponse;
   }
 
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+    const startTime = Date.now();
+    debugLogger.logRequest('DELETE', endpoint);
+
     await this.simulateDelay();
 
     if (this.shouldSimulateError()) {
-      return {
+      const errorResponse: ErrorResponse = {
         success: false,
         message: 'Simulated localStorage error',
         error: { code: 'STORAGE_ERROR' },
       };
+      debugLogger.logResponse('DELETE', endpoint, errorResponse, Date.now() - startTime);
+      return errorResponse;
     }
 
     const { collection, id } = this.parseEndpoint(endpoint);
     if (!id) {
-      return {
+      const errorResponse: ErrorResponse = {
         success: false,
         message: 'ID is required for delete operation',
         error: { code: 'INVALID_REQUEST' },
       };
+      debugLogger.logResponse('DELETE', endpoint, errorResponse, Date.now() - startTime);
+      return errorResponse;
     }
 
     const storageData = this.getStorageData();
@@ -275,10 +308,12 @@ export class LocalStorageConnector implements IConnector {
     storageData[collection] = collectionData;
     this.setStorageData(storageData);
 
-    return {
+    const successResponse: SuccessResponse<T> = {
       success: true,
       data: undefined as T,
       message: 'Item deleted successfully',
     };
+    debugLogger.logResponse('DELETE', endpoint, successResponse, Date.now() - startTime);
+    return successResponse;
   }
 }

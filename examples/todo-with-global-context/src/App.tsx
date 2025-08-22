@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
-import { z } from 'zod';
-import { ApiClientProvider, GlobalStateProvider, createDomainApi } from '../../../src';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import {
+  ApiClientProvider,
+  ExtractEntityType,
+  GlobalStateProvider,
+  createDomainApi,
+  configureDebugLogging,
+  useFormData,
+  useUrlSelector,
+  z,
+} from '../../../src';
 
-// Schema definition
+// Enable debug logging
+configureDebugLogging(true, '[TODO-GLOBAL]');
+
+// Schema definition with validation
 const todoSchema = z.object({
-  id: z.string(),
-  text: z.string(),
+  text: z
+    .string()
+    .min(1, 'Todo text is required')
+    .max(10, 'Todo text must be 10 characters or less'),
   completed: z.boolean(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
 });
 
-type Todo = z.infer<typeof todoSchema>;
+// Filter options
+type FilterType = 'all' | 'active' | 'completed';
 
 // Create API with Global Context
 const todosApi = createDomainApi('todos', todoSchema, {
@@ -20,33 +33,37 @@ const todosApi = createDomainApi('todos', todoSchema, {
   cacheTime: 5 * 60 * 1000, // 5 minutes
 });
 
+// Extract types from the API - this is what developers can use!
+type Todo = ExtractEntityType<typeof todosApi>;
+
 // Components
 function TodoForm() {
-  const [text, setText] = useState('');
-  const { mutate: createTodo, loading } = todosApi.useCreate!();
+  const { mutate: createTodo, loading } = todosApi.useCreate();
+  const { values, errors, handleInputChange, handleSubmit, reset } = useFormData(todoSchema, {
+    text: '',
+    completed: false,
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!text.trim()) return;
-
-    await createTodo({
-      text: text.trim(),
-      completed: false,
-    });
-    setText('');
-  };
+  const onSubmit = handleSubmit(async data => {
+    await createTodo(data);
+    reset();
+  });
 
   return (
-    <form onSubmit={handleSubmit} className="todo-form">
-      <input
-        type="text"
-        value={text}
-        onChange={e => setText(e.target.value)}
-        placeholder="Add a new todo..."
-        className="todo-input"
-        disabled={loading}
-      />
-      <button type="submit" className="btn btn-primary" disabled={loading || !text.trim()}>
+    <form onSubmit={onSubmit} className="todo-form">
+      <div className="form-field">
+        <input
+          type="text"
+          name="text"
+          value={values.text || ''}
+          onChange={handleInputChange}
+          placeholder="Add a new todo..."
+          className={`todo-input ${errors.text ? 'error' : ''}`}
+          disabled={loading}
+        />
+        {errors.text && <span className="error-message">{errors.text}</span>}
+      </div>
+      <button type="submit" className="btn btn-primary" disabled={loading || !values.text?.trim()}>
         {loading ? 'Adding...' : 'Add Todo'}
       </button>
     </form>
@@ -54,7 +71,7 @@ function TodoForm() {
 }
 
 function TodoStats() {
-  const { data: todos, loading, error } = todosApi.useList!();
+  const { data: todos, loading, error } = todosApi.useList();
 
   // Handle loading state
   if (loading) {
@@ -111,11 +128,14 @@ function TodoStats() {
 }
 
 function TodoItem({ todo }: { todo: Todo }) {
-  const { mutate: updateTodo } = todosApi.useUpdate!(todo.id);
-  const { mutate: deleteTodo } = todosApi.useDelete!(todo.id);
+  const { mutate: updateTodo } = todosApi.useUpdate(todo.id);
+  const { mutate: deleteTodo } = todosApi.useDelete(todo.id);
 
   const handleToggle = () => {
-    updateTodo({ completed: !todo.completed });
+    updateTodo({
+      text: todo.text,
+      completed: !todo.completed,
+    });
   };
 
   const handleDelete = () => {
@@ -141,8 +161,11 @@ function TodoItem({ todo }: { todo: Todo }) {
 }
 
 function TodoList() {
-  const { data: todos, loading, error } = todosApi.useList!();
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const { data: todos, loading, error } = todosApi.useList();
+  const [filter, setFilter] = useUrlSelector('filter', (value: string) => value as FilterType, {
+    multiple: false,
+  });
+  const currentFilter = filter || 'all';
 
   // Handle loading state
   if (loading) {
@@ -162,8 +185,8 @@ function TodoList() {
   // Safely handle undefined data
   const safeTodos = todos || [];
   const filteredTodos = safeTodos.filter(todo => {
-    if (filter === 'pending') return !todo.completed;
-    if (filter === 'completed') return todo.completed;
+    if (currentFilter === 'active') return !todo.completed;
+    if (currentFilter === 'completed') return todo.completed;
     return true;
   });
 
@@ -171,19 +194,19 @@ function TodoList() {
     <>
       <div className="filter-tabs">
         <button
-          className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
+          className={`filter-tab ${currentFilter === 'all' ? 'active' : ''}`}
           onClick={() => setFilter('all')}
         >
           All ({safeTodos.length})
         </button>
         <button
-          className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
-          onClick={() => setFilter('pending')}
+          className={`filter-tab ${currentFilter === 'active' ? 'active' : ''}`}
+          onClick={() => setFilter('active')}
         >
-          Pending ({safeTodos.filter(t => !t.completed).length})
+          Active ({safeTodos.filter(t => !t.completed).length})
         </button>
         <button
-          className={`filter-tab ${filter === 'completed' ? 'active' : ''}`}
+          className={`filter-tab ${currentFilter === 'completed' ? 'active' : ''}`}
           onClick={() => setFilter('completed')}
         >
           Completed ({safeTodos.filter(t => t.completed).length})
@@ -193,7 +216,11 @@ function TodoList() {
       {filteredTodos.length === 0 ? (
         <div className="empty-state">
           <h3>No todos found</h3>
-          <p>{filter === 'all' ? 'Add your first todo above!' : `No ${filter} todos yet.`}</p>
+          <p>
+            {currentFilter === 'all'
+              ? 'Add your first todo above!'
+              : `No ${currentFilter} todos yet.`}
+          </p>
         </div>
       ) : (
         <ul className="todo-list">
@@ -208,22 +235,24 @@ function TodoList() {
 
 function App() {
   return (
-    <ApiClientProvider connectorType="localStorage">
-      <GlobalStateProvider>
-        <div className="app">
-          <header className="header">
-            <h1>Todo App</h1>
-            <p>With Global Context - All components stay in sync automatically!</p>
-          </header>
+    <BrowserRouter>
+      <ApiClientProvider connectorType="localStorage">
+        <GlobalStateProvider>
+          <div className="app">
+            <header className="header">
+              <h1>Todo App</h1>
+              <p>With Global Context - All components stay in sync automatically!</p>
+            </header>
 
-          <div className="content">
-            <TodoForm />
-            <TodoStats />
-            <TodoList />
+            <div className="content">
+              <TodoForm />
+              <TodoStats />
+              <TodoList />
+            </div>
           </div>
-        </div>
-      </GlobalStateProvider>
-    </ApiClientProvider>
+        </GlobalStateProvider>
+      </ApiClientProvider>
+    </BrowserRouter>
   );
 }
 

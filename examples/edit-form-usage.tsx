@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { z } from 'zod';
-import { useFormData, createCrudApi } from '../index';
-import { createEntitySchema } from '../helpers/schemas';
+import { useFormData, createCrudApi } from '../src/index';
+import { createEntitySchema } from '../src/helpers/schemas';
 
 const ProductSchema = createEntitySchema({
   name: z.string().min(1, 'Name is required'),

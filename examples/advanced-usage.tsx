@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   ApiClientProvider,
   createEntitySchema,
@@ -5,7 +6,7 @@ import {
   createReadOnlyApi,
   createCustomApi,
   z,
-} from '../index';
+} from '../src/index';
 
 // Multiple domain schemas
 const UserSchema = createEntitySchema({

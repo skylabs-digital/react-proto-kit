@@ -1,54 +1,60 @@
 import React, { useState, useCallback } from 'react';
-import { z } from 'zod';
-import { ApiClientProvider, createDomainApi } from '../../../src';
+import { BrowserRouter } from 'react-router-dom';
+import {
+  ApiClientProvider,
+  useUrlSelector,
+  useFormData,
+  createDomainApi,
+  ExtractEntityType,
+  z,
+} from '../../../src';
 
-// Schema definition
+// Business schema for input validation and API creation
 const todoSchema = z.object({
-  id: z.string(),
-  text: z.string(),
+  text: z
+    .string()
+    .min(1, 'Todo text is required')
+    .max(10, 'Todo text must be 10 characters or less'),
   completed: z.boolean(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
 });
 
-type Todo = z.infer<typeof todoSchema>;
-
 // Create API without Global Context
-const todosApi = createDomainApi(
-  'todos',
-  todoSchema
-  // No globalState flag - each component manages its own state
-);
+const todosApi = createDomainApi('todos', todoSchema);
 
-// Components
+// Extract types from the API - this is what developers can use!
+type Todo = ExtractEntityType<typeof todosApi>;
+
+// Filter options
+type FilterType = 'all' | 'active' | 'completed';
+
 function TodoForm({ onTodoAdded }: { onTodoAdded: () => void }) {
-  const [text, setText] = useState('');
-  const { mutate: createTodo, loading } = todosApi.useCreate!();
+  const { mutate: createTodo, loading } = todosApi.useCreate();
+  const { values, errors, handleInputChange, handleSubmit, reset } = useFormData(todoSchema, {
+    text: '',
+    completed: false,
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!text.trim()) return;
-
-    await createTodo({
-      text: text.trim(),
-      completed: false,
-    });
-    setText('');
-    // Manual callback to notify parent component
+  const onSubmit = handleSubmit(async data => {
+    await createTodo(data);
+    reset();
     onTodoAdded();
-  };
+  });
 
   return (
-    <form onSubmit={handleSubmit} className="todo-form">
-      <input
-        type="text"
-        value={text}
-        onChange={e => setText(e.target.value)}
-        placeholder="Add a new todo..."
-        className="todo-input"
-        disabled={loading}
-      />
-      <button type="submit" className="btn btn-primary" disabled={loading || !text.trim()}>
+    <form onSubmit={onSubmit} className="todo-form">
+      <div className="form-field">
+        <input
+          type="text"
+          name="text"
+          value={values.text || ''}
+          onChange={handleInputChange}
+          placeholder="Add a new todo..."
+          className={`todo-input ${errors.text ? 'error' : ''}`}
+          disabled={loading}
+        />
+        {errors.text && <span className="error-message">{errors.text}</span>}
+      </div>
+      <button type="submit" disabled={loading || !values.text?.trim()}>
         {loading ? 'Adding...' : 'Add Todo'}
       </button>
     </form>
@@ -57,7 +63,7 @@ function TodoForm({ onTodoAdded }: { onTodoAdded: () => void }) {
 
 function TodoStats({ onRefresh }: { onRefresh: () => void }) {
   // Each component needs its own data fetching
-  const { data: todos, loading, error, refetch } = todosApi.useList!();
+  const { data: todos, loading, error, refetch } = todosApi.useList();
 
   // Handle loading and error states properly
   if (loading) {
@@ -95,8 +101,8 @@ function TodoStats({ onRefresh }: { onRefresh: () => void }) {
   }
 
   // Safely handle undefined data
-  const safeTodos = todos || [];
-  const completedCount = safeTodos.filter(todo => todo.completed).length;
+  const safeTodos: Todo[] = todos || [];
+  const completedCount = safeTodos.filter((todo: Todo) => todo.completed).length;
   const pendingCount = safeTodos.length - completedCount;
 
   const handleRefresh = () => {
@@ -137,11 +143,14 @@ function TodoStats({ onRefresh }: { onRefresh: () => void }) {
 }
 
 function TodoItem({ todo, onTodoChanged }: { todo: Todo; onTodoChanged: () => void }) {
-  const { mutate: updateTodo } = todosApi.useUpdate!(todo.id);
-  const { mutate: deleteTodo } = todosApi.useDelete!(todo.id);
+  const { mutate: updateTodo } = todosApi.useUpdate(todo.id);
+  const { mutate: deleteTodo } = todosApi.useDelete(todo.id);
 
   const handleToggle = async () => {
-    await updateTodo({ completed: !todo.completed });
+    await updateTodo({
+      text: todo.text,
+      completed: !todo.completed,
+    });
     // Manual callback to notify parent
     onTodoChanged();
   };
@@ -171,8 +180,11 @@ function TodoItem({ todo, onTodoChanged }: { todo: Todo; onTodoChanged: () => vo
 }
 
 function TodoList({ refreshKey }: { refreshKey: number }) {
-  const { data: todos, loading, error, refetch } = todosApi.useList!();
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const { data: todos, loading, error, refetch } = todosApi.useList();
+  const [filter, setFilter] = useUrlSelector('filter', (value: string) => value as FilterType, {
+    multiple: false,
+  });
+  const currentFilter = filter || 'all';
 
   // Force refetch when refreshKey changes
   React.useEffect(() => {
@@ -205,10 +217,10 @@ function TodoList({ refreshKey }: { refreshKey: number }) {
   }
 
   // Safely handle undefined data
-  const safeTodos = todos || [];
-  const filteredTodos = safeTodos.filter(todo => {
-    if (filter === 'pending') return !todo.completed;
-    if (filter === 'completed') return todo.completed;
+  const safeTodos: Todo[] = todos || [];
+  const filteredTodos = safeTodos.filter((todo: Todo) => {
+    if (currentFilter === 'active') return !todo.completed;
+    if (currentFilter === 'completed') return todo.completed;
     return true;
   });
 
@@ -216,33 +228,37 @@ function TodoList({ refreshKey }: { refreshKey: number }) {
     <>
       <div className="filter-tabs">
         <button
-          className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
+          className={`filter-tab ${currentFilter === 'all' ? 'active' : ''}`}
           onClick={() => setFilter('all')}
         >
           All ({safeTodos.length})
         </button>
         <button
-          className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
-          onClick={() => setFilter('pending')}
+          className={`filter-tab ${currentFilter === 'active' ? 'active' : ''}`}
+          onClick={() => setFilter('active')}
         >
-          Pending ({safeTodos.filter(t => !t.completed).length})
+          Active ({safeTodos.filter((t: Todo) => !t.completed).length})
         </button>
         <button
-          className={`filter-tab ${filter === 'completed' ? 'active' : ''}`}
+          className={`filter-tab ${currentFilter === 'completed' ? 'active' : ''}`}
           onClick={() => setFilter('completed')}
         >
-          Completed ({safeTodos.filter(t => t.completed).length})
+          Completed ({safeTodos.filter((t: Todo) => t.completed).length})
         </button>
       </div>
 
       {filteredTodos.length === 0 ? (
         <div className="empty-state">
           <h3>No todos found</h3>
-          <p>{filter === 'all' ? 'Add your first todo above!' : `No ${filter} todos yet.`}</p>
+          <p>
+            {currentFilter === 'all'
+              ? 'Add your first todo above!'
+              : `No ${currentFilter} todos yet.`}
+          </p>
         </div>
       ) : (
         <ul className="todo-list">
-          {filteredTodos.map(todo => (
+          {filteredTodos.map((todo: Todo) => (
             <TodoItem key={todo.id} todo={todo} onTodoChanged={handleTodoChanged} />
           ))}
         </ul>
@@ -264,20 +280,22 @@ function App() {
   };
 
   return (
-    <ApiClientProvider connectorType="localStorage">
-      <div className="app">
-        <header className="header">
-          <h1>Todo App</h1>
-          <p>Without Global Context - Manual synchronization required</p>
-        </header>
+    <BrowserRouter>
+      <ApiClientProvider connectorType="localStorage">
+        <div className="app">
+          <header className="header">
+            <h1>Todo App</h1>
+            <p>Without Global Context - Manual synchronization required</p>
+          </header>
 
-        <div className="content">
-          <TodoForm onTodoAdded={handleTodoAdded} />
-          <TodoStats onRefresh={handleRefresh} />
-          <TodoList refreshKey={refreshKey} />
+          <div className="content">
+            <TodoForm onTodoAdded={handleTodoAdded} />
+            <TodoStats onRefresh={handleRefresh} />
+            <TodoList refreshKey={refreshKey} />
+          </div>
         </div>
-      </div>
-    </ApiClientProvider>
+      </ApiClientProvider>
+    </BrowserRouter>
   );
 }
 

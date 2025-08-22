@@ -12,6 +12,20 @@ export function createEntitySchema<T extends z.ZodRawShape>(properties: T) {
   });
 }
 
+// Helper to infer the complete entity type (with id, createdAt, updatedAt)
+export type InferEntityType<T extends z.ZodRawShape> = z.infer<
+  ReturnType<typeof createEntitySchema<T>>
+>;
+
+// Helper to create entity schema and get the complete type
+export function createEntitySchemaWithType<T extends z.ZodRawShape>(properties: T) {
+  const schema = createEntitySchema(properties);
+  return {
+    schema,
+    type: {} as InferEntityType<T>,
+  };
+}
+
 export function createTimestampedSchema<T extends z.ZodRawShape>(properties: T) {
   return z.object({
     createdAt: z.string().datetime(),

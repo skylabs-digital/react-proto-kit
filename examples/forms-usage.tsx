@@ -1,6 +1,6 @@
+import React from 'react';
 import { z } from 'zod';
-import { useFormData, createFormHandler } from '../forms';
-import { createEntitySchema } from '../helpers/schemas';
+import { useFormData, createFormHandler, createEntitySchema } from '../src';
 
 // Example 1: Direct hook usage
 const ProductSchema = createEntitySchema({

@@ -18,16 +18,18 @@ export * from './context/InvalidationManager';
 // Export hooks
 export * from './hooks/useQuery';
 export * from './hooks/useList';
-export * from './hooks/useMutation';
-export * from './hooks/useQueryWithGlobalState';
-export * from './hooks/useListWithGlobalState';
-export * from './hooks/useMutationWithGlobalState';
 
-// Export factory
+// Export utility types
 export * from './factory/createDomainApi';
+
+// Export debug utilities
+export { configureDebugLogging } from './utils/debug';
 
 // Export forms
 export * from './forms';
+
+// Export navigation
+export * from './navigation';
 
 // Helpers (main agility features)
 export {

@@ -1,4 +1,5 @@
-import { ApiClientProvider, createEntitySchema, createCrudApi, z } from '../index';
+import React from 'react';
+import { ApiClientProvider, createEntitySchema, createCrudApi, z } from '../src/index';
 
 // API Schema for external service
 const PostSchema = createEntitySchema({

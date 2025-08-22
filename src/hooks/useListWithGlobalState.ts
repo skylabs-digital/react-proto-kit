@@ -3,6 +3,7 @@ import { UseListResult, ErrorResponse, ListParams, PaginationMeta } from '../typ
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
 import { globalInvalidationManager } from '../context/InvalidationManager';
+import { debugLogger } from '../utils/debug';
 
 export function useListWithGlobalState<T>(
   entity: string,
@@ -21,17 +22,21 @@ export function useListWithGlobalState<T>(
   const data = entityState.lists?.[cacheKey] || null;
   const loading = entityState.loading?.[cacheKey] || false;
   const error = entityState.errors?.[cacheKey] || null;
-  const lastFetch = entityState.lastFetch?.[cacheKey] || 0;
 
   const fetchData = useCallback(async () => {
     if (options?.enabled === false) return;
 
-    // Check cache validity
+    // Check cache validity - use current values from state
+    const currentData = entityState.lists?.[cacheKey];
+    const currentLastFetch = entityState.lastFetch?.[cacheKey] || 0;
     const cacheTime = options?.cacheTime || 5 * 60 * 1000; // 5 minutes default
-    if (data && Date.now() - lastFetch < cacheTime) {
+
+    if (currentData && Date.now() - currentLastFetch < cacheTime) {
+      debugLogger.logCacheHit(entity, cacheKey);
       return;
     }
 
+    debugLogger.logCacheMiss(entity, cacheKey);
     entityState.actions.setLoading(cacheKey, true);
     entityState.actions.setError(cacheKey, null);
 
@@ -39,6 +44,7 @@ export function useListWithGlobalState<T>(
       const response = await connector.get<T[]>(entity, params);
 
       if (response.success) {
+        // Atomic update - only replace data when new data is available
         entityState.actions.setList(cacheKey, response.data);
       } else {
         entityState.actions.setError(cacheKey, response as ErrorResponse);
@@ -59,9 +65,9 @@ export function useListWithGlobalState<T>(
     params,
     options?.enabled,
     cacheKey,
-    entityState,
-    data,
-    lastFetch,
+    entityState.actions,
+    entityState.lists,
+    entityState.lastFetch,
     options?.cacheTime,
   ]);
 
@@ -72,10 +78,11 @@ export function useListWithGlobalState<T>(
   // Subscribe to invalidations
   useEffect(() => {
     const unsubscribe = globalInvalidationManager.subscribe(entity, () => {
-      fetchData();
+      // Invalidate cache timestamp to force refetch on next access
+      entityState.actions.invalidate();
     });
     return unsubscribe;
-  }, [entity, fetchData]);
+  }, [entity, entityState.actions]);
 
   useEffect(() => {
     if (options?.refetchOnMount !== false) {

@@ -8,11 +8,19 @@ import { useListWithGlobalState } from '../hooks/useListWithGlobalState';
 import { useMutationWithGlobalState } from '../hooks/useMutationWithGlobalState';
 import { globalInvalidationManager } from '../context/InvalidationManager';
 
+// Type extraction utilities - simple and clean
+export type ExtractEntityType<T> =
+  T extends GeneratedCrudApi<infer U>
+    ? U & { id: string; createdAt: string; updatedAt: string }
+    : never;
+export type ExtractInputType<T> =
+  T extends GeneratedCrudApi<infer U> ? Omit<U, 'id' | 'createdAt' | 'updatedAt'> : never;
+
 export function createDomainApi<T extends z.ZodSchema>(
   entity: string,
-  schema: T,
+  businessSchema: T,
   globalConfig?: GlobalStateConfig
-): GeneratedCrudApi<InferType<T>> {
+): GeneratedCrudApi<InferType<T> & { id: string; createdAt: string; updatedAt: string }> {
   const useGlobalState = globalConfig?.globalState || false;
 
   // Setup invalidation rules if specified
@@ -23,64 +31,70 @@ export function createDomainApi<T extends z.ZodSchema>(
     });
   }
 
+  type CompleteEntityType = InferType<T> & { id: string; createdAt: string; updatedAt: string };
+
   return {
     useList: (params?: ListParams) => {
       if (useGlobalState) {
-        return useListWithGlobalState<InferType<T>>(entity, params, {
+        return useListWithGlobalState<CompleteEntityType>(entity, params, {
           cacheTime: globalConfig?.cacheTime,
         });
       }
-      return useList<InferType<T>>(entity, params);
+      return useList<CompleteEntityType>(entity, params);
     },
 
     useQuery: (id: string) => {
       if (useGlobalState) {
-        return useQueryWithGlobalState<InferType<T>>(entity, `${entity}/${id}`, undefined, {
+        return useQueryWithGlobalState<CompleteEntityType>(entity, `${entity}/${id}`, undefined, {
           cacheTime: globalConfig?.cacheTime,
         });
       }
-      return useQuery<InferType<T>>(`${entity}/${id}`);
+      return useQuery<CompleteEntityType>(`${entity}/${id}`);
     },
 
     useById: (id: string) => {
       if (useGlobalState) {
-        return useQueryWithGlobalState<InferType<T>>(entity, `${entity}/${id}`, undefined, {
+        return useQueryWithGlobalState<CompleteEntityType>(entity, `${entity}/${id}`, undefined, {
           cacheTime: globalConfig?.cacheTime,
         });
       }
-      return useQuery<InferType<T>>(`${entity}/${id}`);
+      return useQuery<CompleteEntityType>(`${entity}/${id}`);
     },
 
     useCreate: () => {
       if (useGlobalState) {
-        return useMutationWithGlobalState<Partial<InferType<T>>, InferType<T>>(
+        return useMutationWithGlobalState<InferType<T>, CompleteEntityType>(
           entity,
           entity,
           'POST',
-          schema,
+          businessSchema,
           {
             optimistic: globalConfig?.optimistic,
             invalidateRelated: globalConfig?.invalidateRelated,
           }
         );
       }
-      return useMutation<Partial<InferType<T>>, InferType<T>>(entity, 'POST', schema);
+      return useMutation<InferType<T>, CompleteEntityType>(entity, 'POST', businessSchema);
     },
 
     useUpdate: (id: string) => {
       if (useGlobalState) {
-        return useMutationWithGlobalState<Partial<InferType<T>>, InferType<T>>(
+        return useMutationWithGlobalState<Partial<InferType<T>>, CompleteEntityType>(
           entity,
           `${entity}/${id}`,
           'PUT',
-          schema,
+          businessSchema,
           {
             optimistic: globalConfig?.optimistic,
             invalidateRelated: globalConfig?.invalidateRelated,
           }
         );
       }
-      return useMutation<Partial<InferType<T>>, InferType<T>>(`${entity}/${id}`, 'PUT', schema);
+      return useMutation<Partial<InferType<T>>, CompleteEntityType>(
+        `${entity}/${id}`,
+        'PUT',
+        businessSchema
+      );
     },
 
     useDelete: (id: string) => {

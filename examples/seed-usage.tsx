@@ -1,7 +1,6 @@
 import React from 'react';
 import { z } from 'zod';
-import { ApiClientProvider } from '../provider/ApiClientProvider';
-import { createDomainApi } from '../factory/createDomainApi';
+import { ApiClientProvider, createDomainApi } from '../src';
 
 // Example schemas
 const UserSchema = z.object({
@@ -79,10 +78,7 @@ export const LocalStorageWithSeedExample: React.FC = () => {
 };
 
 const LocalStorageContent: React.FC = () => {
-  const userApi = createDomainApi({
-    entity: 'users',
-    schema: UserSchema,
-  });
+  const userApi = createDomainApi('users', UserSchema);
 
   const { data: users, loading } = userApi.useList!();
 
@@ -126,10 +122,7 @@ export const FetchWith204SeedExample: React.FC = () => {
 };
 
 const FetchContent: React.FC = () => {
-  const productApi = createDomainApi({
-    entity: 'products',
-    schema: ProductSchema,
-  });
+  const productApi = createDomainApi('products', ProductSchema);
 
   const { data: products, loading } = productApi.useList!();
 
@@ -276,10 +269,7 @@ export const ConditionalSeedExample: React.FC<{ useSeed: boolean }> = ({ useSeed
 };
 
 const ConditionalSeedContent: React.FC<{ useSeed: boolean }> = ({ useSeed }) => {
-  const userApi = createDomainApi({
-    entity: 'users',
-    schema: UserSchema,
-  });
+  const userApi = createDomainApi('users', UserSchema);
 
   const { data: users, loading, error } = userApi.useList!();
 

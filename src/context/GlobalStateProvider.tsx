@@ -129,6 +129,7 @@ function globalStateReducer(state: GlobalState, action: GlobalAction): GlobalSta
           [entity]: {
             ...state.entities[entity],
             lastFetch: {},
+            // Keep existing data and lists - don't clear them
           },
         },
       };
@@ -137,16 +138,37 @@ function globalStateReducer(state: GlobalState, action: GlobalAction): GlobalSta
     case 'OPTIMISTIC_UPDATE': {
       const { entity, id, data, tempId } = action;
       const actualId = tempId || id;
+      const entityState = state.entities[entity] || {
+        data: {},
+        lists: {},
+        loading: {},
+        errors: {},
+        lastFetch: {},
+      };
+
+      // Add to individual data cache
+      const updatedData = {
+        ...entityState.data,
+        [actualId]: { ...data, _optimistic: true, _tempId: tempId },
+      };
+
+      // Also add to all list caches
+      const updatedLists = { ...entityState.lists };
+      Object.keys(updatedLists).forEach(listKey => {
+        const list = updatedLists[listKey];
+        if (Array.isArray(list)) {
+          updatedLists[listKey] = [...list, { ...data, _optimistic: true, _tempId: tempId }];
+        }
+      });
+
       return {
         ...state,
         entities: {
           ...state.entities,
           [entity]: {
-            ...state.entities[entity],
-            data: {
-              ...state.entities[entity]?.data,
-              [actualId]: { ...data, _optimistic: true, _tempId: tempId },
-            },
+            ...entityState,
+            data: updatedData,
+            lists: updatedLists,
           },
         },
       };
@@ -176,6 +198,18 @@ function globalStateReducer(state: GlobalState, action: GlobalAction): GlobalSta
       if (!entityState) return state;
 
       const { [tempId]: _, ...remainingData } = entityState.data;
+
+      // Also update lists by replacing the optimistic item with real data
+      const updatedLists = { ...entityState.lists };
+      Object.keys(updatedLists).forEach(listKey => {
+        const list = updatedLists[listKey];
+        if (Array.isArray(list)) {
+          updatedLists[listKey] = list.map(item =>
+            (item as any)._tempId === tempId ? realData : item
+          );
+        }
+      });
+
       return {
         ...state,
         entities: {
@@ -186,6 +220,7 @@ function globalStateReducer(state: GlobalState, action: GlobalAction): GlobalSta
               ...remainingData,
               [realData.id]: realData,
             },
+            lists: updatedLists,
           },
         },
       };
