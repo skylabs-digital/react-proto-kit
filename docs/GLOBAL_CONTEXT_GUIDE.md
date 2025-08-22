@@ -1,6 +1,6 @@
 # Global Context - Complete Usage Guide
 
-This guide provides comprehensive examples and best practices for using Global Context in the API Client Service.
+This guide provides comprehensive examples and best practices for using Global Context in React Proto Kit.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ This guide provides comprehensive examples and best practices for using Global C
 ### 1. Setup Providers
 
 ```typescript
-import { ApiClientProvider, GlobalStateProvider } from 'api-client-service';
+import { ApiClientProvider, GlobalStateProvider } from '@skylabs-digital/react-proto-kit';
 
 function App() {
   return (
@@ -33,7 +33,7 @@ function App() {
 ### 2. Enable Global Context
 
 ```typescript
-import { createDomainApi } from 'api-client-service';
+import { createDomainApi } from '@skylabs-digital/react-proto-kit';
 import { z } from 'zod';
 
 const userSchema = z.object({
@@ -631,7 +631,7 @@ function useCleanupOnUnmount() {
 2. **Enable Debug Mode**: Add comprehensive debug logging to track state changes.
 
 ```typescript
-import { configureDebugLogging } from 'api-client-service';
+import { configureDebugLogging } from '@skylabs-digital/react-proto-kit';
 
 // Enable debug mode globally
 configureDebugLogging(true, '[GLOBAL-CONTEXT]');

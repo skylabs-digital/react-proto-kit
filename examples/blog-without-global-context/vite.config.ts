@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      // Alias to use the local api-client-service
-      'api-client-service': path.resolve(__dirname, '../../src/index.ts'),
+      // Alias to use the local react-proto-kit
+      '@skylabs-digital/react-proto-kit': path.resolve(__dirname, '../../src/index.ts'),
     },
   },
   server: {

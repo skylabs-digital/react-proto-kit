@@ -1,4 +1,4 @@
-# 🚀 **API Client Service**
+# 🚀 **React Proto Kit**
 
 *Modern React API client with Global State Context for seamless data synchronization*
 
@@ -41,7 +41,7 @@ import {
   ApiClientProvider, 
   GlobalStateProvider,
   createDomainApi 
-} from 'api-client-service';
+} from '@skylabs-digital/react-proto-kit';
 
 // 1. Define your schemas
 const postSchema = z.object({
@@ -116,7 +116,7 @@ Global Context is an intelligent state management system that automatically sync
 ### Setup (One-Time)
 
 ```typescript
-import { ApiClientProvider, GlobalStateProvider } from 'api-client-service';
+import { ApiClientProvider, GlobalStateProvider } from '@skylabs-digital/react-proto-kit';
 
 function App() {
   return (
@@ -260,9 +260,9 @@ Compare the examples to see the dramatic difference in code complexity and user 
 ## 📦 **Installation**
 
 ```bash
-npm install api-client-service
+npm install @skylabs-digital/react-proto-kit
 # or
-yarn add api-client-service
+yarn add @skylabs-digital/react-proto-kit
 ```
 
 ## 🚀 **Quick Start**
@@ -272,7 +272,7 @@ yarn add api-client-service
 Wrap your app with the API provider:
 
 ```tsx
-import { ApiClientProvider, GlobalStateProvider } from 'api-client-service';
+import { ApiClientProvider, GlobalStateProvider } from '@skylabs-digital/react-proto-kit';
 
 function App() {
   return (
@@ -301,7 +301,7 @@ const productSchema = z.object({
 ### 3. Generate Your API (One Line!)
 
 ```tsx
-import { createDomainApi } from 'api-client-service';
+import { createDomainApi } from '@skylabs-digital/react-proto-kit';
 
 const productApi = createDomainApi('products', productSchema, {
   globalState: true,  // Enable automatic synchronization
@@ -789,7 +789,7 @@ function ProductList() {
 Enable comprehensive debug logging to track API calls, cache operations, and state changes:
 
 ```typescript
-import { configureDebugLogging } from 'api-client-service';
+import { configureDebugLogging } from '@skylabs-digital/react-proto-kit';
 
 // Enable debug mode
 configureDebugLogging(true);

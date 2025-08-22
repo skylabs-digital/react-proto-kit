@@ -5,7 +5,7 @@
 ### 1. Configurar Provider Global
 ```typescript
 // main.tsx
-import { ApiClientProvider } from '@skylabs-digital/api-client-service';
+import { ApiClientProvider } from '@skylabs-digital/react-proto-kit';
 import { devConfig, prodConfig } from './config/api';
 
 const config = process.env.NODE_ENV === 'development' ? devConfig : prodConfig;
@@ -41,7 +41,7 @@ export const UpdateUserSchema = Type.Partial(CreateUserSchema);
 ### 3. Generar API de Dominio con Factory
 ```typescript
 // api/user.api.ts
-import { createDomainApi } from '@skylabs-digital/api-client-service';
+import { createDomainApi } from '@skylabs-digital/react-proto-kit';
 import { UserSchema, CreateUserSchema, UpdateUserSchema } from '../schemas/user.schema';
 
 // Factory genérico - cada app define sus dominios
@@ -422,7 +422,7 @@ const prodConfig = {
 ### Mock Provider para Tests
 ```typescript
 // En tests
-import { ApiClientProvider } from '@skylabs-digital/api-client-service';
+import { ApiClientProvider } from '@skylabs-digital/react-proto-kit';
 
 const mockConfig = {
   connector: 'mock' as const,

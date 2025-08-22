@@ -1,6 +1,6 @@
 # Blog Platform - With Backend
 
-A full-featured blog platform example demonstrating the API client service with Express.js backend integration.
+A full-featured blog platform example demonstrating React Proto Kit with Express.js backend integration.
 
 ## Features
 
