@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { postsApi, usersApi, categoriesApi, commentsApi } from '../api';
-import type { PostWithRelations } from '../types';
+import { PostWithRelations } from '../api';
 
 interface PostListProps {
   onDataChange?: () => void; // Callback to notify parent of data changes
@@ -9,29 +9,29 @@ interface PostListProps {
 
 export function PostList({ onDataChange }: PostListProps) {
   const {
-    data: posts,
+    data: posts = [],
     loading: postsLoading,
     error: postsError,
     refetch: refetchPosts,
-  } = postsApi.useList!();
+  } = postsApi.useList();
   const {
-    data: users,
+    data: users = [],
     loading: usersLoading,
     error: usersError,
     refetch: refetchUsers,
-  } = usersApi.useList!();
+  } = usersApi.useList();
   const {
-    data: categories,
+    data: categories = [],
     loading: categoriesLoading,
     error: categoriesError,
     refetch: refetchCategories,
-  } = categoriesApi.useList!();
+  } = categoriesApi.useList();
   const {
-    data: comments,
+    data: comments = [],
     loading: commentsLoading,
     error: commentsError,
     refetch: refetchComments,
-  } = commentsApi.useList!();
+  } = commentsApi.useList();
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('published');
 
   const isLoading = postsLoading || usersLoading || categoriesLoading || commentsLoading;
@@ -162,11 +162,14 @@ interface PostCardProps {
 }
 
 function PostCard({ post, onPostChange }: PostCardProps) {
-  const { mutate: updatePost } = postsApi.useUpdate!(post.id);
-  const { mutate: deletePost } = postsApi.useDelete!(post.id);
+  const { mutate: updatePost } = postsApi.useUpdate(post.id);
+  const { mutate: deletePost } = postsApi.useDelete(post.id);
 
   const handleTogglePublished = async () => {
-    await updatePost({ published: !post.published });
+    await updatePost({
+      ...post,
+      published: !post.published,
+    });
     // Manual callback to refresh other components
     onPostChange?.();
   };
@@ -179,7 +182,7 @@ function PostCard({ post, onPostChange }: PostCardProps) {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string) => {
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
@@ -191,13 +194,19 @@ function PostCard({ post, onPostChange }: PostCardProps) {
     <article className="card post-preview fade-in">
       <div className="card-header">
         <div>
-          <Link
-            to={`/posts/${post.slug}`}
-            className="card-title"
-            style={{ textDecoration: 'none', color: 'inherit' }}
-          >
-            {post.title}
-          </Link>
+          {post.published ? (
+            <Link
+              to={`/posts/${post.id}`}
+              className="card-title"
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              {post.title}
+            </Link>
+          ) : (
+            <span className="card-title" style={{ color: '#6b7280' }}>
+              {post.title}
+            </span>
+          )}
           <div className="card-meta">
             By {post.author?.name || 'Unknown Author'} • {formatDate(post.createdAt)} •{' '}
             {post.category?.name || 'Uncategorized'}
@@ -224,7 +233,7 @@ function PostCard({ post, onPostChange }: PostCardProps) {
           >
             {post.published ? 'Unpublish' : 'Publish'}
           </button>
-          <Link to={`/posts/${post.slug}/edit`} className="btn btn-small btn-secondary">
+          <Link to={`/posts/${post.id}/edit`} className="btn btn-small btn-secondary">
             Edit
           </Link>
           <button onClick={handleDelete} className="btn btn-small btn-danger">
@@ -246,7 +255,7 @@ function PostCard({ post, onPostChange }: PostCardProps) {
           }}
         >
           <span>{post.commentCount || 0} comments</span>
-          <Link to={`/posts/${post.slug}`} style={{ color: '#667eea', textDecoration: 'none' }}>
+          <Link to={`/posts/${post.id}`} style={{ color: '#667eea', textDecoration: 'none' }}>
             Read more →
           </Link>
         </div>

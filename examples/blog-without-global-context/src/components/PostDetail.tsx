@@ -1,33 +1,28 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { postsApi, usersApi, categoriesApi, commentsApi } from '../api';
-import type { CommentWithAuthor } from '../types';
+import { User, Post, PostWithRelations, CommentWithAuthor } from '../api';
+import { Comment } from './Comment';
 
 interface PostDetailProps {
   onDataChange?: () => void; // Callback to notify parent of data changes
 }
 
 export function PostDetail({ onDataChange }: PostDetailProps) {
-  const { slug } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const [commentText, setCommentText] = useState('');
 
-  const { data: post, loading: postLoading, refetch: refetchPost } = postsApi.useById!(slug || '');
-  const { data: users = [], refetch: refetchUsers } = usersApi.useList!();
-  const { data: categories = [], refetch: refetchCategories } = categoriesApi.useList!();
-  const { data: comments = [], refetch: refetchComments } = commentsApi.useList!();
-  const { mutate: createComment, loading: commentLoading } = commentsApi.useCreate!();
-  const { mutate: deletePost } = postsApi.useDelete!(post?.id || '');
-  const { mutate: deleteComment } = commentsApi.useDelete!('');
+  const { data: post, loading: postLoading, refetch: refetchPost } = postsApi.useById(id || '');
+  const { data: users = [], refetch: refetchUsers } = usersApi.useList();
+  const { data: categories = [], refetch: refetchCategories } = categoriesApi.useList();
+  const { data: comments = [], refetch: refetchComments } = commentsApi.useList();
+  const { mutate: createComment, loading: commentLoading } = commentsApi.useCreate();
+  const { mutate: deletePost } = postsApi.useDelete(post?.id || '');
 
   // Manual refresh function - needed because no global state sync
   const handleRefreshAll = useCallback(async () => {
-    await Promise.all([
-      refetchPost(),
-      refetchUsers(),
-      refetchCategories(),
-      refetchComments(),
-    ]);
+    await Promise.all([refetchPost(), refetchUsers(), refetchCategories(), refetchComments()]);
     onDataChange?.();
   }, [refetchPost, refetchUsers, refetchCategories, refetchComments, onDataChange]);
 
@@ -47,15 +42,31 @@ export function PostDetail({ onDataChange }: PostDetailProps) {
     );
   }
 
-  const author = users.find(user => user.id === post.authorId);
-  const category = categories.find(cat => cat.id === post.categoryId);
-  
+  // Check if post is unpublished and show appropriate message
+  if (!post.published) {
+    return (
+      <div className="empty-state">
+        <h3>Post is not published</h3>
+        <p>This post is currently in draft mode and not publicly available.</p>
+        <Link to="/" className="btn btn-primary">
+          Back to Home
+        </Link>
+        <Link to={`/posts/${post.id}/edit`} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
+          Edit Post
+        </Link>
+      </div>
+    );
+  }
+
+  const author = users?.find(user => user.id === post.authorId) || null;
+  const category = categories?.find(cat => cat.id === post.categoryId) || null;
+
   // Get comments for this post with author info
-  const postComments: CommentWithAuthor[] = comments
+  const postComments: CommentWithAuthor[] = (comments || [])
     .filter(comment => comment.postId === post.id)
     .map(comment => ({
       ...comment,
-      author: users.find(user => user.id === comment.authorId),
+      author: users?.find(user => user.id === comment.authorId),
     }))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -66,7 +77,7 @@ export function PostDetail({ onDataChange }: PostDetailProps) {
     await createComment({
       content: commentText.trim(),
       postId: post.id,
-      authorId: users[0]?.id || 'default-author', // In a real app, this would be the current user
+      authorId: users?.[0]?.id || 'default-author', // In a real app, this would be the current user
     });
     setCommentText('');
     // Manual refresh to update comment count and lists
@@ -74,22 +85,17 @@ export function PostDetail({ onDataChange }: PostDetailProps) {
   };
 
   const handleDeletePost = async () => {
-    if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+    if (
+      window.confirm('Are you sure you want to delete this post? This action cannot be undone.')
+    ) {
       await deletePost();
       onDataChange?.(); // Notify parent before navigation
       navigate('/');
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (window.confirm('Are you sure you want to delete this comment?')) {
-      await deleteComment(commentId);
-      // Manual refresh to update comment count and lists
-      await handleRefreshAll();
-    }
-  };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string) => {
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
@@ -108,46 +114,45 @@ export function PostDetail({ onDataChange }: PostDetailProps) {
               {post.title}
             </h1>
             <div className="card-meta">
-              By {author?.name || 'Unknown Author'} • {formatDate(post.createdAt)} • {category?.name || 'Uncategorized'}
+              By {author?.name || 'Unknown Author'} • {formatDate(post.createdAt)} •{' '}
+              {category?.name || 'Uncategorized'}
               {!post.published && (
-                <span style={{ 
-                  marginLeft: '0.5rem', 
-                  padding: '0.25rem 0.5rem', 
-                  background: '#fef3c7', 
-                  color: '#92400e', 
-                  borderRadius: '4px', 
-                  fontSize: '0.75rem' 
-                }}>
+                <span
+                  style={{
+                    marginLeft: '0.5rem',
+                    padding: '0.25rem 0.5rem',
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    borderRadius: '4px',
+                    fontSize: '0.75rem',
+                  }}
+                >
                   DRAFT
                 </span>
               )}
             </div>
           </div>
           <div className="card-actions">
-            <button
-              onClick={handleRefreshAll}
-              className="btn btn-small btn-secondary"
-            >
+            <button onClick={handleRefreshAll} className="btn btn-small btn-secondary">
               Refresh
             </button>
-            <Link to={`/posts/${post.slug}/edit`} className="btn btn-small btn-secondary">
+            <Link to={`/posts/${post.id}/edit`} className="btn btn-small btn-secondary">
               Edit
             </Link>
-            <button
-              onClick={handleDeletePost}
-              className="btn btn-small btn-danger"
-            >
+            <button onClick={handleDeletePost} className="btn btn-small btn-danger">
               Delete
             </button>
           </div>
         </div>
 
         <div className="card-content">
-          <div style={{ 
-            whiteSpace: 'pre-wrap', 
-            lineHeight: '1.8',
-            fontSize: '1.1rem'
-          }}>
+          <div
+            style={{
+              whiteSpace: 'pre-wrap',
+              lineHeight: '1.8',
+              fontSize: '1.1rem',
+            }}
+          >
             {post.content}
           </div>
         </div>
@@ -171,7 +176,7 @@ export function PostDetail({ onDataChange }: PostDetailProps) {
             <textarea
               id="comment"
               value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
+              onChange={e => setCommentText(e.target.value)}
               className="form-textarea"
               placeholder="Share your thoughts..."
               rows={4}
@@ -195,28 +200,11 @@ export function PostDetail({ onDataChange }: PostDetailProps) {
         ) : (
           <div>
             {postComments.map(comment => (
-              <div key={comment.id} className="comment fade-in">
-                <div className="comment-header">
-                  <span className="comment-author">
-                    {comment.author?.name || 'Anonymous'}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span className="comment-date">
-                      {formatDate(comment.createdAt)}
-                    </span>
-                    <button
-                      onClick={() => handleDeleteComment(comment.id)}
-                      className="btn btn-small btn-danger"
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-                <div className="comment-content">
-                  {comment.content}
-                </div>
-              </div>
+              <Comment 
+                key={comment.id} 
+                comment={comment} 
+                onDelete={handleRefreshAll}
+              />
             ))}
           </div>
         )}

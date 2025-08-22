@@ -2,14 +2,14 @@ import React from 'react';
 import { usersApi, categoriesApi, postsApi, commentsApi } from '../api';
 
 export function BlogStats() {
-  const { data: posts, loading: postsLoading, error: postsError } = postsApi.useList!();
-  const { data: comments, loading: commentsLoading, error: commentsError } = commentsApi.useList!();
-  const { data: users, loading: usersLoading, error: usersError } = usersApi.useList!();
+  const { data: posts, loading: postsLoading, error: postsError } = postsApi.useList();
+  const { data: comments, loading: commentsLoading, error: commentsError } = commentsApi.useList();
+  const { data: users, loading: usersLoading, error: usersError } = usersApi.useList();
   const {
     data: categories,
     loading: categoriesLoading,
     error: categoriesError,
-  } = categoriesApi.useList!();
+  } = categoriesApi.useList();
 
   const isLoading = postsLoading || commentsLoading || usersLoading || categoriesLoading;
   const hasError = postsError || commentsError || usersError || categoriesError;

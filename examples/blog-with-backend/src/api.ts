@@ -1,4 +1,10 @@
-import { createDomainApi, ExtractEntityType, ExtractInputType, z } from '../../../src';
+import {
+  createDomainApi,
+  configureDebugLogging,
+  ExtractEntityType,
+  ExtractInputType,
+  z,
+} from '../../../src';
 
 // Business Schemas (without id, createdAt, updatedAt - these are added by the library)
 export const userSchema = z.object({
@@ -29,7 +35,10 @@ export const commentSchema = z.object({
   postId: z.string(),
 });
 
-// Create APIs with Global Context and intelligent invalidation
+// Enable debug logging for backend communication
+configureDebugLogging(true, '[BLOG-BACKEND]');
+
+// Create APIs with Global Context, FetchConnector, and intelligent invalidation
 export const usersApi = createDomainApi('users', userSchema, {
   globalState: true,
   optimistic: true,

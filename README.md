@@ -312,6 +312,7 @@ const productApi = createDomainApi('products', productSchema, {
 
 ### 4. Complete Component Example
 
+```tsx
 function ProductManager() {
   // API operations
   const { data: products, loading, error } = productApi.useList();
@@ -330,15 +331,25 @@ function ProductManager() {
     setSelectedId(null); // Clear selection after create
   });
 
+  // Dynamic ID support for update/delete operations
   const handleUpdate = async (id: string) => {
-    await updateProduct(id, {
+    // Option 1: Pass ID as second parameter (dynamicId)
+    await updateProduct({
+      name: 'Updated Product',
+      price: 149.99
+    }, id);
+    
+    // Option 2: Include ID in data payload
+    await updateProduct({
+      id: id,
       name: 'Updated Product',
       price: 149.99
     });
   };
 
   const handleDelete = async (id: string) => {
-    await deleteProduct(id);
+    // Dynamic ID support for delete operations
+    await deleteProduct(undefined, id);
   };
 
   if (loading) return <div>Loading products...</div>;
@@ -709,8 +720,27 @@ api.useById(id)   // GET /products/:id - Get by ID
 
 // Mutation hooks (POST/PUT/DELETE operations)
 api.useCreate()   // POST /products - Create new
-api.useUpdate()   // PUT /products/:id - Update existing
-api.useDelete()   // DELETE /products/:id - Delete
+api.useUpdate()   // PUT /products/:id - Update existing (supports dynamicId)
+api.useDelete()   // DELETE /products/:id - Delete (supports dynamicId)
+```
+
+#### Dynamic ID Support
+
+Update and delete operations support dynamic ID specification:
+
+```typescript
+// Update with dynamic ID
+const { mutate: updateProduct } = productApi.useUpdate();
+
+// Method 1: Pass ID as second parameter
+await updateProduct({ name: 'New Name', price: 99.99 }, 'product-123');
+
+// Method 2: Include ID in data payload
+await updateProduct({ id: 'product-123', name: 'New Name', price: 99.99 });
+
+// Delete with dynamic ID
+const { mutate: deleteProduct } = productApi.useDelete();
+await deleteProduct(undefined, 'product-123');
 ```
 
 #### Hook Return Types
@@ -753,6 +783,44 @@ function ProductList() {
   
   return <ProductGrid products={data} />;
 }
+
+## 🐛 **Debug Mode**
+
+Enable comprehensive debug logging to track API calls, cache operations, and state changes:
+
+```typescript
+import { configureDebugLogging } from 'api-client-service';
+
+// Enable debug mode
+configureDebugLogging(true);
+
+// Enable with custom prefix
+configureDebugLogging(true, '[MY-APP-API]');
+
+// Disable debug mode
+configureDebugLogging(false);
+```
+
+### Debug Output Features
+
+- **🚀 Request Logging**: Method, endpoint, and payload details
+- **📥 Response Logging**: Status, data, and response times
+- **🎯 Cache Operations**: Cache hits, misses, and invalidations
+- **🔄 State Changes**: Global state updates and optimistic changes
+- **❌ Error Details**: Validation errors and mutation failures
+- **⚡ Performance**: Request durations and timing information
+
+### Environment-Based Debug Setup
+
+```typescript
+// Automatically enable debug in development
+if (process.env.NODE_ENV === 'development') {
+  configureDebugLogging(true, '[DEV-API]');
+}
+
+// Or use environment variable
+configureDebugLogging(process.env.REACT_APP_DEBUG_API === 'true');
+```
 
 ## 🧪 **Testing**
 

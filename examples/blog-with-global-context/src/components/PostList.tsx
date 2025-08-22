@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { postsApi, usersApi, categoriesApi, commentsApi } from '../api';
-import type { PostWithRelations } from '../types';
+import { postsApi, usersApi, categoriesApi, commentsApi, Post, PostWithRelations } from '../api';
 
 export function PostList() {
-  const { data: posts, loading: postsLoading, error: postsError } = postsApi.useList!();
-  const { data: users, loading: usersLoading, error: usersError } = usersApi.useList!();
+  const { data: posts, loading: postsLoading, error: postsError } = postsApi.useList();
+  const { data: users, loading: usersLoading, error: usersError } = usersApi.useList();
   const {
     data: categories,
     loading: categoriesLoading,
     error: categoriesError,
-  } = categoriesApi.useList!();
-  const { data: comments, loading: commentsLoading, error: commentsError } = commentsApi.useList!();
+  } = categoriesApi.useList();
+  const { data: comments, loading: commentsLoading, error: commentsError } = commentsApi.useList();
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('published');
+  const { mutate: updatePost } = postsApi.useUpdate();
+  const { mutate: deletePost } = postsApi.useDelete();
 
   const isLoading = postsLoading || usersLoading || categoriesLoading || commentsLoading;
   const hasError = postsError || usersError || categoriesError || commentsError;
@@ -23,85 +24,100 @@ export function PostList() {
   const safeCategories = categories || [];
   const safeComments = comments || [];
 
-  // Enrich posts with relations
-  const enrichedPosts: PostWithRelations[] = safePosts.map(post => ({
-    ...post,
-    author: safeUsers.find(user => user.id === post.authorId),
-    category: safeCategories.find(cat => cat.id === post.categoryId),
-    commentCount: safeComments.filter(comment => comment.postId === post.id).length,
-  }));
+  // Create PostWithRelations objects
+  const postsWithRelations: PostWithRelations[] = safePosts.map(post => {
+    const author = safeUsers.find(user => user.id === post.authorId);
+    const category = safeCategories.find(cat => cat.id === post.categoryId);
+    const postComments = safeComments.filter(comment => comment.postId === post.id);
 
-  // Filter posts
-  const filteredPosts = enrichedPosts.filter(post => {
-    if (filter === 'published') return post.published;
-    if (filter === 'draft') return !post.published;
-    return true;
+    return {
+      ...post,
+      author,
+      category,
+      comments: postComments,
+      commentCount: postComments.length,
+    };
   });
 
-  // Sort by creation date (newest first)
+  // Filter posts based on current filter
+  const filteredPosts = postsWithRelations.filter(post => {
+    switch (filter) {
+      case 'published':
+        return post.published;
+      case 'draft':
+        return !post.published;
+      case 'all':
+      default:
+        return true;
+    }
+  });
+
+  // Sort posts by creation date (newest first)
   const sortedPosts = filteredPosts.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+
+  const handleTogglePublished = async (post: Post) => {
+    await updatePost({
+      ...post,
+      published: !post.published,
+    });
+  };
+
+  const handleDelete = async (post: Post) => {
+    if (window.confirm(`Are you sure you want to delete "${post.title}"?`)) {
+      // Test dynamic ID by passing the ID in the data payload instead of endpoint
+      await deletePost(undefined, post.id);
+    }
+  };
 
   if (isLoading) {
     return <div className="loading">Loading posts...</div>;
   }
 
   if (hasError) {
-    return (
-      <div className="empty-state">
-        <h3>❌ Error Loading Posts</h3>
-        <p>Failed to load blog posts. Please try again.</p>
-      </div>
-    );
+    return <div className="error">Error loading posts. Please try again.</div>;
   }
 
   return (
-    <div>
-      <div className="card-header">
-        <h2>Blog Posts</h2>
+    <div className="content">
+      <div className="content-header">
+        <h2>Posts</h2>
         <Link to="/posts/new" className="btn btn-primary">
-          Write New Post
+          New Post
         </Link>
       </div>
 
-      {/* Filter tabs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '1rem',
-          marginBottom: '2rem',
-          borderBottom: '1px solid #e5e7eb',
-          paddingBottom: '1rem',
-        }}
-      >
+      {/* Filter Tabs */}
+      <div className="filter-tabs">
         <button
-          className={`btn btn-small ${filter === 'published' ? 'btn-primary' : 'btn-secondary'}`}
+          className={`filter-tab ${filter === 'published' ? 'active' : ''}`}
           onClick={() => setFilter('published')}
         >
-          Published ({enrichedPosts.filter(p => p.published).length})
+          Published ({postsWithRelations.filter(p => p.published).length})
         </button>
         <button
-          className={`btn btn-small ${filter === 'draft' ? 'btn-primary' : 'btn-secondary'}`}
+          className={`filter-tab ${filter === 'draft' ? 'active' : ''}`}
           onClick={() => setFilter('draft')}
         >
-          Drafts ({enrichedPosts.filter(p => !p.published).length})
+          Drafts ({postsWithRelations.filter(p => !p.published).length})
         </button>
         <button
-          className={`btn btn-small ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+          className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
           onClick={() => setFilter('all')}
         >
-          All ({enrichedPosts.length})
+          All ({postsWithRelations.length})
         </button>
       </div>
 
+      {/* Posts List */}
       {sortedPosts.length === 0 ? (
         <div className="empty-state">
           <h3>No posts found</h3>
           <p>
-            {filter === 'all'
-              ? 'Start by creating your first blog post!'
-              : `No ${filter} posts yet.`}
+            {filter === 'published' && 'No published posts yet.'}
+            {filter === 'draft' && 'No draft posts yet.'}
+            {filter === 'all' && 'No posts yet.'}
           </p>
           <Link to="/posts/new" className="btn btn-primary">
             Create First Post
@@ -110,7 +126,12 @@ export function PostList() {
       ) : (
         <div className="post-list">
           {sortedPosts.map(post => (
-            <PostCard key={post.id} post={post} />
+            <PostCard
+              key={post.id}
+              post={post}
+              onTogglePublished={handleTogglePublished}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}
@@ -118,21 +139,22 @@ export function PostList() {
   );
 }
 
-function PostCard({ post }: { post: PostWithRelations }) {
-  const { mutate: updatePost } = postsApi.useUpdate!(post.id);
-  const { mutate: deletePost } = postsApi.useDelete!(post.id);
+interface PostCardProps {
+  post: PostWithRelations;
+  onTogglePublished: (post: Post) => void;
+  onDelete: (post: Post) => void;
+}
 
-  const handleTogglePublished = async () => {
-    await updatePost({ published: !post.published });
+function PostCard({ post, onTogglePublished, onDelete }: PostCardProps) {
+  const handleTogglePublished = () => {
+    onTogglePublished(post);
   };
 
-  const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this post?')) {
-      await deletePost();
-    }
+  const handleDelete = () => {
+    onDelete(post);
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string) => {
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
@@ -144,62 +166,58 @@ function PostCard({ post }: { post: PostWithRelations }) {
     <article className="card post-preview fade-in">
       <div className="card-header">
         <div>
-          <Link
-            to={`/posts/${post.slug}`}
-            className="card-title"
-            style={{ textDecoration: 'none', color: 'inherit' }}
-          >
-            {post.title}
-          </Link>
-          <div className="card-meta">
-            By {post.author?.name || 'Unknown Author'} • {formatDate(post.createdAt)} •{' '}
-            {post.category?.name || 'Uncategorized'}
-            {!post.published && (
-              <span
-                style={{
-                  marginLeft: '0.5rem',
-                  padding: '0.25rem 0.5rem',
-                  background: '#fef3c7',
-                  color: '#92400e',
-                  borderRadius: '4px',
-                  fontSize: '0.75rem',
-                }}
-              >
-                DRAFT
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="card-actions">
-          <button
-            onClick={handleTogglePublished}
-            className={`btn btn-small ${post.published ? 'btn-secondary' : 'btn-success'}`}
-          >
-            {post.published ? 'Unpublish' : 'Publish'}
-          </button>
-          <Link to={`/posts/${post.slug}/edit`} className="btn btn-small btn-secondary">
-            Edit
-          </Link>
-          <button onClick={handleDelete} className="btn btn-small btn-danger">
-            Delete
-          </button>
+          {post.published ? (
+            <Link
+              to={`/posts/${post.id}`}
+              className="card-title"
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              {post.title}
+            </Link>
+          ) : (
+            <span className="card-title" style={{ color: '#6b7280' }}>
+              {post.title}
+            </span>
+          )}
+          {' • '}
+          {formatDate(post.createdAt)}
+          {' • '}
+          {post.category?.name || 'Uncategorized'}
+          {!post.published && (
+            <span
+              style={{
+                marginLeft: '0.5rem',
+                padding: '0.25rem 0.5rem',
+                background: '#fef3c7',
+                color: '#92400e',
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+              }}
+            >
+              DRAFT
+            </span>
+          )}
         </div>
       </div>
-
-      <div className="card-content">
-        {post.excerpt && <p className="post-excerpt">{post.excerpt}</p>}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: '1rem',
-            fontSize: '0.875rem',
-            color: '#6b7280',
-          }}
+      <div className="card-actions">
+        <button
+          onClick={handleTogglePublished}
+          className={`btn btn-small ${post.published ? 'btn-secondary' : 'btn-success'}`}
         >
+          {post.published ? 'Unpublish' : 'Publish'}
+        </button>
+        <Link to={`/posts/${post.id}/edit`} className="btn btn-small btn-secondary">
+          Edit
+        </Link>
+        <button onClick={handleDelete} className="btn btn-small btn-danger">
+          Delete
+        </button>
+      </div>
+      <div className="card-content">
+        <p className="card-excerpt">{post.excerpt || 'No excerpt available.'}</p>
+        <div className="card-footer">
           <span>{post.commentCount || 0} comments</span>
-          <Link to={`/posts/${post.slug}`} style={{ color: '#667eea', textDecoration: 'none' }}>
+          <Link to={`/posts/${post.id}`} style={{ color: '#667eea', textDecoration: 'none' }}>
             Read more →
           </Link>
         </div>

@@ -223,11 +223,15 @@ export class LocalStorageConnector implements IConnector {
       return errorResponse;
     }
 
-    const { collection, id } = this.parseEndpoint(endpoint);
+    const { collection, id: endpointId } = this.parseEndpoint(endpoint);
+
+    // Support dynamic ID: extract from endpoint or from data payload
+    const id = endpointId || (data && data.id);
+
     if (!id) {
       const errorResponse: ErrorResponse = {
         success: false,
-        message: 'ID is required for update operation',
+        message: 'ID is required for update operation (either in endpoint or data payload)',
         error: { code: 'INVALID_REQUEST' },
       };
       debugLogger.logResponse('PUT', endpoint, errorResponse, Date.now() - startTime);
@@ -265,9 +269,9 @@ export class LocalStorageConnector implements IConnector {
     return successResponse;
   }
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+  async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     const startTime = Date.now();
-    debugLogger.logRequest('DELETE', endpoint);
+    debugLogger.logRequest('DELETE', endpoint, data);
 
     await this.simulateDelay();
 
@@ -281,11 +285,15 @@ export class LocalStorageConnector implements IConnector {
       return errorResponse;
     }
 
-    const { collection, id } = this.parseEndpoint(endpoint);
+    const { collection, id: endpointId } = this.parseEndpoint(endpoint);
+
+    // Support dynamic ID: extract from endpoint or from data payload
+    const id = endpointId || (data && data.id);
+
     if (!id) {
       const errorResponse: ErrorResponse = {
         success: false,
-        message: 'ID is required for delete operation',
+        message: 'ID is required for delete operation (either in endpoint or data payload)',
         error: { code: 'INVALID_REQUEST' },
       };
       debugLogger.logResponse('DELETE', endpoint, errorResponse, Date.now() - startTime);

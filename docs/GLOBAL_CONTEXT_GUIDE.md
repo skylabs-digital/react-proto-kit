@@ -101,9 +101,10 @@ const productsApi = createDomainApi('products', productSchema, {
 // Component 1: Product List
 function ProductList() {
   const { data: products = [], loading } = productsApi.useList!();
-  const { mutate: deleteProduct } = productsApi.useDelete!('');
+  const { mutate: deleteProduct } = productsApi.useDelete!();
   
-  const handleDelete = (id: string) => deleteProduct(id);
+  // Dynamic ID support for delete operations
+  const handleDelete = (id: string) => deleteProduct(undefined, id);
   
   return (
     <div>
@@ -178,11 +179,12 @@ const postsApi = createDomainApi('posts', postSchema, {
 });
 
 function PostList() {
-  const { mutate: updatePost } = postsApi.useUpdate!('');
+  const { mutate: updatePost } = postsApi.useUpdate!();
   
   const handleTogglePublished = async (post: Post) => {
     // UI updates instantly, even before API call completes
-    await updatePost(post.id, { published: !post.published });
+    // Dynamic ID support - pass ID as second parameter
+    await updatePost({ published: !post.published }, post.id);
     // If API call fails, changes are automatically rolled back
   };
 }
@@ -626,17 +628,39 @@ function useCleanupOnUnmount() {
 
 1. **Use React DevTools**: Install React DevTools to inspect Global Context state.
 
-2. **Enable Debug Mode**: Add debug logging to track state changes.
+2. **Enable Debug Mode**: Add comprehensive debug logging to track state changes.
 
 ```typescript
+import { configureDebugLogging } from 'api-client-service';
+
+// Enable debug mode globally
+configureDebugLogging(true, '[GLOBAL-CONTEXT]');
+
+// Create APIs with global state
 const postsApi = createDomainApi('posts', postSchema, {
   globalState: true,
-  debug: true, // Enable debug logging
+  optimistic: true,
 });
 ```
+
+**Debug output includes:**
+- 🚀 API requests and responses
+- 🎯 Cache hits and misses
+- 🔄 State invalidations and updates
+- ⚡ Performance timing
+- ❌ Error details and validation failures
 
 3. **Monitor Network Requests**: Use browser dev tools to ensure API calls are optimized.
 
 4. **Check Console**: Look for Global Context warnings and errors in the console.
+
+5. **Environment-Based Debug Setup**:
+
+```typescript
+// Only enable in development
+if (process.env.NODE_ENV === 'development') {
+  configureDebugLogging(true, '[DEV-GLOBAL-STATE]');
+}
+```
 
 This guide covers the essential patterns and best practices for using Global Context effectively. For more examples, check out the complete working examples in the `examples/` directory.

@@ -10,12 +10,19 @@ class DebugLogger {
     prefix: '[API-CLIENT]',
   };
 
+  private isTestEnvironment(): boolean {
+    return (
+      typeof process !== 'undefined' &&
+      (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true')
+    );
+  }
+
   configure(config: Partial<DebugConfig>) {
     this.config = { ...this.config, ...config };
   }
 
   logRequest(method: string, endpoint: string, data?: any) {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled || this.isTestEnvironment()) return;
 
     const timestamp = new Date().toISOString();
     console.group(`${this.config.prefix} ${method} ${endpoint}`);
@@ -25,7 +32,7 @@ class DebugLogger {
   }
 
   logResponse(method: string, endpoint: string, response: any, duration?: number) {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled || this.isTestEnvironment()) return;
 
     const timestamp = new Date().toISOString();
     const status = response.success ? '✅' : '❌';
@@ -38,7 +45,7 @@ class DebugLogger {
   }
 
   logError(method: string, endpoint: string, error: any) {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled || this.isTestEnvironment()) return;
 
     const timestamp = new Date().toISOString();
     console.group(`${this.config.prefix} ${method} ${endpoint} ❌ ERROR`);
@@ -48,22 +55,41 @@ class DebugLogger {
   }
 
   logCacheHit(entity: string, key: string) {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled || this.isTestEnvironment()) return;
 
     console.log(`${this.config.prefix} 🎯 Cache HIT: ${entity}/${key}`);
   }
 
   logCacheMiss(entity: string, key: string) {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled || this.isTestEnvironment()) return;
 
     console.log(`${this.config.prefix} 🔍 Cache MISS: ${entity}/${key}`);
   }
 
   logInvalidation(entity: string, relatedEntities?: string[]) {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled || this.isTestEnvironment()) return;
 
     const related = relatedEntities?.length ? ` + ${relatedEntities.join(', ')}` : '';
     console.log(`${this.config.prefix} 🔄 Invalidating: ${entity}${related}`);
+  }
+
+  logValidationError(input: any, validationError: any, formattedErrors: any) {
+    if (!this.config.enabled || this.isTestEnvironment()) return;
+
+    console.group('🚫 Validation Error');
+    console.error('Input data:', input);
+    console.error('Schema validation failed:', validationError.issues);
+    console.error('Formatted errors:', formattedErrors);
+    console.groupEnd();
+  }
+
+  logMutationError(error: any, input: any) {
+    if (!this.config.enabled || this.isTestEnvironment()) return;
+
+    console.group('❌ Mutation Error');
+    console.error('Error details:', error);
+    console.error('Input data:', input);
+    console.groupEnd();
   }
 }
 

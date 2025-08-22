@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { postsApi, usersApi, categoriesApi, commentsApi } from '../api';
-import type { CommentWithAuthor } from '../types';
+import { postsApi, usersApi, categoriesApi, commentsApi, CommentWithAuthor } from '../api';
 
 export function PostDetail() {
-  const { slug } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const [commentText, setCommentText] = useState('');
 
-  const { data: post, loading: postLoading } = postsApi.useById!(slug || '');
-  const { data: users } = usersApi.useList!();
-  const { data: categories } = categoriesApi.useList!();
-  const { data: comments } = commentsApi.useList!();
+  const { data: post, loading: postLoading } = postsApi.useById(id || '');
+  const { data: users } = usersApi.useList();
+  const { data: categories } = categoriesApi.useList();
+  const { data: comments } = commentsApi.useList();
 
   const safeUsers = users || [];
   const safeCategories = categories || [];
   const safeComments = comments || [];
-  const { mutate: createComment, loading: commentLoading } = commentsApi.useCreate!();
-  const { mutate: deletePost } = postsApi.useDelete!(post?.id || '');
+  const { mutate: createComment, loading: commentLoading } = commentsApi.useCreate();
+  const { mutate: deletePost } = postsApi.useDelete(post?.id || '');
   // Remove unused deleteComment hook
 
   if (postLoading) {
@@ -84,7 +83,7 @@ export function PostDetail() {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string) => {
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
@@ -122,7 +121,7 @@ export function PostDetail() {
             </div>
           </div>
           <div className="card-actions">
-            <Link to={`/posts/${post.slug}/edit`} className="btn btn-small btn-secondary">
+            <Link to={`/posts/${post.id}/edit`} className="btn btn-small btn-secondary">
               Edit
             </Link>
             <button onClick={handleDeletePost} className="btn btn-small btn-danger">

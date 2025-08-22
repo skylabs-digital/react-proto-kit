@@ -4,8 +4,8 @@ import { postsApi, usersApi, categoriesApi } from '../api';
 
 export function PostForm() {
   const navigate = useNavigate();
-  const { slug } = useParams();
-  const isEditing = Boolean(slug);
+  const { id } = useParams();
+  const isEditing = Boolean(id);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -15,13 +15,13 @@ export function PostForm() {
     published: false,
   });
 
-  const { data: post } = postsApi.useById!(slug || '');
-  const { data: categories } = categoriesApi.useList!();
+  const { data: post } = postsApi.useById(id || '');
+  const { data: categories } = categoriesApi.useList();
   const safeCategories = categories || [];
-  const { data: users } = usersApi.useList!();
+  const { data: users } = usersApi.useList();
   const safeUsers = users || [];
-  const { mutate: createPost, loading: creating } = postsApi.useCreate!();
-  const { mutate: updatePost, loading: updating } = postsApi.useUpdate!(slug || '');
+  const { mutate: createPost, loading: creating } = postsApi.useCreate();
+  const { mutate: updatePost, loading: updating } = postsApi.useUpdate(id || '');
 
   const loading = creating || updating;
 

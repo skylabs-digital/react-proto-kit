@@ -9,7 +9,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "backend": "cd backend && yarn dev",
-    "start": "concurrently \"yarn backend\" \"yarn dev\"",
+    "dev:full": "concurrently \"yarn backend\" \"yarn dev\"",
     "install-backend": "cd backend && yarn install"
   },
   "dependencies": {

@@ -6,6 +6,7 @@ import { BlogStats, CategoriesList, RecentActivity } from './components/Sidebar'
 import { PostList } from './components/PostList';
 import { PostForm } from './components/PostForm';
 import { PostDetail } from './components/PostDetail';
+import { CategoriesPage } from './components/CategoriesPage';
 
 function HomePage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -75,27 +76,9 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/posts/new" element={<PostFormPage />} />
-            <Route path="/posts/:slug/edit" element={<PostFormPage />} />
-            <Route path="/posts/:slug" element={<PostDetailPage />} />
-            <Route
-              path="/categories"
-              element={
-                <div className="main">
-                  <div className="content">
-                    <h2>Categories</h2>
-                    <p>Category management coming soon...</p>
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '1rem' }}>
-                      Note: Without Global Context, this page would need manual refresh buttons and
-                      callback chains to stay synchronized with other components.
-                    </p>
-                  </div>
-                  <aside className="sidebar">
-                    <BlogStats />
-                    <CategoriesList />
-                  </aside>
-                </div>
-              }
-            />
+            <Route path="/posts/:id/edit" element={<PostFormPage />} />
+            <Route path="/posts/:id" element={<PostDetailPage />} />
+            <Route path="/categories" element={<CategoriesPage />} />
           </Routes>
         </div>
       </ApiClientProvider>

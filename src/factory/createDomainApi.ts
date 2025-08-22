@@ -77,39 +77,48 @@ export function createDomainApi<T extends z.ZodSchema>(
       return useMutation<InferType<T>, CompleteEntityType>(entity, 'POST', businessSchema);
     },
 
-    useUpdate: (id: string) => {
+    useUpdate: (id?: string) => {
       if (useGlobalState) {
-        return useMutationWithGlobalState<Partial<InferType<T>>, CompleteEntityType>(
+        return useMutationWithGlobalState<CompleteEntityType, CompleteEntityType>(
           entity,
-          `${entity}/${id}`,
+          id ? `${entity}/${id}` : entity,
           'PUT',
           businessSchema,
           {
-            optimistic: globalConfig?.optimistic,
             invalidateRelated: globalConfig?.invalidateRelated,
           }
         );
       }
-      return useMutation<Partial<InferType<T>>, CompleteEntityType>(
-        `${entity}/${id}`,
-        'PUT',
-        businessSchema
-      );
+      return useMutation<CompleteEntityType, CompleteEntityType>(entity, 'PUT', businessSchema);
     },
 
-    useDelete: (id: string) => {
+    useDelete: (id?: string) => {
       if (useGlobalState) {
-        return useMutationWithGlobalState<void, void>(
+        const mutation = useMutationWithGlobalState<void, void>(
           entity,
-          `${entity}/${id}`,
+          id ? `${entity}/${id}` : entity,
           'DELETE',
           undefined,
           {
             invalidateRelated: globalConfig?.invalidateRelated,
           }
         );
+        return {
+          ...mutation,
+          mutate: (_input: void = undefined, dynamicId?: string) => {
+            // For dynamic ID, pass the ID in the data payload for connector extraction
+            const dataWithId = dynamicId ? { id: dynamicId } : undefined;
+            return mutation.mutate(dataWithId as any, dynamicId);
+          },
+        };
       }
-      return useMutation<void, void>(`${entity}/${id}`, 'DELETE');
+      const mutation = useMutation<void, void>(entity, 'DELETE');
+      return {
+        ...mutation,
+        mutate: (input: void = undefined, dynamicId?: string) => {
+          return mutation.mutate(input, dynamicId || id);
+        },
+      };
     },
   };
 }

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { postsApi, usersApi, categoriesApi } from '../api';
+import { User, Category } from '../api';
 
 interface PostFormProps {
   onPostChange?: () => void; // Callback to notify parent of data changes
@@ -8,8 +9,8 @@ interface PostFormProps {
 
 export function PostForm({ onPostChange }: PostFormProps) {
   const navigate = useNavigate();
-  const { slug } = useParams();
-  const isEditing = Boolean(slug);
+  const { id } = useParams();
+  const isEditing = Boolean(id);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -19,13 +20,44 @@ export function PostForm({ onPostChange }: PostFormProps) {
     published: false,
   });
 
-  const { data: post, refetch: refetchPost } = postsApi.useById!(slug || '', { enabled: isEditing });
-  const { data: categories = [], refetch: refetchCategories } = categoriesApi.useList!();
-  const { data: users = [], refetch: refetchUsers } = usersApi.useList!();
-  const { mutate: createPost, loading: creating } = postsApi.useCreate!();
-  const { mutate: updatePost, loading: updating } = postsApi.useUpdate!(slug || '');
+  const { data: post, loading: postLoading, refetch: refetchPost } = postsApi.useById(id || '');
+  const { data: users = [], refetch: refetchUsers } = usersApi.useList();
+  const { data: categories = [], refetch: refetchCategories } = categoriesApi.useList();
+  const { mutate: createPost, loading: createLoading } = postsApi.useCreate();
+  const { mutate: updatePost, loading: updateLoading } = postsApi.useUpdate(post?.id || '');
 
-  const loading = creating || updating;
+  const loading = createLoading || updateLoading;
+
+  const { mutate: createCategory } = categoriesApi.useCreate();
+
+  // Create default categories if none exist
+  const createDefaultCategories = async () => {
+    const defaultCategories = [
+      { name: 'General', slug: 'general', description: 'General blog posts' },
+      { name: 'Technology', slug: 'technology', description: 'Technology and programming posts' },
+      { name: 'Lifestyle', slug: 'lifestyle', description: 'Lifestyle and personal posts' }
+    ];
+
+    for (const category of defaultCategories) {
+      try {
+        await createCategory({
+          ...category,
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } catch (error) {
+        console.error('Error creating default category:', error);
+      }
+    }
+    refetchCategories();
+  };
+
+  useEffect(() => {
+    if (categories && categories.length === 0) {
+      createDefaultCategories();
+    }
+  }, [categories]);
 
   // Manual refresh function - needed because no global state sync
   const handleRefreshData = async () => {
@@ -40,11 +72,11 @@ export function PostForm({ onPostChange }: PostFormProps) {
   useEffect(() => {
     if (isEditing && post) {
       setFormData({
-        title: post.title,
-        content: post.content,
+        title: post.title || '',
+        content: post.content || '',
         excerpt: post.excerpt || '',
-        categoryId: post.categoryId,
-        published: post.published,
+        categoryId: post.categoryId || '',
+        published: post.published || false,
       });
     }
   }, [isEditing, post]);
@@ -77,12 +109,17 @@ export function PostForm({ onPostChange }: PostFormProps) {
       ...formData,
       slug: generateSlug(formData.title),
       excerpt: formData.excerpt || generateExcerpt(formData.content),
-      authorId: users[0]?.id || 'default-author', // In a real app, this would be the current user
+      authorId: (users || [])[0]?.id || 'default-author', // In a real app, this would be the current user
     };
 
     try {
-      if (isEditing) {
-        await updatePost(postData);
+      if (isEditing && post) {
+        // For updates, pass the complete object with all existing fields
+        const completePostData = {
+          ...post,
+          ...postData,
+        };
+        await updatePost(completePostData);
       } else {
         await createPost(postData);
       }
@@ -148,9 +185,9 @@ export function PostForm({ onPostChange }: PostFormProps) {
             required
           >
             <option value="">Select a category</option>
-            {categories.map(category => (
+            {(categories || []).map(category => (
               <option key={category.id} value={category.id}>
-                {category.name}
+                {(category as any).name}
               </option>
             ))}
           </select>

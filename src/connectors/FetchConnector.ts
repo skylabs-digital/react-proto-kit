@@ -211,10 +211,20 @@ export class FetchConnector implements IConnector {
   }
 
   async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
-    return this.executeRequest<T>('PUT', endpoint, data);
+    // Support dynamic ID: if endpoint doesn't contain ID but data has ID, append it
+    let finalEndpoint = endpoint;
+    if (data && data.id && !endpoint.includes('/')) {
+      finalEndpoint = `${endpoint}/${data.id}`;
+    }
+    return this.executeRequest<T>('PUT', finalEndpoint, data);
   }
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.executeRequest<T>('DELETE', endpoint);
+  async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    // Support dynamic ID: if endpoint doesn't contain ID but data has ID, append it
+    let finalEndpoint = endpoint;
+    if (data && data.id && !endpoint.includes('/')) {
+      finalEndpoint = `${endpoint}/${data.id}`;
+    }
+    return this.executeRequest<T>('DELETE', finalEndpoint);
   }
 }

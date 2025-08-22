@@ -1,19 +1,24 @@
 import { useState, useCallback } from 'react';
 import { z } from 'zod';
-import { UseMutationResult, ErrorResponse } from '../types';
 import { useApiClient } from '../provider/ApiClientProvider';
+import { ErrorResponse } from '../types';
+import { debugLogger } from '../utils/debug';
 
 export function useMutation<TInput, TOutput = void>(
   endpoint: string,
   method: 'POST' | 'PUT' | 'DELETE' = 'POST',
   schema?: z.ZodSchema
-): UseMutationResult<TInput, TOutput> {
+): {
+  mutate: (input: TInput, dynamicId?: string) => Promise<TOutput>;
+  loading: boolean;
+  error: ErrorResponse | null;
+} {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
 
   const mutate = useCallback(
-    async (input: TInput): Promise<TOutput> => {
+    async (input: TInput, dynamicId?: string): Promise<TOutput> => {
       setLoading(true);
       setError(null);
 
@@ -37,11 +42,7 @@ export function useMutation<TInput, TOutput = void>(
               };
 
               // Debug logging for validation errors
-              console.group('🚫 Validation Error');
-              console.error('Input data:', input);
-              console.error('Schema validation failed:', validationError.issues);
-              console.error('Formatted errors:', errorResponse.validation);
-              console.groupEnd();
+              debugLogger.logValidationError(input, validationError, errorResponse.validation);
 
               setError(errorResponse);
               setLoading(false);
@@ -51,17 +52,20 @@ export function useMutation<TInput, TOutput = void>(
           }
         }
 
+        // Build final endpoint with dynamic ID if provided
+        const finalEndpoint = dynamicId ? `${endpoint}/${dynamicId}` : endpoint;
+
         let response;
 
         switch (method) {
           case 'POST':
-            response = await connector.post<TOutput>(endpoint, input);
+            response = await connector.post<TOutput>(finalEndpoint, input);
             break;
           case 'PUT':
-            response = await connector.put<TOutput>(endpoint, input);
+            response = await connector.put<TOutput>(finalEndpoint, input);
             break;
           case 'DELETE':
-            response = await connector.delete<TOutput>(endpoint);
+            response = await connector.delete<TOutput>(finalEndpoint, input);
             break;
           default:
             throw new Error(`Unsupported method: ${method}`);

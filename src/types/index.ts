@@ -32,7 +32,7 @@ export interface IConnector {
   get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>>;
   post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
   put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
-  delete<T>(endpoint: string): Promise<ApiResponse<T>>;
+  delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
 }
 
 // Configuration types
@@ -146,7 +146,7 @@ export interface UseQueryResult<T> {
 }
 
 export interface UseMutationResult<TInput, TOutput = void> {
-  mutate: (input: TInput) => Promise<TOutput>;
+  mutate: (input: TInput, dynamicId?: string) => Promise<TOutput>;
   loading: boolean;
   error: ErrorResponse | null;
 }
@@ -161,8 +161,8 @@ export interface GeneratedCrudApi<T> {
   useQuery: (id: string) => UseQueryResult<T>;
   useById: (id: string) => UseQueryResult<T>;
   useCreate: () => UseMutationResult<any, T>;
-  useUpdate: (id: string) => UseMutationResult<any, T>;
-  useDelete: (id: string) => UseMutationResult<void>;
+  useUpdate: (id?: string) => UseMutationResult<any, T>;
+  useDelete: (id?: string) => UseMutationResult<void>;
 }
 
 export interface ListParams {

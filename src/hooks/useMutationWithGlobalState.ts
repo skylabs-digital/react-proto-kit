@@ -22,13 +22,16 @@ export function useMutationWithGlobalState<TInput, TOutput = void>(
   const [error, setError] = useState<ErrorResponse | null>(null);
 
   const mutate = useCallback(
-    async (input: TInput): Promise<TOutput> => {
+    async (input: TInput, dynamicId?: string): Promise<TOutput> => {
       setLoading(true);
       setError(null);
 
       let tempId: string | undefined;
 
       try {
+        // Build final endpoint with dynamic ID if provided
+        const finalEndpoint = dynamicId ? `${endpoint}/${dynamicId}` : endpoint;
+
         // Validate input with Zod schema if provided
         if (schema) {
           try {
@@ -49,11 +52,7 @@ export function useMutationWithGlobalState<TInput, TOutput = void>(
 
               // Debug logging for validation errors
               debugLogger.logResponse(method, endpoint, errorResponse, 0);
-              console.group('🚫 Validation Error');
-              console.error('Input data:', input);
-              console.error('Schema validation failed:', validationError.issues);
-              console.error('Formatted errors:', errorResponse.validation);
-              console.groupEnd();
+              debugLogger.logValidationError(input, validationError, errorResponse.validation);
 
               setError(errorResponse);
               setLoading(false);
@@ -79,13 +78,13 @@ export function useMutationWithGlobalState<TInput, TOutput = void>(
 
         switch (method) {
           case 'POST':
-            response = await connector.post<TOutput>(endpoint, input);
+            response = await connector.post<TOutput>(finalEndpoint, input);
             break;
           case 'PUT':
-            response = await connector.put<TOutput>(endpoint, input);
+            response = await connector.put<TOutput>(finalEndpoint, input);
             break;
           case 'DELETE':
-            response = await connector.delete<TOutput>(endpoint);
+            response = await connector.delete<TOutput>(finalEndpoint, input);
             break;
           default:
             throw new Error(`Unsupported method: ${method}`);
@@ -111,9 +110,9 @@ export function useMutationWithGlobalState<TInput, TOutput = void>(
               );
               entityState.actions.setList('list', updatedList);
             } else if (method === 'DELETE') {
-              // Extract ID from endpoint for DELETE operations
-              const idMatch = endpoint.match(/\/([^/]+)$/);
-              const deletedId = idMatch ? idMatch[1] : null;
+              // Extract ID from endpoint or use dynamicId for DELETE operations
+              const idMatch = finalEndpoint.match(/\/([^/]+)$/);
+              const deletedId = idMatch ? idMatch[1] : dynamicId;
 
               if (deletedId) {
                 // Remove from all list caches
@@ -169,10 +168,7 @@ export function useMutationWithGlobalState<TInput, TOutput = void>(
 
         // Debug logging for general errors
         debugLogger.logResponse(method, endpoint, errorResponse, 0);
-        console.group('❌ Mutation Error');
-        console.error('Error details:', err);
-        console.error('Input data:', input);
-        console.groupEnd();
+        debugLogger.logMutationError(err, input);
 
         setError(errorResponse);
         return Promise.reject(errorResponse);

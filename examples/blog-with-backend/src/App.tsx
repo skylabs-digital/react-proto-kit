@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ApiClientProvider, GlobalStateProvider } from '../../../src';
 import { Header } from './components/Header';
+import { BackendInfo } from './components/BackendInfo';
 import { BlogStats, CategoriesList, RecentActivity } from './components/Sidebar';
 import { PostList } from './components/PostList';
 import { PostForm } from './components/PostForm';
@@ -12,6 +13,7 @@ function HomePage() {
   return (
     <div className="main">
       <div className="content">
+        <BackendInfo />
         <PostList />
       </div>
       <aside className="sidebar">
@@ -26,7 +28,7 @@ function HomePage() {
 function App() {
   return (
     <BrowserRouter>
-      <ApiClientProvider connectorType="localStorage">
+      <ApiClientProvider connectorType="fetch" config={{ baseUrl: 'http://localhost:3002' }}>
         <GlobalStateProvider>
           <div className="app">
             <Header />

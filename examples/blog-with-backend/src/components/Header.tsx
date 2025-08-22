@@ -12,7 +12,7 @@ export function Header() {
     <header className="header">
       <div className="header-content">
         <Link to="/" className="logo">
-          BlogPlatform (No Global Context)
+          BlogPlatform (With Backend)
         </Link>
         <nav className="nav">
           <Link to="/" className={`nav-link ${isActive('/')}`}>
