@@ -1,3 +1,13 @@
+# [1.4.0](https://github.com/skylabs-digital/api-client-service/compare/v1.3.0...v1.4.0) (2025-08-22)
+
+
+### Features
+
+* add blog example with backend server and dynamic ID support ([b8f2d06](https://github.com/skylabs-digital/api-client-service/commit/b8f2d06600a849213c35d33ea0b314794c0fa135))
+* add debug logging and improve optimistic updates in global state management ([fe3f85a](https://github.com/skylabs-digital/api-client-service/commit/fe3f85a9564975789ab73727baee6cd81870db6e))
+* add global state context with invalidation and optimistic updates ([266967a](https://github.com/skylabs-digital/api-client-service/commit/266967aa3ec61ccd72d3876af7bc556591f0fbcf))
+* add todo-with-backend example using Express and FetchConnector ([ad7c7bc](https://github.com/skylabs-digital/api-client-service/commit/ad7c7bc05550bd0afa633521952a6b4b09fd4a3d))
+
 # [1.3.0](https://github.com/skylabs-digital/api-client-service/compare/v1.2.0...v1.3.0) (2025-08-21)
 
 
