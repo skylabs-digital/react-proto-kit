@@ -24,15 +24,9 @@ export function createTimestampedSchema<T extends z.ZodRawShape>(properties: T) 
 export function createCrudApi<T extends z.ZodSchema>(
   entity: string,
   schema: T,
-  options?: Partial<DomainApiConfig<T>>
+  _options?: Partial<DomainApiConfig<T>>
 ): GeneratedCrudApi<InferType<T>> {
-  const config: DomainApiConfig<T> = {
-    entity,
-    schema,
-    ...options,
-  };
-
-  return createDomainApi(config);
+  return createDomainApi(entity, schema);
 }
 
 // Specialized API factories

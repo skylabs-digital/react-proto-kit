@@ -100,6 +100,16 @@ export interface RequestConfig {
   data?: any;
 }
 
+// Global state configuration
+export interface GlobalStateConfig {
+  globalState?: boolean;
+  optimistic?: boolean;
+  invalidateRelated?: string[];
+  cacheTime?: number;
+  syncStrategy?: 'immediate' | 'debounced';
+  devMode?: boolean;
+}
+
 // Domain API types
 export interface DomainApiConfig<T extends z.ZodSchema = z.ZodSchema> {
   entity: string;
@@ -148,6 +158,7 @@ export interface UseListResult<T> extends UseQueryResult<T[]> {
 // Generated API types
 export interface GeneratedCrudApi<T> {
   useList?: (params?: ListParams) => UseListResult<T>;
+  useQuery?: (id: string) => UseQueryResult<T>;
   useById?: (id: string) => UseQueryResult<T>;
   useCreate?: () => UseMutationResult<any, T>;
   useUpdate?: (id: string) => UseMutationResult<any, T>;

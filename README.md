@@ -1,113 +1,262 @@
-# 🚀 **React Proto Kit**
+# 🚀 **API Client Service**
 
-*Complete React prototyping toolkit - from idea to working prototype in minutes*
+*Modern React API client with Global State Context for seamless data synchronization*
 
-A modern, type-safe React library for rapid prototyping. Build complete applications with APIs, forms, and navigation using minimal code. Focus on your business logic, not boilerplate.
+A powerful, type-safe React library for API management with intelligent global state synchronization. Build complex applications with multiple entities that stay perfectly synchronized across all components automatically.
 
-## 🎯 **Complete Prototyping Solution**
+## 🎯 **Complete API Solution with Global Context**
 
-**Three powerful modules in one kit:**
-- 🔌 **API Module** - CRUD operations with automatic validation
-- 📝 **Forms Module** - Type-safe forms with Zod validation  
-- 🧭 **Navigation Module** - URL state management
+**Key Features:**
+- 🔌 **Domain APIs** - CRUD operations with automatic validation
+- 🌐 **Global State Context** - Automatic synchronization across all components
+- 🔄 **Intelligent Invalidation** - Smart cache management with entity relationships
+- ⚡ **Optimistic Updates** - Instant UI feedback with automatic rollback
+- 📝 **Forms Integration** - Type-safe forms with Zod validation
+- 🧪 **Multiple Connectors** - localStorage for dev, HTTP for production
 
-## ⚡ **The 90% use case with minimal code** philosophy:
+## ⚡ **Global Context: The game-changer for complex apps**
 
+### Without Global Context (Traditional Approach)
 ```typescript
-import { 
-  ApiClientProvider, 
-  createCrudApi,
-  useFormData,
-  useUrlSelector,
-  z 
-} from '@skylabs-digital/react-proto-kit';
-
-// 1. Define your schema with Zod (shared across API, forms, validation)
-const ProductSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Name is required'),
-  price: z.number().positive('Price must be positive'),
-  category: z.string().min(1, 'Category is required'),
-  inStock: z.boolean(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-
-// 2. Complete prototype in 3 lines
-const productApi = createCrudApi('products', ProductSchema);
-const { values, errors, handleSubmit, handleInputChange } = useFormData(ProductSchema);
-const [selectedId, setSelectedId] = useUrlSelector('productId');
-
-// 3. Use in components with automatic validation
-function ProductManager() {
-  const { data: products, loading, error } = productApi.useList();
-  const createProduct = productApi.useCreate();
-
-  const onSubmit = handleSubmit(async (data) => {
-    try {
-      // Automatic validation before API call
-      await createProduct.mutate(data);
-      setSelectedId(null); // Clear selection
-    } catch (error) {
-      console.error('Failed to create product:', error);
-    }
-  });
-
+// Each component manages its own state - leads to complexity
+function BlogApp() {
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Manual callbacks everywhere
+  const handleDataChange = () => setRefreshKey(prev => prev + 1);
+  
   return (
     <div>
-      <form onSubmit={onSubmit}>
-        <input 
-          name="name" 
-          placeholder="Product name"
-          value={values.name || ''} 
-          onChange={handleInputChange} 
-        />
-        {errors.name && <span className="error">{errors.name}</span>}
-        
-        <input 
-          name="price" 
-          type="number" 
-          placeholder="Price"
-          value={values.price || ''} 
-          onChange={handleInputChange} 
-        />
-        {errors.price && <span className="error">{errors.price}</span>}
-        
-        <button type="submit">Create Product</button>
-      </form>
-      
-      {products?.map(product => (
-        <div 
-          key={product.id} 
-          onClick={() => setSelectedId(product.id)}
-          className={selectedId === product.id ? 'selected' : ''}
-        >
-          <h3>{product.name} - ${product.price}</h3>
-          <p>Category: {product.category}</p>
-        </div>
-      ))}
+      <PostList onDataChange={handleDataChange} />
+      <Sidebar key={refreshKey} onDataChange={handleDataChange} />
+      {/* Manual refresh buttons, callback chains, stale data... */}
     </div>
   );
 }
 ```
 
+### With Global Context (Modern Approach)
+```typescript
+import { 
+  ApiClientProvider, 
+  GlobalStateProvider,
+  createDomainApi 
+} from 'api-client-service';
+
+// 1. Define your schemas
+const postSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  content: z.string(),
+  published: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// 2. Enable Global Context with one flag
+const postsApi = createDomainApi('posts', postSchema, {
+  globalState: true,        // 🎯 This changes everything
+  optimistic: true,         // Instant UI updates
+  invalidateRelated: ['comments'], // Smart cache invalidation
+});
+
+// 3. Components automatically sync across the entire app
+function BlogApp() {
+  return (
+    <ApiClientProvider connectorType="localStorage">
+      <GlobalStateProvider>
+        <div>
+          <PostList />     {/* No callbacks needed */}
+          <Sidebar />      {/* Auto-updates when posts change */}
+          <CommentForm />  {/* Updates post comment counts instantly */}
+        </div>
+      </GlobalStateProvider>
+    </ApiClientProvider>
+  );
+}
+
+function PostList() {
+  const { data: posts, loading } = postsApi.useList!();
+  const { mutate: createPost } = postsApi.useCreate!();
+  
+  // Create a post - ALL components update automatically
+  const handleCreate = () => createPost({ title: 'New Post', content: '...' });
+  
+  return (
+    <div>
+      <button onClick={handleCreate}>Add Post</button>
+      {posts?.map(post => <PostCard key={post.id} post={post} />)}
+    </div>
+  );
+}
+
+function Sidebar() {
+  const { data: posts = [] } = postsApi.useList!();
+  
+  // Automatically shows updated count when posts change
+  return <div>Total Posts: {posts.length}</div>;
+}
+```
+
+## 🌐 **Global State Context - The Complete Guide**
+
+### What is Global Context?
+
+Global Context is an intelligent state management system that automatically synchronizes data across all components in your React application. When any component modifies data, all other components using that data update instantly without manual intervention.
+
+### Key Benefits
+
+- **🔄 Automatic Synchronization**: All components stay in sync automatically
+- **⚡ Optimistic Updates**: Instant UI feedback with automatic rollback on errors
+- **🧠 Intelligent Invalidation**: Smart cache management based on entity relationships
+- **🎯 Zero Boilerplate**: No manual state management, callbacks, or refresh logic
+- **🔗 Entity Relationships**: Define how entities affect each other
+- **⏰ Configurable Caching**: Different cache times per entity type
+
+### Setup (One-Time)
+
+```typescript
+import { ApiClientProvider, GlobalStateProvider } from 'api-client-service';
+
+function App() {
+  return (
+    <ApiClientProvider connectorType="localStorage">
+      <GlobalStateProvider>
+        <YourApp />
+      </GlobalStateProvider>
+    </ApiClientProvider>
+  );
+}
+```
+
+### Enable Global Context (One Flag)
+
+```typescript
+// Without Global Context (traditional)
+const postsApi = createDomainApi('posts', postSchema);
+
+// With Global Context (modern)
+const postsApi = createDomainApi('posts', postSchema, {
+  globalState: true,                    // 🎯 Enable global synchronization
+  optimistic: true,                     // Instant UI updates
+  invalidateRelated: ['comments'],      // When posts change, refresh comments
+  cacheTime: 5 * 60 * 1000,            // 5 minutes cache
+});
+```
+
+### Real-World Example: Blog Platform
+
+```typescript
+// Define entity relationships
+const postsApi = createDomainApi('posts', postSchema, {
+  globalState: true,
+  optimistic: true,
+  invalidateRelated: ['comments'], // Posts affect comments
+  cacheTime: 5 * 60 * 1000,
+});
+
+const commentsApi = createDomainApi('comments', commentSchema, {
+  globalState: true,
+  optimistic: true,
+  invalidateRelated: ['posts'], // Comments affect posts (for counts)
+  cacheTime: 3 * 60 * 1000,
+});
+
+// Components automatically sync
+function BlogPost({ postId }) {
+  const { data: post } = postsApi.useById!(postId);
+  const { data: comments = [] } = commentsApi.useList!();
+  
+  const postComments = comments.filter(c => c.postId === postId);
+  
+  return (
+    <div>
+      <h1>{post?.title}</h1>
+      <p>Comments: {postComments.length}</p> {/* Auto-updates when comments change */}
+    </div>
+  );
+}
+
+function CommentForm({ postId }) {
+  const { mutate: createComment } = commentsApi.useCreate!();
+  
+  const handleSubmit = async (content) => {
+    await createComment({ content, postId });
+    // ✨ BlogPost component automatically shows updated comment count
+    // ✨ Sidebar stats automatically refresh
+    // ✨ All without any manual refresh calls!
+  };
+}
+```
+
+### Advanced Configuration
+
+```typescript
+const usersApi = createDomainApi('users', userSchema, {
+  globalState: true,
+  optimistic: true,
+  cacheTime: 10 * 60 * 1000,           // 10 minutes (users change less frequently)
+  invalidateRelated: ['posts', 'comments'], // User changes affect posts and comments
+});
+
+const categoriesApi = createDomainApi('categories', categorySchema, {
+  globalState: true,
+  optimistic: false,                    // No optimistic updates for categories
+  cacheTime: 30 * 60 * 1000,           // 30 minutes (categories rarely change)
+  invalidateRelated: ['posts'],        // Category changes affect posts
+});
+```
+
+### Global Context vs Traditional State Management
+
+| Feature | Without Global Context | With Global Context |
+|---------|----------------------|-------------------|
+| **Component Sync** | Manual callbacks, prop drilling | Automatic synchronization |
+| **Code Complexity** | High (3x more code) | Low (minimal boilerplate) |
+| **User Experience** | Manual refresh buttons, stale data | Real-time updates, always fresh |
+| **Cache Management** | Manual invalidation logic | Intelligent automatic invalidation |
+| **Entity Relations** | Complex callback chains | Simple configuration |
+| **Optimistic Updates** | Manual implementation | Built-in with rollback |
+| **Maintenance** | Error-prone, complex | Self-managing, reliable |
+
 ## ✨ **Key Features**
 
-- **🎯 One-Line APIs**: Complete CRUD operations generated automatically
-- **🔌 API Module**: Auto-generates CRUD operations with type safety
-- **📝 Forms Module**: Validated forms with automatic error handling
-- **🧭 Navigation Module**: URL state management with type inference
-- **⚡ Unified Validation**: Single Zod schema for API, forms, and navigation
+- **🌐 Global State Context**: Automatic synchronization across all components
+- **🎯 Domain APIs**: Complete CRUD operations generated automatically  
+- **🔄 Intelligent Invalidation**: Smart cache management with entity relationships
+- **⚡ Optimistic Updates**: Instant UI feedback with automatic rollback
+- **📝 Forms Integration**: Type-safe forms with Zod validation
+- **🧪 Multiple Connectors**: localStorage for dev, HTTP for production
 - **🔧 Smart Conventions**: Auto-generates create/update schemas
-- **🔌 Environment-Aware**: localStorage for development, HTTP for production
 - **🧪 Test-Friendly**: Built-in mocking and testing utilities
+
+## 🚀 **Live Examples**
+
+Explore complete working examples that demonstrate the power of Global Context:
+
+### 📝 **TODO Apps**
+- **[TODO with Global Context](./examples/todo-with-global-context/)** - Simple, clean, automatic synchronization
+- **[TODO without Global Context](./examples/todo-without-global-context/)** - Complex, manual state management
+
+### 📰 **Blog Platforms** 
+- **[Blog with Global Context](./examples/blog-with-global-context/)** - Advanced multi-entity app with real-time sync
+- **[Blog without Global Context](./examples/blog-without-global-context/)** - Same features but 3x more complex code
+
+**Run any example:**
+```bash
+cd examples/[example-name]
+npm install
+npm run dev
+```
+
+Compare the examples to see the dramatic difference in code complexity and user experience!
 
 ## 📦 **Installation**
 
 ```bash
-npm install @skylabs-digital/react-proto-kit
+npm install api-client-service
 # or
-yarn add @skylabs-digital/react-proto-kit
+yarn add api-client-service
 ```
 
 ## 🚀 **Quick Start**

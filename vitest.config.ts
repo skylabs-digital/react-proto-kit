@@ -9,6 +9,16 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     watch: false, // Disable watch mode by default
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true, // Use single fork to reduce memory usage
+      },
+    },
+    testTimeout: 10000, // 10 second timeout
+    hookTimeout: 5000, // 5 second hook timeout
+    teardownTimeout: 5000,
+    isolate: false, // Disable test isolation to reduce memory usage
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

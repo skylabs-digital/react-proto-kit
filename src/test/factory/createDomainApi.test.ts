@@ -15,12 +15,7 @@ describe('createDomainApi', () => {
       price: z.number(),
     });
 
-    const config = {
-      entity: 'products',
-      schema,
-    };
-
-    const api = createDomainApi(config);
+    const api = createDomainApi('products', schema);
 
     expect(api.useList).toBeDefined();
     expect(api.useById).toBeDefined();
@@ -34,12 +29,7 @@ describe('createDomainApi', () => {
       title: z.string(),
     });
 
-    const config = {
-      entity: 'posts',
-      schema,
-    };
-
-    const api = createDomainApi(config);
+    const api = createDomainApi('posts', schema);
 
     // The hooks should be called with the correct entity name
     // This is tested indirectly through the hook tests
@@ -57,12 +47,7 @@ describe('createDomainApi', () => {
       status: z.union([z.literal('active'), z.literal('inactive')]),
     });
 
-    const config = {
-      entity: 'tasks',
-      schema,
-    };
-
-    const api = createDomainApi(config);
+    const api = createDomainApi('tasks', schema);
 
     expect(api.useList).toBeDefined();
     expect(api.useById).toBeDefined();
