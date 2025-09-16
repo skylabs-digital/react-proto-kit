@@ -12,7 +12,7 @@ export function useList<T>(
 ): UseListResult<T> {
   const { connector } = useApiClient();
   const [data, setData] = useState<T[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorResponse | null>(null);
   const [meta, setMeta] = useState<PaginationMeta | undefined>(undefined);
 

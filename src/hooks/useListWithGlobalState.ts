@@ -23,7 +23,7 @@ export function useListWithGlobalState<T>(
 
   // Get data from global state with safe access
   const data = entityState.lists?.[cacheKey] || null;
-  const loading = entityState.loading?.[cacheKey] || false;
+  const loading = entityState.loading?.[cacheKey] || true;
   const error = entityState.errors?.[cacheKey] || null;
 
   const fetchData = useCallback(async () => {
