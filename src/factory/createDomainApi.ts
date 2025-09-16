@@ -12,9 +12,15 @@ import { globalInvalidationManager } from '../context/InvalidationManager';
 export type ExtractEntityType<T> =
   T extends GeneratedCrudApi<infer U>
     ? U & { id: string; createdAt: string; updatedAt: string }
-    : never;
+    : T extends Pick<GeneratedCrudApi<infer U>, any>
+      ? U & { id: string; createdAt: string; updatedAt: string }
+      : never;
 export type ExtractInputType<T> =
-  T extends GeneratedCrudApi<infer U> ? Omit<U, 'id' | 'createdAt' | 'updatedAt'> : never;
+  T extends GeneratedCrudApi<infer U>
+    ? Omit<U, 'id' | 'createdAt' | 'updatedAt'>
+    : T extends Pick<GeneratedCrudApi<infer U>, any>
+      ? Omit<U, 'id' | 'createdAt' | 'updatedAt'>
+      : never;
 
 export function createDomainApi<T extends z.ZodSchema>(
   entity: string,

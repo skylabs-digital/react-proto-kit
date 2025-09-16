@@ -43,14 +43,11 @@ import {
   createDomainApi 
 } from '@skylabs-digital/react-proto-kit';
 
-// 1. Define your schemas
+// 1. Define your business schemas (API auto-generates id, createdAt, updatedAt)
 const postSchema = z.object({
-  id: z.string(),
   title: z.string(),
   content: z.string(),
   published: z.boolean(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
 });
 
 // 2. Enable Global Context with one flag
@@ -290,6 +287,7 @@ function App() {
 ```tsx
 import { z } from 'zod';
 
+// Define only business fields - API auto-generates id, createdAt, updatedAt
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   price: z.number().positive('Price must be positive'),
@@ -504,13 +502,17 @@ Type-safe forms with automatic validation using Zod schemas:
 import { useFormData, createFormHandler } from '@skylabs-digital/react-proto-kit';
 import { z } from 'zod';
 
-// Define schema with Zod
-const ProductSchema = z.object({
+// Define business schema with Zod (no auto-generated fields)
+const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   price: z.number().positive('Price must be positive'),
   category: z.string().min(1, 'Category is required'),
   inStock: z.boolean(),
 });
+
+// Extract types using helpers
+type Product = ExtractEntityType<typeof productApi>;
+type ProductInput = ExtractInputType<typeof productApi>;
 
 // Option 1: Direct hook usage
 function ProductForm() {
@@ -653,54 +655,50 @@ const mockUsers = generateMockData({
 
 Built-in helpers for common data patterns:
 
-### Entity Schema (Most Common)
+### Business Schema (Recommended)
 
-Automatically includes `id`, `createdAt`, and `updatedAt`:
+Define only your business fields - the API automatically adds `id`, `createdAt`, and `updatedAt`:
 
 ```typescript
-const UserSchema = createEntitySchema({
-  name: Type.String(),
-  email: Type.String({ format: 'email' }),
-  role: Type.Union([Type.Literal('admin'), Type.Literal('user')])
+const userSchema = z.object({
+  name: z.string(),
+  email: z.string().email(),
+  role: z.enum(['admin', 'user'])
 });
-// Auto-generates: id, createdAt, updatedAt
+// API auto-generates: id, createdAt, updatedAt when you use createDomainApi
 ```
 
-### Timestamped Schema
+### Log/Event Schema
 
-Just timestamps, no ID:
+For logs or events, define your business fields:
 
 ```typescript
-const LogSchema = createTimestampedSchema({
-  message: Type.String(),
-  level: Type.Union([Type.Literal('info'), Type.Literal('error')])
+const logSchema = z.object({
+  message: z.string(),
+  level: z.enum(['info', 'error', 'warn'])
 });
-// Auto-generates: createdAt, updatedAt
+// API auto-generates: id, createdAt, updatedAt when you use createDomainApi
 ```
 
 ### Complex Nested Schemas
 
 ```typescript
-const OrderSchema = createEntitySchema({
-  userId: Type.String(),
-  items: Type.Array(Type.Object({
-    productId: Type.String(),
-    quantity: Type.Number(),
-    price: Type.Number()
+const orderSchema = z.object({
+  userId: z.string(),
+  items: z.array(z.object({
+    productId: z.string(),
+    quantity: z.number().positive(),
+    price: z.number().positive()
   })),
-  status: Type.Union([
-    Type.Literal('pending'),
-    Type.Literal('processing'),
-    Type.Literal('completed'),
-    Type.Literal('cancelled')
-  ]),
-  shippingAddress: Type.Object({
-    street: Type.String(),
-    city: Type.String(),
-    zipCode: Type.String(),
-    country: Type.String()
+  status: z.enum(['pending', 'processing', 'completed', 'cancelled']),
+  shippingAddress: z.object({
+    street: z.string(),
+    city: z.string(),
+    zipCode: z.string(),
+    country: z.string()
   })
 });
+// API auto-generates: id, createdAt, updatedAt
 ```
 
 ## 🔍 **Complete API Reference**
@@ -857,24 +855,86 @@ yarn test:watch  # Watch mode
 yarn coverage    # Coverage report
 ```
 
-## 🎯 **Type Safety**
+## 🎯 **Type Safety & Type Helpers**
 
-Full TypeScript support with automatic type inference:
+Full TypeScript support with automatic type inference and powerful type extraction utilities:
+
+### Type Extraction Helpers
 
 ```typescript
-// Types are automatically inferred from your schemas
-type Product = InferType<typeof ProductSchema>;
-type CreateProduct = InferCreateType<typeof ProductSchema>; // without id, timestamps
-type UpdateProduct = InferUpdateType<typeof ProductSchema>; // partial fields
+import { createDomainApi, ExtractEntityType, ExtractInputType } from '@skylabs-digital/react-proto-kit';
+
+// Define your business schema (without auto-generated fields)
+const productSchema = z.object({
+  name: z.string(),
+  price: z.number(),
+  category: z.string(),
+});
+
+// Create API
+const productApi = createDomainApi('products', productSchema);
+
+// Extract complete entity type (includes auto-generated fields)
+type Product = ExtractEntityType<typeof productApi>;
+// Result: { name: string; price: number; category: string; id: string; createdAt: string; updatedAt: string }
+
+// Extract input type (excludes auto-generated fields)
+type ProductInput = ExtractInputType<typeof productApi>;
+// Result: { name: string; price: number; category: string }
 
 // Use in your components
 function ProductForm({ product }: { product?: Product }) {
-  const createProduct = productApi.useCreate();
+  const { mutate: createProduct } = productApi.useCreate();
   
-  const handleSubmit = async (data: CreateProduct) => {
-    // TypeScript ensures data matches the schema
-    await createProduct.mutate(data);
+  const handleSubmit = async (data: ProductInput) => {
+    // TypeScript ensures data matches the input schema (no id, createdAt, updatedAt)
+    await createProduct(data);
   };
+}
+
+function ProductList() {
+  const { data: products } = productApi.useList();
+  
+  // products is typed as Product[] with all fields including auto-generated ones
+  return (
+    <div>
+      {products?.map((product: Product) => (
+        <div key={product.id}>
+          <h3>{product.name}</h3>
+          <p>Created: {product.createdAt}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Why Use Type Helpers?
+
+- **`ExtractEntityType<T>`**: Gets the complete entity type including auto-generated fields (`id`, `createdAt`, `updatedAt`)
+- **`ExtractInputType<T>`**: Gets the input type for create/update operations (excludes auto-generated fields)
+- **Type Safety**: Ensures you never accidentally include auto-generated fields in create operations
+- **IntelliSense**: Full autocomplete and type checking in your IDE
+
+### Advanced Type Usage
+
+```typescript
+// For complex forms and validation
+type ProductFormData = ExtractInputType<typeof productApi>;
+type ProductEntity = ExtractEntityType<typeof productApi>;
+
+// Use with form libraries
+const { values, errors, handleSubmit } = useFormData<ProductFormData>(productSchema);
+
+// Type-safe API operations
+const handleCreate = async (input: ProductFormData) => {
+  const result: ProductEntity = await productApi.useCreate().mutate(input);
+  console.log('Created product with ID:', result.id); // TypeScript knows this exists
+};
+
+// Type guards and utilities
+function isValidProduct(data: unknown): data is ProductEntity {
+  return typeof data === 'object' && data !== null && 'id' in data;
 }
 ```
 
@@ -883,61 +943,83 @@ function ProductForm({ product }: { product?: Product }) {
 ### E-commerce Store
 
 ```typescript
-// Product catalog
-const ProductSchema = createEntitySchema({
-  name: Type.String(),
-  price: Type.Number(),
-  category: Type.String(),
-  inStock: Type.Boolean(),
-  images: Type.Array(Type.String())
+// Product catalog - define only business fields
+const productSchema = z.object({
+  name: z.string(),
+  price: z.number().positive(),
+  category: z.string(),
+  inStock: z.boolean(),
+  images: z.array(z.string().url())
 });
 
-// User management
-const UserSchema = createEntitySchema({
-  email: Type.String({ format: 'email' }),
-  firstName: Type.String(),
-  lastName: Type.String(),
-  role: Type.Union([Type.Literal('customer'), Type.Literal('admin')])
+// User management - define only business fields
+const userSchema = z.object({
+  email: z.string().email(),
+  firstName: z.string(),
+  lastName: z.string(),
+  role: z.enum(['customer', 'admin'])
 });
 
-// Order processing
-const OrderSchema = createEntitySchema({
-  userId: Type.String(),
-  items: Type.Array(Type.Object({
-    productId: Type.String(),
-    quantity: Type.Number(),
-    price: Type.Number()
+// Order processing - define only business fields
+const orderSchema = z.object({
+  userId: z.string(),
+  items: z.array(z.object({
+    productId: z.string(),
+    quantity: z.number().positive(),
+    price: z.number().positive()
   })),
-  total: Type.Number(),
-  status: Type.String()
+  total: z.number().positive(),
+  status: z.enum(['pending', 'processing', 'completed', 'cancelled'])
 });
 
-// Generate APIs
-const productApi = createCrudApi('products', ProductSchema);
-const userApi = createCrudApi('users', UserSchema);
-const orderApi = createCrudApi('orders', OrderSchema);
+// Generate APIs with type helpers
+const productApi = createDomainApi('products', productSchema);
+const userApi = createDomainApi('users', userSchema);
+const orderApi = createDomainApi('orders', orderSchema);
+
+// Extract types for use in components
+type Product = ExtractEntityType<typeof productApi>;
+type ProductInput = ExtractInputType<typeof productApi>;
+type User = ExtractEntityType<typeof userApi>;
+type Order = ExtractEntityType<typeof orderApi>;
 ```
 
 ### Blog Platform
 
 ```typescript
-const PostSchema = createEntitySchema({
-  title: Type.String(),
-  content: Type.String(),
-  authorId: Type.String(),
-  published: Type.Boolean(),
-  tags: Type.Array(Type.String())
+// Define business schemas without auto-generated fields
+const postSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  authorId: z.string(),
+  published: z.boolean().default(false),
+  tags: z.array(z.string())
 });
 
-const CommentSchema = createEntitySchema({
-  postId: Type.String(),
-  authorId: Type.String(),
-  content: Type.String(),
-  approved: Type.Boolean()
+const commentSchema = z.object({
+  postId: z.string(),
+  authorId: z.string(),
+  content: z.string().min(1),
+  approved: z.boolean().default(false)
 });
 
-const postApi = createCrudApi('posts', PostSchema);
-const commentApi = createCrudApi('comments', CommentSchema);
+// Create APIs with global state and relationships
+const postApi = createDomainApi('posts', postSchema, {
+  globalState: true,
+  optimistic: true,
+  invalidateRelated: ['comments']
+});
+
+const commentApi = createDomainApi('comments', commentSchema, {
+  globalState: true,
+  optimistic: true,
+  invalidateRelated: ['posts']
+});
+
+// Extract types
+type Post = ExtractEntityType<typeof postApi>;
+type PostInput = ExtractInputType<typeof postApi>;
+type Comment = ExtractEntityType<typeof commentApi>;
 ```
 
 ## 📚 **Documentation**
