@@ -3,7 +3,7 @@ import { UseQueryResult, ErrorResponse } from '../types';
 import { useApiClient } from '../provider/ApiClientProvider';
 
 export function useQuery<T>(
-  endpoint: string,
+  endpoint?: string,
   params?: Record<string, any>,
   options?: {
     enabled?: boolean;
@@ -13,10 +13,14 @@ export function useQuery<T>(
 ): UseQueryResult<T> {
   const { connector } = useApiClient();
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorResponse | null>(null);
 
   const fetchData = useCallback(async () => {
+    if (!endpoint) {
+      return;
+    }
+
     if (options?.enabled === false) return;
 
     setLoading(true);

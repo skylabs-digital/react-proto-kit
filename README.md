@@ -321,8 +321,11 @@ function ProductManager() {
   // Form handling
   const { values, errors, handleInputChange, handleSubmit } = useFormData(productSchema);
   
-  // URL state
+  // URL state - handles initial undefined state gracefully
   const [selectedId, setSelectedId] = useUrlSelector('productId');
+  
+  // Query by ID - only fetches when selectedId is defined
+  const { data: selectedProduct, loading: loadingProduct } = productApi.useById(selectedId);
   
   const onSubmit = handleSubmit(async (data) => {
     await createProduct(data);
@@ -376,7 +379,7 @@ function ProductManager() {
 }
 ```
 
-## 🎨 **API Templates**
+## API Templates
 
 Choose the right template for your use case:
 
@@ -420,7 +423,7 @@ function Dashboard() {
 }
 ```
 
-## 🔌 **Environment Configuration**
+## Environment Configuration
 
 ### Development (localStorage)
 
@@ -701,6 +704,95 @@ const orderSchema = z.object({
 // API auto-generates: id, createdAt, updatedAt
 ```
 
+## 🔄 **Initial State Handling**
+
+`useQuery` and `useById` accept `null` and `undefined` values for the ID parameter, but only resolve the fetch when the ID is actually defined. This allows you to handle initial states gracefully without triggering unnecessary API calls:
+
+```typescript
+function ProductDetail() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  
+  // Only fetches when selectedId is not null/undefined
+  const { data: product, loading } = productApi.useById(selectedId);
+  
+  if (!selectedId) {
+    return <div>Please select a product</div>;
+  }
+  
+  if (loading) {
+    return <div>Loading product...</div>;
+  }
+  
+  return (
+    <div>
+      <h1>{product?.name}</h1>
+      <p>${product?.price}</p>
+    </div>
+  );
+}
+
+// URL-based routing example
+function ProductPage() {
+  const [productId] = useUrlSelector('productId'); // Can be undefined initially
+  
+  // Only fetches when productId is defined from URL
+  const { data: product, loading, error } = productApi.useById(productId);
+  
+  if (!productId) {
+    return <ProductList />; // Show list when no ID selected
+  }
+  
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage error={error} />;
+  
+  return <ProductDetails product={product} />;
+}
+
+// Master-detail pattern
+function UserDashboard() {
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
+  const { data: users } = userApi.useList();
+  
+  // Only fetches user details when one is selected
+  const { data: selectedUser, loading: loadingUser } = userApi.useById(selectedUserId);
+  
+  return (
+    <div className="dashboard">
+      <div className="user-list">
+        {users?.map(user => (
+          <div 
+            key={user.id} 
+            onClick={() => setSelectedUserId(user.id)}
+            className={selectedUserId === user.id ? 'selected' : ''}
+          >
+            {user.name}
+          </div>
+        ))}
+      </div>
+      
+      <div className="user-details">
+        {!selectedUserId && <div>Select a user to view details</div>}
+        {selectedUserId && loadingUser && <div>Loading user details...</div>}
+        {selectedUser && (
+          <div>
+            <h2>{selectedUser.name}</h2>
+            <p>{selectedUser.email}</p>
+            <p>Role: {selectedUser.role}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+### Key Benefits
+
+- **🚫 No Unnecessary Requests**: Prevents API calls when ID is null/undefined
+- **🎯 Clean Initial States**: Handle loading states without complex conditionals
+- **🔗 URL Integration**: Perfect for URL-based routing and deep linking
+- **⚡ Performance**: Reduces unnecessary network requests during component initialization
+
 ## 🔍 **Complete API Reference**
 
 ### Generated Hooks
@@ -714,7 +806,7 @@ const api = createCrudApi('products', ProductSchema);
 
 // Query hooks (GET operations)
 api.useList()     // GET /products - List all
-api.useById(id)   // GET /products/:id - Get by ID
+api.useById(id)   // GET /products/:id - Get by ID (accepts null/undefined, only fetches when ID is defined)
 
 // Mutation hooks (POST/PUT/DELETE operations)
 api.useCreate()   // POST /products - Create new

@@ -155,13 +155,21 @@ export interface UseListResult<T> extends UseQueryResult<T[]> {
   meta?: PaginationMeta;
 }
 
-// Generated API types
+// Complete entity type with auto-generated fields
+export type CompleteEntityType<T> = T & { id: string; createdAt: string; updatedAt: string };
+
+// Generated API types - T represents the business schema, CompleteEntityType<T> is what gets returned
 export interface GeneratedCrudApi<T> {
-  useList: (params?: ListParams) => UseListResult<T>;
-  useQuery: (id: string) => UseQueryResult<T>;
-  useById: (id: string) => UseQueryResult<T>;
-  useCreate: () => UseMutationResult<any, T>;
-  useUpdate: (id?: string) => UseMutationResult<any, T>;
+  useList: (params?: ListParams) => UseListResult<CompleteEntityType<T>>;
+  useQuery: (id: string | undefined | null) => UseQueryResult<CompleteEntityType<T>>;
+  useById: (id: string | undefined | null) => UseQueryResult<CompleteEntityType<T>>;
+  useCreate: () => UseMutationResult<
+    Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
+    CompleteEntityType<T>
+  >;
+  useUpdate: (
+    id?: string
+  ) => UseMutationResult<Omit<T, 'id' | 'createdAt' | 'updatedAt'>, CompleteEntityType<T>>;
   useDelete: (id?: string) => UseMutationResult<void>;
 }
 
