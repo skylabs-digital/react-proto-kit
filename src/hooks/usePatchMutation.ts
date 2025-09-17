@@ -11,7 +11,10 @@ export interface UsePatchMutationResult<TInput> {
 }
 
 // Unified hook that automatically detects global state availability
-export function usePatchMutation<TInput, TEntity>(entity: string): UsePatchMutationResult<TInput> {
+export function usePatchMutation<TInput, TEntity>(
+  entity: string,
+  endpoint?: string
+): UsePatchMutationResult<TInput> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
@@ -26,9 +29,18 @@ export function usePatchMutation<TInput, TEntity>(entity: string): UsePatchMutat
       setError(null);
 
       try {
-        debugLogger.logRequest('PATCH', `${entity}/${id}`, data);
+        const baseEndpoint = endpoint || entity;
+        const patchEndpoint = `${baseEndpoint}/${id}`;
+        console.log('🔍 PATCH mutation:', {
+          entity,
+          endpoint: baseEndpoint,
+          id,
+          patchEndpoint,
+          data,
+        });
+        debugLogger.logRequest('PATCH', patchEndpoint, data);
 
-        const response = await connector.patch<TEntity>(`${entity}/${id}`, data);
+        const response = await connector.patch<TEntity>(patchEndpoint, data);
 
         if (response.success) {
           // Handle global state if available
@@ -36,14 +48,33 @@ export function usePatchMutation<TInput, TEntity>(entity: string): UsePatchMutat
             // Update individual entity data
             entityState.actions.setData(id, response.data);
 
-            // Update item in all existing lists
+            // Update item in specific lists for this endpoint
+            const baseEndpointForCache = endpoint || entity;
+            const specificCacheKey = `list:${baseEndpointForCache}`;
+            console.log('🔍 PATCH updating cache:', {
+              entity,
+              endpoint,
+              baseEndpointForCache,
+              specificCacheKey,
+              availableKeys: Object.keys(entityState.lists),
+              id,
+            });
+
             Object.keys(entityState.lists).forEach(listKey => {
-              const currentList = entityState.lists[listKey];
-              if (Array.isArray(currentList)) {
-                const updatedList = currentList.map((item: any) =>
-                  item.id === id ? response.data : item
-                );
-                entityState.actions.setList(listKey, updatedList);
+              // Only update lists that match this endpoint pattern
+              if (listKey.startsWith(specificCacheKey)) {
+                const currentList = entityState.lists[listKey];
+                console.log('🔍 PATCH updating list:', {
+                  listKey,
+                  currentLength: currentList?.length,
+                });
+                if (Array.isArray(currentList)) {
+                  const updatedList = currentList.map((item: any) =>
+                    item.id === id ? { ...item, ...response.data } : item
+                  );
+                  entityState.actions.setList(listKey, updatedList);
+                  console.log('🔍 PATCH after update:', { newLength: updatedList.length });
+                }
               }
             });
 

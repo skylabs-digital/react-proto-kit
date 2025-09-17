@@ -42,6 +42,7 @@ interface UseCreateMutationOptions {
 // Unified hook that can work with or without global state
 export function useCreateMutation<TInput, TOutput>(
   entity: string,
+  endpoint?: string, // Optional endpoint, defaults to entity
   schema?: z.ZodSchema<TInput>,
   options: UseCreateMutationOptions = { globalState: true }
 ): UseCreateMutationResult<TInput, TOutput> {
@@ -107,27 +108,49 @@ export function useCreateMutation<TInput, TOutput>(
           dataToSend = { ...defaultValues, ...input } as TInput;
         }
 
-        debugLogger.logRequest('POST', entity, dataToSend);
+        const requestEndpoint = endpoint || entity;
+        console.log('🔍 CREATE mutation:', { entity, endpoint: requestEndpoint, dataToSend });
+        debugLogger.logRequest('POST', requestEndpoint, dataToSend);
 
-        const response = await connector.post<TOutput>(entity, dataToSend);
+        const response = await connector.post<TOutput>(requestEndpoint, dataToSend);
 
         if (response.success) {
           // Handle global state updates
           if (globalState && entityState) {
             // Add new item to global state (both optimistic and regular paths)
-            if (response.data && typeof response.data === 'object' && 'id' in response.data) {
-              // Update individual entity data
-              entityState.actions.setData((response.data as any).id, response.data);
 
-              // Add to all existing lists (prepend to show newest first)
-              Object.keys(entityState.lists).forEach(listKey => {
+            // Add to the specific list for this endpoint (prepend to show newest first)
+            const requestEndpointForCache = endpoint || entity;
+            const specificCacheKey = `list:${requestEndpointForCache}`;
+            console.log('🔍 CREATE updating global state:', { 
+              entity, 
+              endpoint,
+              requestEndpointForCache,
+              specificCacheKey, 
+              availableKeys: Object.keys(entityState.lists),
+              responseData: response.data 
+            });
+            
+            // Log each available key to see the pattern
+            Object.keys(entityState.lists).forEach(key => {
+              console.log('🔍 Available cache key:', key);
+            });
+
+            Object.keys(entityState.lists).forEach(listKey => {
+              // Only update lists that match this endpoint pattern
+              if (listKey.startsWith(specificCacheKey)) {
                 const currentList = entityState.lists[listKey];
+                console.log('🔍 CREATE updating list:', {
+                  listKey,
+                  currentLength: currentList?.length,
+                });
                 if (Array.isArray(currentList)) {
-                  // Add the new item to the beginning of each list
+                  // Add the new item to the beginning of this specific list
                   entityState.actions.setList(listKey, [response.data, ...currentList]);
+                  console.log('🔍 CREATE after update:', { newLength: currentList.length + 1 });
                 }
-              });
-            }
+              }
+            });
 
             if (optimistic && tempId) {
               // Replace optimistic data with real data (if needed)

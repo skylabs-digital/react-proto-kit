@@ -18,6 +18,7 @@ interface UseUpdateMutationOptions {
 // Unified hook that automatically detects global state availability
 export function useUpdateMutation<TInput, TEntity>(
   entity: string,
+  endpoint?: string, // Optional endpoint, defaults to entity
   schema?: z.ZodSchema<TInput>,
   options: UseUpdateMutationOptions = {}
 ): UseUpdateMutationResult<TInput> {
@@ -56,9 +57,18 @@ export function useUpdateMutation<TInput, TEntity>(
           }
         }
 
-        debugLogger.logRequest('PUT', `${entity}/${id}`, data);
+        const baseEndpoint = endpoint || entity;
+        const updateEndpoint = `${baseEndpoint}/${id}`;
+        console.log('🔍 UPDATE mutation:', {
+          entity,
+          endpoint: baseEndpoint,
+          id,
+          updateEndpoint,
+          data,
+        });
+        debugLogger.logRequest('PUT', updateEndpoint, data);
 
-        const response = await connector.put<TEntity>(`${entity}/${id}`, data);
+        const response = await connector.put<TEntity>(updateEndpoint, data);
 
         if (response.success) {
           // Handle global state if available
@@ -66,14 +76,33 @@ export function useUpdateMutation<TInput, TEntity>(
             // Update individual entity data
             entityState.actions.setData(id, response.data);
 
-            // Update item in all existing lists
+            // Update item in specific lists for this endpoint
+            const baseEndpointForCache = endpoint || entity;
+            const specificCacheKey = `list:${baseEndpointForCache}`;
+            console.log('🔍 UPDATE updating cache:', {
+              entity,
+              endpoint,
+              baseEndpointForCache,
+              specificCacheKey,
+              availableKeys: Object.keys(entityState.lists),
+              id,
+            });
+
             Object.keys(entityState.lists).forEach(listKey => {
-              const currentList = entityState.lists[listKey];
-              if (Array.isArray(currentList)) {
-                const updatedList = currentList.map((item: any) =>
-                  item.id === id ? response.data : item
-                );
-                entityState.actions.setList(listKey, updatedList);
+              // Only update lists that match this endpoint pattern
+              if (listKey.startsWith(specificCacheKey)) {
+                const currentList = entityState.lists[listKey];
+                console.log('🔍 UPDATE updating list:', {
+                  listKey,
+                  currentLength: currentList?.length,
+                });
+                if (Array.isArray(currentList)) {
+                  const updatedList = currentList.map((item: any) =>
+                    item.id === id ? response.data : item
+                  );
+                  entityState.actions.setList(listKey, updatedList);
+                  console.log('🔍 UPDATE after update:', { newLength: updatedList.length });
+                }
               }
             });
 
@@ -106,13 +135,4 @@ export function useUpdateMutation<TInput, TEntity>(
     loading,
     error,
   };
-}
-
-// Legacy wrapper for backward compatibility
-export function useUpdateMutationWithGlobalState<TInput, TEntity>(
-  entity: string,
-  _endpoint: string, // Prefixed with _ to indicate intentionally unused
-  schema?: z.ZodSchema<TInput>
-): UseUpdateMutationResult<TInput> {
-  return useUpdateMutation<TInput, TEntity>(entity, schema);
 }

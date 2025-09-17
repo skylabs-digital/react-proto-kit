@@ -28,8 +28,8 @@ export function useList<T>(
   const [localError, setLocalError] = useState<ErrorResponse | null>(null);
   const [localMeta, setLocalMeta] = useState<PaginationMeta | undefined>(undefined);
 
-  // Determine which state to use
-  const cacheKey = `list${params ? JSON.stringify(params) : ''}`;
+  // Determine which state to use - include endpoint to differentiate between different paths
+  const cacheKey = `list:${endpoint}${params ? ':' + JSON.stringify(params) : ''}`;
 
   const data = globalState && entityState ? entityState.lists?.[cacheKey] || null : localData;
 
@@ -108,12 +108,12 @@ export function useList<T>(
     [
       connector,
       endpoint,
-      params,
+      JSON.stringify(params), // Serialize params to avoid object reference changes
       options?.enabled,
       options?.cacheTime,
       globalState,
       cacheKey,
-      entityState,
+      entityState?.actions, // Only depend on actions, not the whole entityState
     ]
   );
 

@@ -11,7 +11,10 @@ export interface UseDeleteMutationResult {
 }
 
 // Unified hook that can work with or without global state
-export function useDeleteMutation<TEntity>(entity: string): UseDeleteMutationResult {
+export function useDeleteMutation<TEntity>(
+  entity: string,
+  endpoint?: string
+): UseDeleteMutationResult {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
@@ -26,19 +29,38 @@ export function useDeleteMutation<TEntity>(entity: string): UseDeleteMutationRes
       setError(null);
 
       try {
-        debugLogger.logRequest('DELETE', `${entity}/${id}`, undefined);
+        const baseEndpoint = endpoint || entity;
+        const deleteEndpoint = `${baseEndpoint}/${id}`;
+        console.log('🔍 DELETE mutation:', { entity, endpoint: baseEndpoint, id, deleteEndpoint });
+        debugLogger.logRequest('DELETE', deleteEndpoint, undefined);
 
-        const response = await connector.delete(`${entity}/${id}`);
+        const response = await connector.delete(deleteEndpoint);
 
         if (response.success) {
           // Handle global state if enabled and available
           if (globalState && entityState) {
-            // Remove from all lists
+            // Remove from specific lists for this endpoint
+            const baseEndpointForCache = endpoint || entity;
+            const specificCacheKey = `list:${baseEndpointForCache}`;
+            console.log('🔍 DELETE updating cache:', {
+              entity,
+              endpoint,
+              baseEndpointForCache,
+              specificCacheKey,
+              availableKeys: Object.keys(entityState.lists),
+              id,
+            });
+
             Object.keys(entityState.lists).forEach(listKey => {
-              const list = entityState.lists[listKey];
-              if (Array.isArray(list)) {
-                const filteredList = list.filter((item: any) => item.id !== id);
-                entityState.actions.setList(listKey, filteredList);
+              // Only update lists that match this endpoint pattern
+              if (listKey.startsWith(specificCacheKey)) {
+                const list = entityState.lists[listKey];
+                console.log('🔍 Updating list:', { listKey, currentLength: list?.length });
+                if (Array.isArray(list)) {
+                  const filteredList = list.filter((item: any) => item.id !== id);
+                  console.log('🔍 After filter:', { newLength: filteredList.length });
+                  entityState.actions.setList(listKey, filteredList);
+                }
               }
             });
 

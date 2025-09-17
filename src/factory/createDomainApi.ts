@@ -27,58 +27,154 @@ export type ExtractInputType<T> =
       ? Omit<U, 'id' | 'createdAt' | 'updatedAt'>
       : never;
 
-// Implementation
+// Helper function to replace path parameters with actual values
+function buildPath(template: string, params: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(params)) {
+    result = result.replace(`:${key}`, value);
+  }
+  return result;
+}
+
+// Helper function to check if path has unresolved parameters
+function hasUnresolvedParams(path: string): boolean {
+  return path.includes(':');
+}
+
+// Helper function to extract parameter names from path
+function extractParamNames(path: string): string[] {
+  const matches = path.match(/:(\w+)/g);
+  return matches ? matches.map(match => match.substring(1)) : [];
+}
+
 export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.ZodSchema>(
-  entity: string,
-  entitySchema: TEntity,
+  pathTemplate: string,
+  _entitySchema: TEntity,
   upsertSchema: TUpsert,
   config?: GlobalStateConfig
 ) {
   type EntityType = CompleteEntityType<InferType<TEntity>>;
 
-  return {
+  // Current resolved path (starts as template)
+  let currentPath = pathTemplate;
+  // Extract entity name from path - for nested paths, combine segments
+  const segments = pathTemplate.split('/').filter(Boolean);
+  const nonParamSegments = segments.filter(segment => !segment.startsWith(':'));
+  const entity =
+    nonParamSegments.length > 1
+      ? nonParamSegments.join('_') // e.g., 'todos/:todoId/comments' → 'todos_comments'
+      : segments[segments.length - 1].replace(':', ''); // Simple case: 'todos' → 'todos'
+
+  console.log('🔍 createDomainApi entity name:', {
+    pathTemplate,
+    segments,
+    nonParamSegments,
+    entity,
+  });
+
+  const api = {
+    // Optional method to inject path parameters
+    withParams: (params: Record<string, string>) => {
+      currentPath = buildPath(pathTemplate, params);
+      return api; // Return self for chaining
+    },
+
     useList: (params?: ListParams) => {
-      return useList<EntityType>(entity, entity, params, {
+      if (hasUnresolvedParams(currentPath)) {
+        const paramNames = extractParamNames(currentPath);
+        throw new Error(
+          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
+            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useList().`
+        );
+      }
+      console.log('🔍 useList called with:', { entity, currentPath, params });
+      return useList<EntityType>(entity, currentPath, params, {
         cacheTime: config?.cacheTime,
       });
     },
 
     useQuery: (id: string | undefined | null) => {
-      return useQuery<EntityType>(entity, id ? `${entity}/${id}` : undefined, undefined, {
+      if (hasUnresolvedParams(currentPath)) {
+        const paramNames = extractParamNames(currentPath);
+        throw new Error(
+          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
+            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useQuery().`
+        );
+      }
+      return useQuery<EntityType>(entity, id ? `${currentPath}/${id}` : undefined, undefined, {
         cacheTime: config?.cacheTime,
       });
     },
 
     useById: (id: string | undefined | null) => {
-      return useQuery<EntityType>(entity, id ? `${entity}/${id}` : undefined, undefined, {
+      if (hasUnresolvedParams(currentPath)) {
+        const paramNames = extractParamNames(currentPath);
+        throw new Error(
+          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
+            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useById().`
+        );
+      }
+      return useQuery<EntityType>(entity, id ? `${currentPath}/${id}` : undefined, undefined, {
         cacheTime: config?.cacheTime,
       });
     },
 
     useCreate: () => {
+      if (hasUnresolvedParams(currentPath)) {
+        const paramNames = extractParamNames(currentPath);
+        throw new Error(
+          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
+            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useCreate().`
+        );
+      }
       return useCreateMutation<z.infer<TUpsert>, EntityType>(
-        entity,
+        entity, // Entity name for global state: 'todos_comments'
+        currentPath, // Endpoint for requests: 'todos/123/comments'
         upsertSchema as z.ZodSchema<z.infer<TUpsert>>,
         {
           optimistic: config?.optimistic,
-          entitySchema: entitySchema as z.ZodSchema<any>,
+          entitySchema: _entitySchema as z.ZodSchema<any>,
         }
       );
     },
 
     useUpdate: () => {
+      if (hasUnresolvedParams(currentPath)) {
+        const paramNames = extractParamNames(currentPath);
+        throw new Error(
+          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
+            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useUpdate().`
+        );
+      }
       return useUpdateMutation<z.infer<TUpsert>, EntityType>(
-        entity,
+        entity, // Entity name for global state: 'todos_comments'
+        currentPath, // Endpoint for requests: 'todos/123/comments'
         upsertSchema as z.ZodSchema<z.infer<TUpsert>>
       );
     },
 
     usePatch: () => {
-      return usePatchMutation<Partial<z.infer<TUpsert>>, EntityType>(entity);
+      if (hasUnresolvedParams(currentPath)) {
+        const paramNames = extractParamNames(currentPath);
+        throw new Error(
+          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
+            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling usePatch().`
+        );
+      }
+      return usePatchMutation<Partial<z.infer<TUpsert>>, EntityType>(entity, currentPath);
     },
 
     useDelete: () => {
-      return useDeleteMutation<EntityType>(entity);
+      if (hasUnresolvedParams(currentPath)) {
+        const paramNames = extractParamNames(currentPath);
+        throw new Error(
+          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
+            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useDelete().`
+        );
+      }
+      return useDeleteMutation<EntityType>(entity, currentPath);
     },
   };
+
+  return api;
 }

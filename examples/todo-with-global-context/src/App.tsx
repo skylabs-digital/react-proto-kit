@@ -37,14 +37,117 @@ const todoUpsertSchema = z.object({
 // Filter options
 type FilterType = 'all' | 'active' | 'completed';
 
+// Comment schemas for nested routes example
+const commentEntitySchema = z.object({
+  text: z.string().min(1, 'Comment text is required'),
+  authorId: z.string(),
+  views: z.number().int().min(0).default(0),
+});
+
+const commentUpsertSchema = z.object({
+  text: z.string().min(1, 'Comment text is required'),
+  authorId: z.string(),
+});
+
 // Create API with separate entity and upsert schemas
 const todosApi = createDomainApi('todos', todoEntitySchema, todoUpsertSchema, {
   optimistic: true,
   cacheTime: 5 * 60 * 1000, // 5 minutes
 });
 
+// Create nested API for comments (this demonstrates the builder pattern)
+const commentsApi = createDomainApi(
+  'todos/:todoId/comments',
+  commentEntitySchema,
+  commentUpsertSchema,
+  {
+    optimistic: false, // Disable optimistic updates for comments
+    cacheTime: 2 * 60 * 1000, // 2 minutes
+  }
+);
+
 // Extract types from the API - this is what developers can use!
 type Todo = ExtractEntityType<typeof todosApi>;
+
+// Example of using nested routes
+function CommentsExample({ todoId }: { todoId: string }) {
+  // Configure the API with the specific todoId
+  const todoCommentsApi = commentsApi.withParams({ todoId });
+
+  // Now we can use it like a normal API
+  const { data: comments, loading } = todoCommentsApi.useList();
+  const { mutate: createComment } = todoCommentsApi.useCreate();
+  const { mutate: updateComment } = todoCommentsApi.useUpdate();
+  const { mutate: patchComment } = todoCommentsApi.usePatch();
+  const { mutate: deleteComment } = todoCommentsApi.useDelete();
+
+  console.log('🔍 CommentsExample render:', {
+    todoId,
+    loading,
+    commentsLength: comments?.length,
+    commentsData: comments?.map(c => ({ id: c.id, text: c.text })),
+  });
+
+  if (loading) return <div>Loading comments...</div>;
+
+  return (
+    <div style={{ marginLeft: '20px', padding: '10px', border: '1px solid #ddd' }}>
+      <h4>Comments for Todo {todoId}</h4>
+      <div style={{ marginBottom: '10px' }}>
+        <button
+          onClick={() =>
+            createComment({
+              text: `Comment ${Date.now()}`,
+              authorId: 'user-123',
+            })
+          }
+          style={{ marginRight: '10px' }}
+        >
+          Add Comment
+        </button>
+        <button
+          onClick={() => {
+            if (comments && comments.length > 0) {
+              const firstComment = comments[0];
+              updateComment(firstComment.id, {
+                text: `Updated: ${firstComment.text}`,
+                authorId: firstComment.authorId,
+              });
+            }
+          }}
+          style={{ marginRight: '10px' }}
+        >
+          Update First Comment
+        </button>
+        <button
+          onClick={() => {
+            if (comments && comments.length > 0) {
+              const firstComment = comments[0];
+              patchComment(firstComment.id, {
+                text: `Patched: ${firstComment.text}`,
+              });
+            }
+          }}
+        >
+          Patch First Comment
+        </button>
+      </div>
+      <ul>
+        {comments?.map(comment => (
+          <li key={comment.id} style={{ marginBottom: '5px' }}>
+            <strong>{comment.authorId}:</strong> {comment.text}
+            <button
+              onClick={() => deleteComment(comment.id)}
+              style={{ marginLeft: '10px', color: 'red' }}
+            >
+              🗑️
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 // Components
 function TodoForm() {
@@ -82,6 +185,7 @@ function TodoForm() {
 
 function TodoStats() {
   const { data: todos, loading, error } = todosApi.useList();
+  console.log('🔍 TodoStats render:', { todosLength: todos?.length, loading });
 
   // Handle loading state
   if (loading) {
@@ -219,7 +323,7 @@ function TodoItem({ todo }: { todo: Todo }) {
               className={`btn ${todo.completed ? 'btn-warning' : 'btn-success'}`}
               title={todo.completed ? 'Mark as pending (PATCH)' : 'Mark as done (PATCH)'}
             >
-              {todo.completed ? '↶ Undo' : '✓ Done'}
+              {todo.completed ? '↩️ Undo' : '✓ Done'}
             </button>
             <button onClick={handleEdit} className="btn btn-info" title="Edit todo (UPDATE)">
               ✏️ Edit
@@ -230,12 +334,15 @@ function TodoItem({ todo }: { todo: Todo }) {
           </div>
         </>
       )}
+      {/* Show comments for this todo */}
+      <CommentsExample todoId={todo.id} />
     </li>
   );
 }
 
 function TodoList() {
   const { data: todos, loading, error } = todosApi.useList();
+
   const [filter, setFilter] = useUrlSelector('filter', (value: string) => value as FilterType, {
     multiple: false,
   });
