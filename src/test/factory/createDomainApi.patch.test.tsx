@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { createDomainApi } from '../../factory/createDomainApi';
 import { ApiClientProvider } from '../../provider/ApiClientProvider';
 import { GlobalStateProvider } from '../../context/GlobalStateProvider';
-import { LocalStorageConnector } from '../../connectors/LocalStorageConnector';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 
@@ -20,22 +19,14 @@ const upsertSchema = z.object({
   description: z.string().optional(),
 });
 
-type Todo = z.infer<typeof todoSchema>;
-
 describe('createDomainApi - usePatch functionality', () => {
-  let connector: LocalStorageConnector;
-  let todosApi: ReturnType<typeof createDomainApi>;
+  let todosApi: any;
 
   beforeEach(() => {
     // Clear localStorage before each test
     localStorage.clear();
 
-    connector = new LocalStorageConnector({
-      simulateDelay: 0,
-      errorRate: 0,
-    });
-
-    todosApi = createDomainApi('todos', todoSchema, { globalState: true });
+    todosApi = createDomainApi('todos', todoSchema);
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -152,7 +143,7 @@ describe('createDomainApi - usePatch functionality', () => {
       try {
         // Try to patch with invalid data (missing required fields)
         await patchResult.current.mutate('non-existent-id', {} as any);
-      } catch (error) {
+      } catch {
         // Expected to throw due to validation or non-existent ID
       }
     });

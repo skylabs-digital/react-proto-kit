@@ -111,7 +111,7 @@ describe('Dynamic ID Integration Tests', () => {
       const updateData = { id: '123', title: 'Updated Post', content: 'Updated content' };
 
       await act(async () => {
-        await result.current.mutate(updateData);
+        await result.current.mutate('123', updateData);
       });
 
       expect(result.current.error).toBeNull();
@@ -124,7 +124,7 @@ describe('Dynamic ID Integration Tests', () => {
 
       await act(async () => {
         try {
-          await result.current.mutate({ title: 'No ID', content: 'Content' });
+          await result.current.mutate('123', { title: 'No ID', content: 'Content' });
         } catch {
           // Expected error when no ID is provided
         }

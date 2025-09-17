@@ -14,20 +14,31 @@ import {
 // Enable debug logging
 configureDebugLogging(true, '[TODO-GLOBAL]');
 
-// Schema definition with validation
-const todoSchema = z.object({
+// Entity schema - includes all fields that exist in the entity (including server-generated ones)
+const todoEntitySchema = z.object({
   text: z
     .string()
     .min(1, 'Todo text is required')
     .max(10, 'Todo text must be 10 characters or less'),
   completed: z.boolean(),
+  views: z.number().int().min(0).default(10), // Server-generated field, not required for create/update
+});
+
+// Upsert schema - only fields that can be sent in create/update/patch operations
+const todoUpsertSchema = z.object({
+  text: z
+    .string()
+    .min(1, 'Todo text is required')
+    .max(10, 'Todo text must be 10 characters or less'),
+  completed: z.boolean(),
+  // Note: 'views' is NOT included here - it's managed by the server
 });
 
 // Filter options
 type FilterType = 'all' | 'active' | 'completed';
 
-// Create API with Global Context
-const todosApi = createDomainApi('todos', todoSchema, {
+// Create API with separate entity and upsert schemas
+const todosApi = createDomainApi('todos', todoEntitySchema, todoUpsertSchema, {
   optimistic: true,
   cacheTime: 5 * 60 * 1000, // 5 minutes
 });
@@ -38,7 +49,7 @@ type Todo = ExtractEntityType<typeof todosApi>;
 // Components
 function TodoForm() {
   const { mutate: createTodo, loading } = todosApi.useCreate();
-  const { values, errors, handleInputChange, handleSubmit, reset } = useFormData(todoSchema, {
+  const { values, errors, handleInputChange, handleSubmit, reset } = useFormData(todoUpsertSchema, {
     text: '',
     completed: false,
   });
@@ -198,7 +209,10 @@ function TodoItem({ todo }: { todo: Todo }) {
         </div>
       ) : (
         <>
-          <span className={`todo-text ${todo.completed ? 'completed' : ''}`}>{todo.text}</span>
+          <div className="todo-content">
+            <span className={`todo-text ${todo.completed ? 'completed' : ''}`}>{todo.text}</span>
+            <small className="todo-views">👁️ {todo.views} views</small>
+          </div>
           <div className="todo-actions">
             <button
               onClick={handleToggle}

@@ -5,9 +5,38 @@ import { useEntityState } from '../context/GlobalStateProvider';
 import { ErrorResponse, UseCreateMutationResult } from '../types';
 import { debugLogger } from '../utils/debug';
 
+// Helper function to extract default values from Zod schema
+function extractDefaultValues(schema: z.ZodSchema<any>): Record<string, any> {
+  const defaults: Record<string, any> = {};
+
+  if (schema instanceof z.ZodObject) {
+    const shape = schema.shape;
+    for (const [key, fieldSchema] of Object.entries(shape)) {
+      try {
+        if (fieldSchema instanceof z.ZodDefault) {
+          const defaultValue = fieldSchema._def.defaultValue;
+          defaults[key] = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+        } else if (
+          fieldSchema instanceof z.ZodOptional &&
+          fieldSchema._def.innerType instanceof z.ZodDefault
+        ) {
+          const defaultValue = fieldSchema._def.innerType._def.defaultValue;
+          defaults[key] = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+        }
+      } catch (error) {
+        // Skip fields that can't be processed
+        console.warn(`Could not extract default value for field ${key}:`, error);
+      }
+    }
+  }
+
+  return defaults;
+}
+
 interface UseCreateMutationOptions {
   globalState?: boolean;
   optimistic?: boolean;
+  entitySchema?: z.ZodSchema<any>;
 }
 
 // Unified hook that can work with or without global state
@@ -21,7 +50,7 @@ export function useCreateMutation<TInput, TOutput>(
   const [error, setError] = useState<ErrorResponse | null>(null);
 
   // Extract options to avoid recreating callback dependencies
-  const { optimistic } = options;
+  const { optimistic, entitySchema } = options;
 
   // Only get entity state if global state is enabled
   const entityState = useEntityState<TOutput>(entity);
@@ -71,9 +100,16 @@ export function useCreateMutation<TInput, TOutput>(
           // entityState.actions.addOptimistic(tempId, optimisticData);
         }
 
-        debugLogger.logRequest('POST', entity, input);
+        // Apply default values from entitySchema if provided
+        let dataToSend = input;
+        if (entitySchema) {
+          const defaultValues = extractDefaultValues(entitySchema);
+          dataToSend = { ...defaultValues, ...input } as TInput;
+        }
 
-        const response = await connector.post<TOutput>(entity, input);
+        debugLogger.logRequest('POST', entity, dataToSend);
+
+        const response = await connector.post<TOutput>(entity, dataToSend);
 
         if (response.success) {
           // Handle global state updates

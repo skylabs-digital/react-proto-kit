@@ -105,7 +105,6 @@ export interface GlobalStateConfig {
   optimistic?: boolean;
   cacheTime?: number;
   syncStrategy?: 'immediate' | 'debounced';
-  upsertSchema?: z.ZodSchema;
 }
 
 // Domain API types
