@@ -1,11 +1,5 @@
 import { z } from 'zod';
-import {
-  GeneratedCrudApi,
-  ListParams,
-  InferType,
-  GlobalStateConfig,
-  CompleteEntityType,
-} from '../types';
+import { ListParams, GlobalStateConfig } from '../types';
 import { useById } from '../hooks/useById';
 import { useList } from '../hooks/useList';
 import { useCreateMutation } from '../hooks/useCreateMutation';
@@ -13,19 +7,16 @@ import { usePatchMutation } from '../hooks/usePatchMutation';
 import { useDeleteMutation } from '../hooks/useDeleteMutation';
 import { useUpdateMutation } from '../hooks/useUpdateMutation';
 
-// Type extraction utilities - simple and clean
-export type ExtractEntityType<T> =
-  T extends GeneratedCrudApi<infer U>
-    ? U & { id: string; createdAt: string; updatedAt: string }
-    : T extends Pick<GeneratedCrudApi<infer U>, any>
-      ? U & { id: string; createdAt: string; updatedAt: string }
-      : never;
-export type ExtractInputType<T> =
-  T extends GeneratedCrudApi<infer U>
-    ? Omit<U, 'id' | 'createdAt' | 'updatedAt'>
-    : T extends Pick<GeneratedCrudApi<infer U>, any>
-      ? Omit<U, 'id' | 'createdAt' | 'updatedAt'>
-      : never;
+// Type extraction utilities - extract from the return type of createDomainApi
+export type ExtractEntityType<T> = T extends { useList: () => { data: infer U } }
+  ? U extends (infer Item)[]
+    ? Item
+    : never
+  : never;
+
+export type ExtractInputType<T> = T extends { useCreate: () => { mutate: (input: infer U) => any } }
+  ? U
+  : never;
 
 // Helper function to replace path parameters with actual values
 function buildPath(template: string, params: Record<string, string>): string {
@@ -59,7 +50,7 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
   upsertSchema: TUpsert,
   config?: GlobalStateConfig & { queryParams?: QueryParamsConfig }
 ) {
-  type EntityType = CompleteEntityType<InferType<TEntity>>;
+  type EntityType = z.infer<TEntity> & { id: string; createdAt: string; updatedAt: string };
 
   // Current resolved path (starts as template)
   let currentPath = pathTemplate;
