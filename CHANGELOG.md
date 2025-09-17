@@ -1,3 +1,15 @@
+# [1.5.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.4.0...v1.5.0) (2025-09-17)
+
+
+### Bug Fixes
+
+* initialize loading state to true by default in data fetching hooks ([b82032f](https://github.com/skylabs-digital/react-proto-kit/commit/b82032ff1558147de5fe9fa189ec237c2f665e6e))
+
+
+### Features
+
+* add dual schema support with automatic default values from entity schemas ([498459c](https://github.com/skylabs-digital/react-proto-kit/commit/498459c40fb7df1ad7e9aae8591139a5f56ed2f7))
+
 # [1.4.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.3.0...v1.4.0) (2025-08-22)
 
 
