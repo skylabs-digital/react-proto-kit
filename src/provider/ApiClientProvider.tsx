@@ -12,16 +12,28 @@ const ApiClientContext = createContext<ApiClientContextValue | null>(null);
 
 interface ApiClientProviderProps {
   children: ReactNode;
-  connectorType: ConnectorType;
+  connectorType?: ConnectorType;
   config?: ConnectorConfig;
+  connector?: IConnector;
 }
 
 export const ApiClientProvider: React.FC<ApiClientProviderProps> = ({
   children,
   connectorType,
   config = {},
+  connector: providedConnector,
 }) => {
   const connector = React.useMemo(() => {
+    // If a connector is provided directly, use it
+    if (providedConnector) {
+      return providedConnector;
+    }
+
+    // Otherwise, create one based on connectorType
+    if (!connectorType) {
+      throw new Error('Either connectorType or connector must be provided');
+    }
+
     switch (connectorType) {
       case 'localStorage':
         return new LocalStorageConnector(config);
@@ -30,7 +42,7 @@ export const ApiClientProvider: React.FC<ApiClientProviderProps> = ({
       default:
         throw new Error(`Unsupported connector type: ${connectorType}`);
     }
-  }, [connectorType, config]);
+  }, [connectorType, config, providedConnector]);
 
   const contextValue = React.useMemo(
     () => ({

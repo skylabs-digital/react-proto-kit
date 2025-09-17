@@ -63,7 +63,7 @@ describe('Schema Helpers', () => {
       const api = createReadOnlyApi('analytics', schema);
 
       expect(api.useList).toBeDefined();
-      expect(api.useQuery).toBeDefined();
+      expect(api.useById).toBeDefined();
       expect(api.withParams).toBeDefined();
       expect(api.withQuery).toBeDefined();
       // Should not have write operations

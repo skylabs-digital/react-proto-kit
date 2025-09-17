@@ -48,7 +48,7 @@ export function createReadOnlyApi<T extends z.ZodSchema>(entity: string, entityS
   // Return only the read operations
   return {
     useList: api.useList,
-    useQuery: api.useQuery,
+    useById: api.useById,
     withParams: api.withParams,
     withQuery: api.withQuery,
   };

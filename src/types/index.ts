@@ -182,7 +182,6 @@ export type CompleteEntityType<T> = T & { id: string; createdAt: string; updated
 // Generated API types - T represents the business schema, CompleteEntityType<T> is what gets returned
 export interface GeneratedCrudApi<T> {
   useList: (params?: ListParams) => UseListResult<CompleteEntityType<T>>;
-  useQuery: (id: string | undefined | null) => UseQueryResult<CompleteEntityType<T>>;
   useById: (id: string | undefined | null) => UseQueryResult<CompleteEntityType<T>>;
   useCreate: () => UseCreateMutationResult<
     Omit<T, 'id' | 'createdAt' | 'updatedAt'>,

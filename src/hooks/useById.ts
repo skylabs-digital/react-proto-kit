@@ -4,18 +4,18 @@ import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
 import { globalInvalidationManager } from '../context/InvalidationManager';
 
-interface UseQueryOptions {
+interface UseByIdOptions {
   enabled?: boolean;
   refetchOnMount?: boolean;
   cacheTime?: number;
 }
 
 // Unified hook that can work with or without global state
-export function useQuery<T>(
+export function useById<T>(
   entity: string,
   endpoint?: string,
   params?: Record<string, any>,
-  options?: UseQueryOptions
+  options?: UseByIdOptions
 ): UseQueryResult<T> {
   const { connector } = useApiClient();
 
@@ -47,7 +47,7 @@ export function useQuery<T>(
     if (!endpoint || enabled === false) return;
 
     // Check cache validity for global state
-    if (globalState && entityState) {
+    if (globalState) {
       const cacheTimeMs = cacheTime || 5 * 60 * 1000; // 5 minutes default
       if (data && Date.now() - lastFetch < cacheTimeMs) {
         return;
@@ -64,14 +64,14 @@ export function useQuery<T>(
       const response = await connector.get<T>(endpoint, params);
 
       if (response.success) {
-        if (globalState && entityState) {
+        if (globalState) {
           entityState.actions.setData(cacheKey, response.data);
         } else {
           setLocalData(response.data);
         }
       } else {
         const errorResponse = response as ErrorResponse;
-        if (globalState && entityState) {
+        if (globalState) {
           entityState.actions.setError(cacheKey, errorResponse);
         } else {
           setLocalError(errorResponse);
@@ -85,14 +85,14 @@ export function useQuery<T>(
         error: { code: 'UNKNOWN_ERROR' },
       };
 
-      if (globalState && entityState) {
+      if (globalState) {
         entityState.actions.setError(cacheKey, errorResponse);
       } else {
         setLocalError(errorResponse);
         setLocalData(null);
       }
     } finally {
-      if (globalState && entityState) {
+      if (globalState) {
         entityState.actions.setLoading(cacheKey, false);
       } else {
         setLocalLoading(false);
@@ -106,13 +106,13 @@ export function useQuery<T>(
 
   // Subscribe to invalidations only for global state
   useEffect(() => {
-    if (globalState && entityState) {
+    if (globalState) {
       const unsubscribe = globalInvalidationManager.subscribe(entity, () => {
         fetchData();
       });
       return unsubscribe;
     }
-  }, [entity, fetchData, globalState, entityState]);
+  }, [entity, fetchData, globalState]);
 
   useEffect(() => {
     if (refetchOnMount !== false) {

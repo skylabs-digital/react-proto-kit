@@ -6,7 +6,7 @@ import {
   GlobalStateConfig,
   CompleteEntityType,
 } from '../types';
-import { useQuery } from '../hooks/useQuery';
+import { useById } from '../hooks/useById';
 import { useList } from '../hooks/useList';
 import { useCreateMutation } from '../hooks/useCreateMutation';
 import { usePatchMutation } from '../hooks/usePatchMutation';
@@ -119,19 +119,6 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
       });
     },
 
-    useQuery: (id: string | undefined | null) => {
-      if (hasUnresolvedParams(currentPath)) {
-        const paramNames = extractParamNames(currentPath);
-        throw new Error(
-          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
-            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useQuery().`
-        );
-      }
-      return useQuery<EntityType>(entity, id ? `${currentPath}/${id}` : undefined, undefined, {
-        cacheTime: config?.cacheTime,
-      });
-    },
-
     useById: (id: string | undefined | null) => {
       if (hasUnresolvedParams(currentPath)) {
         const paramNames = extractParamNames(currentPath);
@@ -140,7 +127,7 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
             `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useById().`
         );
       }
-      return useQuery<EntityType>(entity, id ? `${currentPath}/${id}` : undefined, undefined, {
+      return useById<EntityType>(entity, id ? `${currentPath}/${id}` : undefined, undefined, {
         cacheTime: config?.cacheTime,
       });
     },
