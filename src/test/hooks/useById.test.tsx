@@ -1,10 +1,10 @@
 /// <reference types="vitest/globals" />
-import { useQuery } from '../../hooks/useQuery';
+import { useById } from '../../hooks/useById';
 
 describe('useById', () => {
   it('should be a valid hook function', () => {
-    expect(typeof useQuery).toBe('function');
-    expect(useQuery.name).toBe('useQuery');
+    expect(typeof useById).toBe('function');
+    expect(useById.name).toBe('useById');
   });
 
   it('should accept valid parameters', () => {
@@ -26,7 +26,7 @@ describe('useById', () => {
       expect(endpoint.length).toBeGreaterThan(0);
     });
 
-    expect(typeof useQuery).toBe('function');
+    expect(typeof useById).toBe('function');
   });
 
   it('should accept configuration options', () => {
@@ -49,7 +49,7 @@ describe('useById', () => {
     expect(typeof stringParams).toBe('string');
     expect(typeof objectParams).toBe('object');
     expect(Array.isArray(arrayParams)).toBe(true);
-    expect(typeof useQuery).toBe('function');
+    expect(typeof useById).toBe('function');
   });
 
   it('should handle boolean options correctly', () => {
@@ -61,6 +61,6 @@ describe('useById', () => {
       expect(typeof options.refetchOnMount).toBe('boolean');
     });
 
-    expect(typeof useQuery).toBe('function');
+    expect(typeof useById).toBe('function');
   });
 });
