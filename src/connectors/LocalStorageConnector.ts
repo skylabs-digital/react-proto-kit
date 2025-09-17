@@ -114,7 +114,7 @@ export class LocalStorageConnector implements IConnector {
 
   async get<T>(endpoint: string, params?: any): Promise<ApiResponse<T>> {
     const startTime = Date.now();
-    debugLogger.logRequest('GET', endpoint, params);
+    debugLogger.logRequest('GET', endpoint, undefined, params);
 
     await this.simulateDelay();
 
@@ -405,11 +405,9 @@ export class LocalStorageConnector implements IConnector {
     }
 
     const { collection, id: endpointId, pathParams } = this.parseEndpoint(endpoint);
-    console.log('🔍 DELETE parseEndpoint:', { endpoint, collection, endpointId, pathParams });
 
     // Support dynamic ID: extract from endpoint or from data payload
     const id = endpointId || (data && data.id);
-    console.log('🔍 DELETE using id:', { id, endpointId, dataId: data?.id });
 
     if (!id) {
       const errorResponse: ErrorResponse = {
@@ -424,25 +422,17 @@ export class LocalStorageConnector implements IConnector {
     const storageData = this.getStorageData();
     const originalCollectionData = storageData[collection] || [];
     let collectionData = [...originalCollectionData]; // Create a copy to avoid mutating original
-    console.log('🔍 DELETE storage before:', {
-      collection,
-      totalItems: collectionData.length,
-      storageData,
-    });
 
     // Filter by path params if they exist
     if (pathParams) {
       collectionData = collectionData.filter((item: any) => {
         return Object.entries(pathParams).every(([key, value]) => item[key] === value);
       });
-      console.log('🔍 DELETE after pathParams filter:', { filteredItems: collectionData.length });
     }
 
     const itemIndex = collectionData.findIndex((item: any) => item.id === id);
-    console.log('🔍 DELETE item search:', { id, itemIndex, foundInFiltered: itemIndex !== -1 });
 
     if (itemIndex === -1) {
-      console.log('🔍 DELETE item not found in filtered collection');
       const errorResponse: ErrorResponse = {
         success: false,
         message: 'Item not found',
@@ -458,19 +448,11 @@ export class LocalStorageConnector implements IConnector {
     // Update storage - we need to update the full collection, not just the filtered one
     const fullCollectionData = [...originalCollectionData]; // Use original data, not mutated
     const fullItemIndex = fullCollectionData.findIndex((item: any) => item.id === id);
-    console.log('🔍 DELETE full collection search:', {
-      fullItems: fullCollectionData.length,
-      fullItemIndex,
-      foundInFull: fullItemIndex !== -1,
-    });
 
     if (fullItemIndex !== -1) {
       fullCollectionData.splice(fullItemIndex, 1);
       storageData[collection] = fullCollectionData;
       this.setStorageData(storageData);
-      console.log('🔍 DELETE storage after:', { newLength: fullCollectionData.length });
-    } else {
-      console.log('🔍 DELETE ERROR: Item not found in full collection!');
     }
 
     const successResponse: SuccessResponse<T> = {

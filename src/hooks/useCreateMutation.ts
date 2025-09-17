@@ -109,7 +109,6 @@ export function useCreateMutation<TInput, TOutput>(
         }
 
         const requestEndpoint = endpoint || entity;
-        console.log('🔍 CREATE mutation:', { entity, endpoint: requestEndpoint, dataToSend });
         debugLogger.logRequest('POST', requestEndpoint, dataToSend);
 
         const response = await connector.post<TOutput>(requestEndpoint, dataToSend);
@@ -122,32 +121,14 @@ export function useCreateMutation<TInput, TOutput>(
             // Add to the specific list for this endpoint (prepend to show newest first)
             const requestEndpointForCache = endpoint || entity;
             const specificCacheKey = `list:${requestEndpointForCache}`;
-            console.log('🔍 CREATE updating global state:', { 
-              entity, 
-              endpoint,
-              requestEndpointForCache,
-              specificCacheKey, 
-              availableKeys: Object.keys(entityState.lists),
-              responseData: response.data 
-            });
-            
-            // Log each available key to see the pattern
-            Object.keys(entityState.lists).forEach(key => {
-              console.log('🔍 Available cache key:', key);
-            });
 
             Object.keys(entityState.lists).forEach(listKey => {
               // Only update lists that match this endpoint pattern
               if (listKey.startsWith(specificCacheKey)) {
                 const currentList = entityState.lists[listKey];
-                console.log('🔍 CREATE updating list:', {
-                  listKey,
-                  currentLength: currentList?.length,
-                });
                 if (Array.isArray(currentList)) {
                   // Add the new item to the beginning of this specific list
                   entityState.actions.setList(listKey, [response.data, ...currentList]);
-                  console.log('🔍 CREATE after update:', { newLength: currentList.length + 1 });
                 }
               }
             });

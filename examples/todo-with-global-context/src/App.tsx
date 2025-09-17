@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   ApiClientProvider,
@@ -63,6 +63,10 @@ const commentsApi = createDomainApi(
   {
     optimistic: false, // Disable optimistic updates for comments
     cacheTime: 2 * 60 * 1000, // 2 minutes
+    queryParams: {
+      static: { author: 'fer' }, // Always included
+      dynamic: ['viewed', 'status', 'sortBy'], // Runtime configurable
+    },
   }
 );
 
@@ -71,28 +75,30 @@ type Todo = ExtractEntityType<typeof todosApi>;
 
 // Example of using nested routes
 function CommentsExample({ todoId }: { todoId: string }) {
-  // Configure the API with the specific todoId
-  const todoCommentsApi = commentsApi.withParams({ todoId });
+  const [queryConfig, setQueryConfig] = useState({
+    viewed: true,
+    status: 'published',
+    sortBy: 'createdAt',
+  });
 
-  // Now we can use it like a normal API
+  // Configure the API with the specific todoId and query parameters
+  const todoCommentsApi = commentsApi.withParams({ todoId }).withQuery(queryConfig); // Dynamic params from state
+
+  // Now we can use it like a normal API (includes static + dynamic params)
   const { data: comments, loading } = todoCommentsApi.useList();
   const { mutate: createComment } = todoCommentsApi.useCreate();
   const { mutate: updateComment } = todoCommentsApi.useUpdate();
   const { mutate: patchComment } = todoCommentsApi.usePatch();
   const { mutate: deleteComment } = todoCommentsApi.useDelete();
 
-  console.log('🔍 CommentsExample render:', {
-    todoId,
-    loading,
-    commentsLength: comments?.length,
-    commentsData: comments?.map(c => ({ id: c.id, text: c.text })),
-  });
-
   if (loading) return <div>Loading comments...</div>;
 
   return (
     <div style={{ marginLeft: '20px', padding: '10px', border: '1px solid #ddd' }}>
       <h4>Comments for Todo {todoId}</h4>
+      <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+        <strong>Query Params:</strong> {JSON.stringify({ author: 'fer', ...queryConfig })}
+      </div>
       <div style={{ marginBottom: '10px' }}>
         <button
           onClick={() =>
@@ -130,6 +136,20 @@ function CommentsExample({ todoId }: { todoId: string }) {
           }}
         >
           Patch First Comment
+        </button>
+        <button
+          onClick={() => {
+            // Change query params - this will trigger a re-render and new API call
+            const newConfig = {
+              viewed: !queryConfig.viewed,
+              status: queryConfig.viewed ? 'draft' : 'published',
+              sortBy: queryConfig.sortBy === 'createdAt' ? 'updatedAt' : 'createdAt',
+            };
+            setQueryConfig(newConfig);
+          }}
+          style={{ marginLeft: '10px' }}
+        >
+          Toggle Query Params
         </button>
       </div>
       <ul>
@@ -185,7 +205,6 @@ function TodoForm() {
 
 function TodoStats() {
   const { data: todos, loading, error } = todosApi.useList();
-  console.log('🔍 TodoStats render:', { todosLength: todos?.length, loading });
 
   // Handle loading state
   if (loading) {

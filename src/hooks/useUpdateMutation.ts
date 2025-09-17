@@ -59,13 +59,6 @@ export function useUpdateMutation<TInput, TEntity>(
 
         const baseEndpoint = endpoint || entity;
         const updateEndpoint = `${baseEndpoint}/${id}`;
-        console.log('🔍 UPDATE mutation:', {
-          entity,
-          endpoint: baseEndpoint,
-          id,
-          updateEndpoint,
-          data,
-        });
         debugLogger.logRequest('PUT', updateEndpoint, data);
 
         const response = await connector.put<TEntity>(updateEndpoint, data);
@@ -79,29 +72,16 @@ export function useUpdateMutation<TInput, TEntity>(
             // Update item in specific lists for this endpoint
             const baseEndpointForCache = endpoint || entity;
             const specificCacheKey = `list:${baseEndpointForCache}`;
-            console.log('🔍 UPDATE updating cache:', {
-              entity,
-              endpoint,
-              baseEndpointForCache,
-              specificCacheKey,
-              availableKeys: Object.keys(entityState.lists),
-              id,
-            });
 
             Object.keys(entityState.lists).forEach(listKey => {
               // Only update lists that match this endpoint pattern
               if (listKey.startsWith(specificCacheKey)) {
                 const currentList = entityState.lists[listKey];
-                console.log('🔍 UPDATE updating list:', {
-                  listKey,
-                  currentLength: currentList?.length,
-                });
                 if (Array.isArray(currentList)) {
                   const updatedList = currentList.map((item: any) =>
                     item.id === id ? response.data : item
                   );
                   entityState.actions.setList(listKey, updatedList);
-                  console.log('🔍 UPDATE after update:', { newLength: updatedList.length });
                 }
               }
             });

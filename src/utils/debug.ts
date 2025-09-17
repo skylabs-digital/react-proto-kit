@@ -21,13 +21,23 @@ class DebugLogger {
     this.config = { ...this.config, ...config };
   }
 
-  logRequest(method: string, endpoint: string, data?: any) {
+  logRequest(method: string, endpoint: string, data?: any, queryParams?: Record<string, any>) {
     if (!this.config.enabled || this.isTestEnvironment()) return;
 
     const timestamp = new Date().toISOString();
-    console.group(`${this.config.prefix} ${method} ${endpoint}`);
+    const endpointWithParams =
+      queryParams && Object.keys(queryParams).length > 0
+        ? `${endpoint}?${new URLSearchParams(queryParams).toString()}`
+        : endpoint;
+
+    console.group(`${this.config.prefix} ${method} ${endpointWithParams}`);
     console.log(`🕐 ${timestamp}`);
-    console.log(`📤 Request:`, { method, endpoint, data });
+
+    const requestInfo: any = { method, endpoint, data };
+    if (queryParams && Object.keys(queryParams).length > 0) {
+      requestInfo.queryParams = queryParams;
+    }
+    console.log(`📤 Request:`, requestInfo);
     console.groupEnd();
   }
 

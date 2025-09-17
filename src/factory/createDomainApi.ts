@@ -41,41 +41,63 @@ function hasUnresolvedParams(path: string): boolean {
   return path.includes(':');
 }
 
-// Helper function to extract parameter names from path
-function extractParamNames(path: string): string[] {
-  const matches = path.match(/:(\w+)/g);
-  return matches ? matches.map(match => match.substring(1)) : [];
+// Helper function to extract parameter names from path template
+function extractParamNames(template: string): string[] {
+  const matches = template.match(/:(\w+)/g);
+  return matches ? matches.map(match => match.slice(1)) : [];
+}
+
+// Query parameters configuration
+export interface QueryParamsConfig {
+  static?: Record<string, any>; // Always included in requests
+  dynamic?: string[]; // Runtime configurable parameters
 }
 
 export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.ZodSchema>(
   pathTemplate: string,
   _entitySchema: TEntity,
   upsertSchema: TUpsert,
-  config?: GlobalStateConfig
+  config?: GlobalStateConfig & { queryParams?: QueryParamsConfig }
 ) {
   type EntityType = CompleteEntityType<InferType<TEntity>>;
 
   // Current resolved path (starts as template)
   let currentPath = pathTemplate;
+  // Current query parameters
+  let currentQueryParams: Record<string, any> = {};
+
   // Extract entity name from path - for nested paths, combine segments
   const segments = pathTemplate.split('/').filter(Boolean);
   const nonParamSegments = segments.filter(segment => !segment.startsWith(':'));
   const entity =
     nonParamSegments.length > 1
       ? nonParamSegments.join('_') // e.g., 'todos/:todoId/comments' → 'todos_comments'
-      : segments[segments.length - 1].replace(':', ''); // Simple case: 'todos' → 'todos'
-
-  console.log('🔍 createDomainApi entity name:', {
-    pathTemplate,
-    segments,
-    nonParamSegments,
-    entity,
-  });
+      : nonParamSegments[nonParamSegments.length - 1]; // Simple case: 'todos' → 'todos'
 
   const api = {
     // Optional method to inject path parameters
     withParams: (params: Record<string, string>) => {
       currentPath = buildPath(pathTemplate, params);
+      return api; // Return self for chaining
+    },
+
+    // Optional method to inject query parameters
+    withQuery: (queryParams: Record<string, any>) => {
+      // Validate that only allowed dynamic params are used
+      if (config?.queryParams?.dynamic) {
+        const allowedParams = config.queryParams.dynamic;
+        const invalidParams = Object.keys(queryParams).filter(key => !allowedParams.includes(key));
+        if (invalidParams.length > 0) {
+          throw new Error(
+            `Invalid query parameters: ${invalidParams.join(', ')}. ` +
+              `Allowed parameters: ${allowedParams.join(', ')}`
+          );
+        }
+      }
+
+      // Merge static params with dynamic params
+      const staticParams = config?.queryParams?.static || {};
+      currentQueryParams = { ...staticParams, ...queryParams };
       return api; // Return self for chaining
     },
 
@@ -87,9 +109,13 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
             `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useList().`
         );
       }
-      console.log('🔍 useList called with:', { entity, currentPath, params });
+      // Merge static params with any existing query params
+      const staticParams = config?.queryParams?.static || {};
+      const finalQueryParams = { ...staticParams, ...currentQueryParams };
+      
       return useList<EntityType>(entity, currentPath, params, {
         cacheTime: config?.cacheTime,
+        queryParams: Object.keys(finalQueryParams).length > 0 ? finalQueryParams : undefined,
       });
     },
 

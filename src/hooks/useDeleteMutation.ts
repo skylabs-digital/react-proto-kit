@@ -31,7 +31,6 @@ export function useDeleteMutation<TEntity>(
       try {
         const baseEndpoint = endpoint || entity;
         const deleteEndpoint = `${baseEndpoint}/${id}`;
-        console.log('🔍 DELETE mutation:', { entity, endpoint: baseEndpoint, id, deleteEndpoint });
         debugLogger.logRequest('DELETE', deleteEndpoint, undefined);
 
         const response = await connector.delete(deleteEndpoint);
@@ -42,23 +41,13 @@ export function useDeleteMutation<TEntity>(
             // Remove from specific lists for this endpoint
             const baseEndpointForCache = endpoint || entity;
             const specificCacheKey = `list:${baseEndpointForCache}`;
-            console.log('🔍 DELETE updating cache:', {
-              entity,
-              endpoint,
-              baseEndpointForCache,
-              specificCacheKey,
-              availableKeys: Object.keys(entityState.lists),
-              id,
-            });
 
             Object.keys(entityState.lists).forEach(listKey => {
               // Only update lists that match this endpoint pattern
               if (listKey.startsWith(specificCacheKey)) {
                 const list = entityState.lists[listKey];
-                console.log('🔍 Updating list:', { listKey, currentLength: list?.length });
                 if (Array.isArray(list)) {
                   const filteredList = list.filter((item: any) => item.id !== id);
-                  console.log('🔍 After filter:', { newLength: filteredList.length });
                   entityState.actions.setList(listKey, filteredList);
                 }
               }

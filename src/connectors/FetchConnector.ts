@@ -67,7 +67,7 @@ export class FetchConnector implements IConnector {
     const url = this.buildUrl(endpoint, params);
 
     // Debug log request
-    debugLogger.logRequest(method, endpoint, data);
+    debugLogger.logRequest(method, endpoint, data, params);
 
     const requestConfig: RequestInit = {
       method,

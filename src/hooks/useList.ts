@@ -7,6 +7,7 @@ interface UseListOptions {
   enabled?: boolean;
   refetchOnMount?: boolean;
   cacheTime?: number;
+  queryParams?: Record<string, any>;
 }
 
 // Unified hook that can work with or without global state
@@ -61,7 +62,9 @@ export function useList<T>(
       }
 
       try {
-        const response = await connector.get<T[]>(endpoint, params);
+        // Merge ListParams with queryParams
+        const mergedParams = { ...params, ...options?.queryParams };
+        const response = await connector.get<T[]>(endpoint, mergedParams);
 
         if (response.success) {
           if (globalState && entityState) {
