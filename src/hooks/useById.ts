@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { UseQueryResult, ErrorResponse } from '../types';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
@@ -31,6 +31,10 @@ export function useById<T>(
   const [localLoading, setLocalLoading] = useState(true);
   const [localError, setLocalError] = useState<ErrorResponse | null>(null);
 
+  // Control flags to prevent duplicate fetches
+  const hasFetchedRef = useRef(false);
+  const isCurrentlyFetchingRef = useRef(false);
+
   // Determine which state to use
   const cacheKey = `${endpoint}${params ? JSON.stringify(params) : ''}`;
 
@@ -41,84 +45,115 @@ export function useById<T>(
 
   const error = globalState && entityState ? entityState.errors?.[cacheKey] || null : localError;
 
-  const lastFetch = globalState && entityState ? entityState.lastFetch?.[cacheKey] || 0 : 0;
+  const fetchData = useCallback(
+    async (force = false) => {
+      if (!endpoint || enabled === false) return;
 
-  const fetchData = useCallback(async () => {
-    if (!endpoint || enabled === false) return;
-
-    // Check cache validity for global state
-    if (globalState) {
-      const cacheTimeMs = cacheTime || 5 * 60 * 1000; // 5 minutes default
-      if (data && Date.now() - lastFetch < cacheTimeMs) {
+      // Prevent duplicate fetches unless forced (like refetch)
+      if (!force && (isCurrentlyFetchingRef.current || hasFetchedRef.current)) {
         return;
       }
 
-      entityState.actions.setLoading(cacheKey, true);
-      entityState.actions.setError(cacheKey, null);
-    } else {
-      setLocalLoading(true);
-      setLocalError(null);
-    }
+      // Get current state values at execution time
+      const currentEntityState = globalState ? entityState : null;
+      const currentData = currentEntityState
+        ? currentEntityState.data?.[cacheKey] || null
+        : localData;
+      const currentLastFetch = currentEntityState
+        ? currentEntityState.lastFetch?.[cacheKey] || 0
+        : 0;
 
-    try {
-      const response = await connector.get<T>(endpoint, params);
-
-      if (response.success) {
-        if (globalState) {
-          entityState.actions.setData(cacheKey, response.data);
-        } else {
-          setLocalData(response.data);
+      // Check cache validity
+      if (!force && currentData) {
+        const cacheTimeMs = cacheTime || 5 * 60 * 1000; // 5 minutes default
+        if (Date.now() - currentLastFetch < cacheTimeMs) {
+          return;
         }
+      }
+
+      // Mark as currently fetching
+      isCurrentlyFetchingRef.current = true;
+
+      // Set loading state
+      if (currentEntityState) {
+        currentEntityState.actions.setLoading(cacheKey, true);
+        currentEntityState.actions.setError(cacheKey, null);
       } else {
-        const errorResponse = response as ErrorResponse;
-        if (globalState) {
-          entityState.actions.setError(cacheKey, errorResponse);
+        setLocalLoading(true);
+        setLocalError(null);
+      }
+
+      try {
+        const response = await connector.get<T>(endpoint, params);
+
+        if (response.success) {
+          if (currentEntityState) {
+            currentEntityState.actions.setData(cacheKey, response.data);
+          } else {
+            setLocalData(response.data);
+          }
+          hasFetchedRef.current = true; // Mark as successfully fetched
+        } else {
+          const errorResponse = response as ErrorResponse;
+          if (currentEntityState) {
+            currentEntityState.actions.setError(cacheKey, errorResponse);
+          } else {
+            setLocalError(errorResponse);
+            setLocalData(null);
+          }
+        }
+      } catch (err) {
+        const errorResponse: ErrorResponse = {
+          success: false,
+          message: err instanceof Error ? err.message : 'Unknown error',
+          error: { code: 'UNKNOWN_ERROR' },
+        };
+
+        if (currentEntityState) {
+          currentEntityState.actions.setError(cacheKey, errorResponse);
         } else {
           setLocalError(errorResponse);
           setLocalData(null);
         }
+      } finally {
+        if (currentEntityState) {
+          currentEntityState.actions.setLoading(cacheKey, false);
+        } else {
+          setLocalLoading(false);
+        }
+        isCurrentlyFetchingRef.current = false; // Mark as no longer fetching
       }
-    } catch (err) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: err instanceof Error ? err.message : 'Unknown error',
-        error: { code: 'UNKNOWN_ERROR' },
-      };
-
-      if (globalState) {
-        entityState.actions.setError(cacheKey, errorResponse);
-      } else {
-        setLocalError(errorResponse);
-        setLocalData(null);
-      }
-    } finally {
-      if (globalState) {
-        entityState.actions.setLoading(cacheKey, false);
-      } else {
-        setLocalLoading(false);
-      }
-    }
-  }, [connector, endpoint, params, enabled, cacheTime, globalState, cacheKey, entityState]);
+    },
+    [connector, endpoint, params, enabled, cacheTime, globalState, cacheKey]
+  );
 
   const refetch = useCallback(async () => {
-    await fetchData();
+    await fetchData(true); // Force refetch
   }, [fetchData]);
+
+  // Reset fetch flags when key parameters change
+  useEffect(() => {
+    hasFetchedRef.current = false;
+    isCurrentlyFetchingRef.current = false;
+  }, [endpoint, cacheKey]);
 
   // Subscribe to invalidations only for global state
   useEffect(() => {
     if (globalState) {
       const unsubscribe = globalInvalidationManager.subscribe(entity, () => {
-        fetchData();
+        hasFetchedRef.current = false; // Allow refetch on invalidation
+        fetchData(true);
       });
       return unsubscribe;
     }
-  }, [entity, fetchData, globalState]);
+  }, [entity, globalState]); // Removed fetchData dependency
 
+  // Initial fetch on mount - only runs once
   useEffect(() => {
-    if (refetchOnMount !== false) {
+    if (refetchOnMount !== false && !hasFetchedRef.current) {
       fetchData();
     }
-  }, [fetchData, refetchOnMount]);
+  }, []); // Empty dependency array - only runs on mount
 
   return {
     data,

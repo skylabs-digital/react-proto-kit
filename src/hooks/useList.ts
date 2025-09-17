@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { UseListResult, ErrorResponse, ListParams, PaginationMeta } from '../types';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
@@ -29,6 +29,10 @@ export function useList<T>(
   const [localError, setLocalError] = useState<ErrorResponse | null>(null);
   const [localMeta, setLocalMeta] = useState<PaginationMeta | undefined>(undefined);
 
+  // Control flags to prevent duplicate fetches
+  const hasFetchedRef = useRef(false);
+  const isCurrentlyFetchingRef = useRef(false);
+
   // Determine which state to use - include endpoint to differentiate between different paths
   const cacheKey = `list:${endpoint}${params ? ':' + JSON.stringify(params) : ''}`;
 
@@ -41,21 +45,39 @@ export function useList<T>(
 
   const meta = globalState && entityState ? entityState.meta?.[cacheKey] : localMeta;
 
-  const lastFetch = globalState && entityState ? entityState.lastFetch?.[cacheKey] || 0 : 0;
-
   const fetchData = useCallback(
     async (forceRefetch = false) => {
       if (options?.enabled === false) return;
 
-      // Check cache validity for global state
-      if (globalState && entityState) {
+      // Prevent duplicate fetches unless forced (like refetch)
+      if (!forceRefetch && (isCurrentlyFetchingRef.current || hasFetchedRef.current)) {
+        return;
+      }
+
+      // Get current state values at execution time
+      const currentEntityState = globalState ? entityState : null;
+      const currentData = currentEntityState
+        ? currentEntityState.lists?.[cacheKey] || null
+        : localData;
+      const currentLastFetch = currentEntityState
+        ? currentEntityState.lastFetch?.[cacheKey] || 0
+        : 0;
+
+      // Check cache validity
+      if (!forceRefetch && currentData) {
         const cacheTime = options?.cacheTime || 5 * 60 * 1000; // 5 minutes default
-        if (!forceRefetch && data && Date.now() - lastFetch < cacheTime) {
+        if (Date.now() - currentLastFetch < cacheTime) {
           return;
         }
+      }
 
-        entityState.actions.setLoading(cacheKey, true);
-        entityState.actions.setError(cacheKey, null);
+      // Mark as currently fetching
+      isCurrentlyFetchingRef.current = true;
+
+      // Set loading state
+      if (currentEntityState) {
+        currentEntityState.actions.setLoading(cacheKey, true);
+        currentEntityState.actions.setError(cacheKey, null);
       } else {
         setLocalLoading(true);
         setLocalError(null);
@@ -67,19 +89,20 @@ export function useList<T>(
         const response = await connector.get<T[]>(endpoint, mergedParams);
 
         if (response.success) {
-          if (globalState && entityState) {
-            entityState.actions.setList(cacheKey, response.data);
+          if (currentEntityState) {
+            currentEntityState.actions.setList(cacheKey, response.data);
             if (response.meta) {
-              entityState.actions.setMeta(cacheKey, response.meta);
+              currentEntityState.actions.setMeta(cacheKey, response.meta);
             }
           } else {
             setLocalData(response.data);
             setLocalMeta(response.meta);
           }
+          hasFetchedRef.current = true; // Mark as successfully fetched
         } else {
           const errorResponse = response as ErrorResponse;
-          if (globalState && entityState) {
-            entityState.actions.setError(cacheKey, errorResponse);
+          if (currentEntityState) {
+            currentEntityState.actions.setError(cacheKey, errorResponse);
           } else {
             setLocalError(errorResponse);
             setLocalData(null);
@@ -93,19 +116,20 @@ export function useList<T>(
           error: { code: 'UNKNOWN_ERROR' },
         };
 
-        if (globalState && entityState) {
-          entityState.actions.setError(cacheKey, errorResponse);
+        if (currentEntityState) {
+          currentEntityState.actions.setError(cacheKey, errorResponse);
         } else {
           setLocalError(errorResponse);
           setLocalData(null);
           setLocalMeta(undefined);
         }
       } finally {
-        if (globalState && entityState) {
-          entityState.actions.setLoading(cacheKey, false);
+        if (currentEntityState) {
+          currentEntityState.actions.setLoading(cacheKey, false);
         } else {
           setLocalLoading(false);
         }
+        isCurrentlyFetchingRef.current = false; // Mark as no longer fetching
       }
     },
     [
@@ -116,22 +140,25 @@ export function useList<T>(
       options?.cacheTime,
       globalState,
       cacheKey,
-      entityState?.actions, // Only depend on actions, not the whole entityState
     ]
   );
 
   const refetch = useCallback(async () => {
-    await fetchData();
+    await fetchData(true); // Force refetch
   }, [fetchData]);
 
-  // Invalidation system disabled - we update state directly in mutations
-  // This prevents the flash from automatic refetching
-
+  // Reset fetch flags when key parameters change
   useEffect(() => {
-    if (options?.refetchOnMount !== false) {
+    hasFetchedRef.current = false;
+    isCurrentlyFetchingRef.current = false;
+  }, [endpoint, cacheKey]);
+
+  // Initial fetch on mount - only runs once
+  useEffect(() => {
+    if (options?.refetchOnMount !== false && !hasFetchedRef.current) {
       fetchData();
     }
-  }, [fetchData, options?.refetchOnMount]);
+  }, []); // Empty dependency array - only runs on mount
 
   return {
     data,
