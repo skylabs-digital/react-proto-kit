@@ -112,7 +112,7 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
       // Merge static params with any existing query params
       const staticParams = config?.queryParams?.static || {};
       const finalQueryParams = { ...staticParams, ...currentQueryParams };
-      
+
       return useList<EntityType>(entity, currentPath, params, {
         cacheTime: config?.cacheTime,
         queryParams: Object.keys(finalQueryParams).length > 0 ? finalQueryParams : undefined,
