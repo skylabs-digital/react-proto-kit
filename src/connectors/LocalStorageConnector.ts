@@ -269,6 +269,69 @@ export class LocalStorageConnector implements IConnector {
     return successResponse;
   }
 
+  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const startTime = Date.now();
+    debugLogger.logRequest('PATCH', endpoint, data);
+
+    await this.simulateDelay();
+
+    if (this.shouldSimulateError()) {
+      const errorResponse: ErrorResponse = {
+        success: false,
+        message: 'Simulated localStorage error',
+        error: { code: 'STORAGE_ERROR' },
+      };
+      debugLogger.logResponse('PATCH', endpoint, errorResponse, Date.now() - startTime);
+      return errorResponse;
+    }
+
+    const { collection, id: endpointId } = this.parseEndpoint(endpoint);
+
+    // Support dynamic ID: extract from endpoint or from data payload
+    const id = endpointId || (data && data.id);
+
+    if (!id) {
+      const errorResponse: ErrorResponse = {
+        success: false,
+        message: 'ID is required for patch operation (either in endpoint or data payload)',
+        error: { code: 'INVALID_REQUEST' },
+      };
+      debugLogger.logResponse('PATCH', endpoint, errorResponse, Date.now() - startTime);
+      return errorResponse;
+    }
+
+    const storageData = this.getStorageData();
+    const collectionData = storageData[collection] || [];
+    const itemIndex = collectionData.findIndex((item: any) => item.id === id);
+
+    if (itemIndex === -1) {
+      return {
+        success: false,
+        message: 'Item not found',
+        error: { code: 'NOT_FOUND' },
+      };
+    }
+
+    // For PATCH, only update the provided fields (partial update)
+    const patchedItem = {
+      ...collectionData[itemIndex],
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+
+    collectionData[itemIndex] = patchedItem;
+    storageData[collection] = collectionData;
+    this.setStorageData(storageData);
+
+    const successResponse: SuccessResponse<T> = {
+      success: true,
+      data: patchedItem as T,
+      message: 'Item patched successfully',
+    };
+    debugLogger.logResponse('PATCH', endpoint, successResponse, Date.now() - startTime);
+    return successResponse;
+  }
+
   async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     const startTime = Date.now();
     debugLogger.logRequest('DELETE', endpoint, data);

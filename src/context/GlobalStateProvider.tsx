@@ -7,6 +7,7 @@ export interface EntityState<T = any> {
   loading: Record<string, boolean>;
   errors: Record<string, any>;
   lastFetch: Record<string, number>;
+  meta: Record<string, any>;
 }
 
 export interface GlobalState {
@@ -18,6 +19,7 @@ export type GlobalAction =
   | { type: 'SET_ENTITY_LIST'; entity: string; key: string; data: any[] }
   | { type: 'SET_LOADING'; entity: string; key: string; loading: boolean }
   | { type: 'SET_ERROR'; entity: string; key: string; error: any }
+  | { type: 'SET_META'; entity: string; key: string; meta: any }
   | { type: 'CLEAR_ENTITY_CACHE'; entity: string }
   | { type: 'INVALIDATE_ENTITY'; entity: string }
   | { type: 'OPTIMISTIC_UPDATE'; entity: string; id: string; data: any; tempId?: string }
@@ -103,6 +105,23 @@ function globalStateReducer(state: GlobalState, action: GlobalAction): GlobalSta
       };
     }
 
+    case 'SET_META': {
+      const { entity, key, meta } = action;
+      return {
+        ...state,
+        entities: {
+          ...state.entities,
+          [entity]: {
+            ...state.entities[entity],
+            meta: {
+              ...state.entities[entity]?.meta,
+              [key]: meta,
+            },
+          },
+        },
+      };
+    }
+
     case 'CLEAR_ENTITY_CACHE': {
       const { entity } = action;
       return {
@@ -115,6 +134,7 @@ function globalStateReducer(state: GlobalState, action: GlobalAction): GlobalSta
             loading: {},
             errors: {},
             lastFetch: {},
+            meta: {},
           },
         },
       };
@@ -254,18 +274,15 @@ export function GlobalStateProvider({ children, initialState }: GlobalStateProvi
   return <GlobalStateContext.Provider value={value}>{children}</GlobalStateContext.Provider>;
 }
 
-// Hook to use global state
-export function useGlobalState() {
-  const context = useContext(GlobalStateContext);
-  if (!context) {
-    throw new Error('useGlobalState must be used within a GlobalStateProvider');
-  }
-  return context;
-}
-
 // Hook to use entity-specific state
 export function useEntityState<T = any>(entity: string) {
-  const { state, dispatch } = useGlobalState();
+  const context = useContext(GlobalStateContext);
+
+  if (!context) {
+    return null;
+  }
+
+  const { state, dispatch } = context;
 
   const entityState = state.entities[entity] || {
     data: {},
@@ -273,6 +290,7 @@ export function useEntityState<T = any>(entity: string) {
     loading: {},
     errors: {},
     lastFetch: {},
+    meta: {},
   };
 
   const actions = useMemo(
@@ -285,6 +303,8 @@ export function useEntityState<T = any>(entity: string) {
         dispatch({ type: 'SET_LOADING', entity, key, loading }),
 
       setError: (key: string, error: any) => dispatch({ type: 'SET_ERROR', entity, key, error }),
+
+      setMeta: (key: string, meta: any) => dispatch({ type: 'SET_META', entity, key, meta }),
 
       clearCache: () => dispatch({ type: 'CLEAR_ENTITY_CACHE', entity }),
 
@@ -299,7 +319,7 @@ export function useEntityState<T = any>(entity: string) {
       confirmOptimistic: (tempId: string, realData: T) =>
         dispatch({ type: 'CONFIRM_OPTIMISTIC', entity, tempId, realData }),
     }),
-    [dispatch, entity]
+    [dispatch]
   );
 
   return {

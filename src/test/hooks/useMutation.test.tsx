@@ -51,7 +51,7 @@ describe('useMutation', () => {
 
     let returnedData;
     await act(async () => {
-      returnedData = await result.current.mutate(inputData);
+      returnedData = await result.current.mutate('temp-id', inputData);
     });
 
     expect(returnedData).toMatchObject({
@@ -73,7 +73,7 @@ describe('useMutation', () => {
 
     let returnedData;
     await act(async () => {
-      returnedData = await result.current.mutate(inputData);
+      returnedData = await result.current.mutate('1', inputData);
     });
 
     expect(returnedData).toMatchObject({
@@ -90,7 +90,7 @@ describe('useMutation', () => {
     });
 
     await act(async () => {
-      await result.current.mutate(undefined);
+      await result.current.mutate('1');
     });
 
     expect(result.current.loading).toBe(false);
@@ -104,7 +104,7 @@ describe('useMutation', () => {
 
     await act(async () => {
       try {
-        await result.current.mutate({ name: 'Invalid' });
+        await result.current.mutate('999', { name: 'Invalid' });
       } catch {
         // Expected error for non-existent item
       }
@@ -120,7 +120,7 @@ describe('useMutation', () => {
 
     await act(async () => {
       try {
-        await result.current.mutate(undefined);
+        await result.current.mutate('999');
       } catch {
         // Expected error for non-existent item
       }
@@ -136,7 +136,7 @@ describe('useMutation', () => {
 
     await act(async () => {
       try {
-        await result.current.mutate({ name: 'Test' });
+        await result.current.mutate('1', { name: 'Test' });
       } catch (error) {
         expect((error as Error).message).toContain('Unsupported method: PATCH');
       }

@@ -14,7 +14,6 @@ describe('createDomainApi', () => {
       const api = createDomainApi('testEntities', testSchema, {
         globalState: true,
         optimistic: true,
-        invalidateRelated: ['relatedEntities'],
       });
 
       expect(api).toBeDefined();
@@ -65,7 +64,6 @@ describe('createDomainApi', () => {
       const api = createDomainApi('testEntities', testSchema, {
         globalState: true,
         optimistic: true,
-        invalidateRelated: ['relatedEntities', 'otherEntities'],
       });
 
       expect(api).toBeDefined();

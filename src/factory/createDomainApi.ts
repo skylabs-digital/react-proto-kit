@@ -8,11 +8,10 @@ import {
 } from '../types';
 import { useQuery } from '../hooks/useQuery';
 import { useList } from '../hooks/useList';
-import { useMutation } from '../hooks/useMutation';
-import { useQueryWithGlobalState } from '../hooks/useQueryWithGlobalState';
-import { useListWithGlobalState } from '../hooks/useListWithGlobalState';
-import { useMutationWithGlobalState } from '../hooks/useMutationWithGlobalState';
-import { globalInvalidationManager } from '../context/InvalidationManager';
+import { useCreateMutation } from '../hooks/useCreateMutation';
+import { usePatchMutation } from '../hooks/usePatchMutation';
+import { useDeleteMutation } from '../hooks/useDeleteMutation';
+import { useUpdateMutation } from '../hooks/useUpdateMutation';
 
 // Type extraction utilities - simple and clean
 export type ExtractEntityType<T> =
@@ -33,106 +32,55 @@ export function createDomainApi<T extends z.ZodSchema>(
   businessSchema: T,
   globalConfig?: GlobalStateConfig
 ): GeneratedCrudApi<InferType<T>> {
-  const useGlobalState = globalConfig?.globalState || false;
-
-  // Setup invalidation rules if specified
-  if (globalConfig?.invalidateRelated) {
-    globalInvalidationManager.addRule({
-      entity,
-      invalidates: globalConfig.invalidateRelated,
-    });
-  }
-
   type EntityType = CompleteEntityType<InferType<T>>;
+
+  // Use upsertSchema if provided, otherwise use businessSchema with omitted auto-generated fields
+  const createUpdateSchema = globalConfig?.upsertSchema || businessSchema;
 
   return {
     useList: (params?: ListParams) => {
-      if (useGlobalState) {
-        return useListWithGlobalState<EntityType>(entity, params, {
-          cacheTime: globalConfig?.cacheTime,
-        });
-      }
-      return useList<EntityType>(entity, params);
+      return useList<EntityType>(entity, entity, params, {
+        cacheTime: globalConfig?.cacheTime,
+      });
     },
 
     useQuery: (id: string | undefined | null) => {
-      if (useGlobalState) {
-        return useQueryWithGlobalState<EntityType>(entity, `${entity}/${id}`, undefined, {
-          cacheTime: globalConfig?.cacheTime,
-        });
-      }
-      return useQuery<EntityType>(id ? `${entity}/${id}` : undefined);
+      return useQuery<EntityType>(entity, id ? `${entity}/${id}` : undefined, undefined, {
+        cacheTime: globalConfig?.cacheTime,
+      });
     },
 
     useById: (id: string | undefined | null) => {
-      if (useGlobalState) {
-        return useQueryWithGlobalState<EntityType>(entity, `${entity}/${id}`, undefined, {
-          cacheTime: globalConfig?.cacheTime,
-        });
-      }
-      return useQuery<EntityType>(id ? `${entity}/${id}` : undefined);
+      return useQuery<EntityType>(entity, id ? `${entity}/${id}` : undefined, undefined, {
+        cacheTime: globalConfig?.cacheTime,
+      });
     },
 
     useCreate: () => {
-      if (useGlobalState) {
-        return useMutationWithGlobalState<
-          Omit<InferType<T>, 'id' | 'createdAt' | 'updatedAt'>,
-          EntityType
-        >(entity, entity, 'POST', businessSchema, {
+      return useCreateMutation<Omit<InferType<T>, 'id' | 'createdAt' | 'updatedAt'>, EntityType>(
+        entity,
+        createUpdateSchema as z.ZodSchema<Omit<InferType<T>, 'id' | 'createdAt' | 'updatedAt'>>,
+        {
           optimistic: globalConfig?.optimistic,
-          invalidateRelated: globalConfig?.invalidateRelated,
-        });
-      }
-      return useMutation<Omit<InferType<T>, 'id' | 'createdAt' | 'updatedAt'>, EntityType>(
-        entity,
-        'POST',
-        businessSchema
+        }
       );
     },
 
-    useUpdate: (id?: string) => {
-      if (useGlobalState) {
-        return useMutationWithGlobalState<
-          Omit<InferType<T>, 'id' | 'createdAt' | 'updatedAt'>,
-          EntityType
-        >(entity, id ? `${entity}/${id}` : entity, 'PUT', businessSchema, {
-          invalidateRelated: globalConfig?.invalidateRelated,
-        });
-      }
-      return useMutation<Omit<InferType<T>, 'id' | 'createdAt' | 'updatedAt'>, EntityType>(
+    useUpdate: () => {
+      return useUpdateMutation<Omit<InferType<T>, 'id' | 'createdAt' | 'updatedAt'>, EntityType>(
         entity,
-        'PUT',
-        businessSchema
+        createUpdateSchema as z.ZodSchema<Omit<InferType<T>, 'id' | 'createdAt' | 'updatedAt'>>
       );
     },
 
-    useDelete: (id?: string) => {
-      if (useGlobalState) {
-        const mutation = useMutationWithGlobalState<void, void>(
-          entity,
-          id ? `${entity}/${id}` : entity,
-          'DELETE',
-          undefined,
-          {
-            invalidateRelated: globalConfig?.invalidateRelated,
-          }
-        );
-        return {
-          ...mutation,
-          mutate: (_input: void = undefined, dynamicId?: string) => {
-            // For dynamic ID, pass the ID in the data payload for connector extraction
-            const dataWithId = dynamicId ? { id: dynamicId } : undefined;
-            return mutation.mutate(dataWithId as any, dynamicId);
-          },
-        };
-      }
-      const mutation = useMutation<void, void>(entity, 'DELETE');
-      return {
-        ...mutation,
-        mutate: (input: void = undefined, dynamicId?: string) => {
-          return mutation.mutate(input, dynamicId || id);
-        },
-      };
+    usePatch: () => {
+      return usePatchMutation<
+        Partial<Omit<InferType<T>, 'id' | 'createdAt' | 'updatedAt'>>,
+        EntityType
+      >(entity);
+    },
+    useDelete: () => {
+      return useDeleteMutation<EntityType>(entity);
     },
   };
 }

@@ -28,7 +28,6 @@ type FilterType = 'all' | 'active' | 'completed';
 
 // Create API with Global Context
 const todosApi = createDomainApi('todos', todoSchema, {
-  globalState: true,
   optimistic: true,
   cacheTime: 5 * 60 * 1000, // 5 minutes
 });
@@ -128,34 +127,95 @@ function TodoStats() {
 }
 
 function TodoItem({ todo }: { todo: Todo }) {
-  const { mutate: updateTodo } = todosApi.useUpdate(todo.id);
-  const { mutate: deleteTodo } = todosApi.useDelete(todo.id);
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editText, setEditText] = React.useState(todo.text);
+
+  // Use PATCH for toggling completion status (partial update)
+  const { mutate: patchTodo } = todosApi.usePatch();
+  // Use UPDATE for editing the full todo (complete update)
+  const { mutate: updateTodo } = todosApi.useUpdate();
+  // Use DELETE for removing todos
+  const { mutate: deleteTodo } = todosApi.useDelete();
 
   const handleToggle = () => {
-    updateTodo({
-      text: todo.text,
-      completed: !todo.completed,
-    });
+    // PATCH only the completed field - more efficient!
+    patchTodo(todo.id, { completed: !todo.completed });
   };
 
   const handleDelete = () => {
-    deleteTodo();
+    deleteTodo(todo.id);
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditText(todo.text);
+  };
+
+  const handleSave = () => {
+    if (editText.trim() && editText !== todo.text) {
+      // UPDATE the entire todo with new text
+      updateTodo(todo.id, {
+        text: editText.trim(),
+        completed: todo.completed,
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditText(todo.text);
+    setIsEditing(false);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
   };
 
   return (
     <li className={`todo-item ${todo.completed ? 'completed' : ''}`}>
-      <span className={`todo-text ${todo.completed ? 'completed' : ''}`}>{todo.text}</span>
-      <div className="todo-actions">
-        <button
-          onClick={handleToggle}
-          className={`btn ${todo.completed ? 'btn-success' : 'btn-success'}`}
-        >
-          {todo.completed ? '↶ Undo' : '✓ Done'}
-        </button>
-        <button onClick={handleDelete} className="btn btn-danger">
-          Delete
-        </button>
-      </div>
+      {isEditing ? (
+        <div className="todo-edit">
+          <input
+            type="text"
+            value={editText}
+            onChange={e => setEditText(e.target.value)}
+            onKeyDown={handleKeyPress}
+            className="todo-edit-input"
+            autoFocus
+          />
+          <div className="todo-edit-actions">
+            <button onClick={handleSave} className="btn btn-success btn-sm">
+              Save
+            </button>
+            <button onClick={handleCancel} className="btn btn-secondary btn-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <span className={`todo-text ${todo.completed ? 'completed' : ''}`}>{todo.text}</span>
+          <div className="todo-actions">
+            <button
+              onClick={handleToggle}
+              className={`btn ${todo.completed ? 'btn-warning' : 'btn-success'}`}
+              title={todo.completed ? 'Mark as pending (PATCH)' : 'Mark as done (PATCH)'}
+            >
+              {todo.completed ? '↶ Undo' : '✓ Done'}
+            </button>
+            <button onClick={handleEdit} className="btn btn-info" title="Edit todo (UPDATE)">
+              ✏️ Edit
+            </button>
+            <button onClick={handleDelete} className="btn btn-danger" title="Delete todo (DELETE)">
+              🗑️ Delete
+            </button>
+          </div>
+        </>
+      )}
     </li>
   );
 }
@@ -241,7 +301,10 @@ function App() {
           <div className="app">
             <header className="header">
               <h1>Todo App</h1>
-              <p>With Global Context - All components stay in sync automatically!</p>
+              <p>With Global Context - Testing all CRUD operations!</p>
+              <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', opacity: 0.8 }}>
+                ✨ CREATE (POST) • 🔄 UPDATE (PUT) • 🎯 PATCH (partial) • 🗑️ DELETE
+              </p>
             </header>
 
             <div className="content">

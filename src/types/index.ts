@@ -32,6 +32,7 @@ export interface IConnector {
   get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>>;
   post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
   put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
+  patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
   delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
 }
 
@@ -51,7 +52,6 @@ export interface ConnectorConfig {
   // Global config
   errorHandling?: 'throw' | 'return';
   caching?: boolean;
-  devMode?: boolean;
   pagination?: PaginationConfig;
 
   // Seed configuration
@@ -102,12 +102,10 @@ export interface RequestConfig {
 
 // Global state configuration
 export interface GlobalStateConfig {
-  globalState?: boolean;
   optimistic?: boolean;
-  invalidateRelated?: string[];
   cacheTime?: number;
   syncStrategy?: 'immediate' | 'debounced';
-  devMode?: boolean;
+  upsertSchema?: z.ZodSchema;
 }
 
 // Domain API types
@@ -146,7 +144,31 @@ export interface UseQueryResult<T> {
 }
 
 export interface UseMutationResult<TInput, TOutput = void> {
-  mutate: (input: TInput, dynamicId?: string) => Promise<TOutput>;
+  mutate: (id: string, input?: TInput, field?: string) => Promise<TOutput>;
+  loading: boolean;
+  error: ErrorResponse | null;
+}
+
+export interface UseCreateMutationResult<TInput, _TOutput = void> {
+  mutate: (input: TInput) => Promise<_TOutput>;
+  loading: boolean;
+  error: ErrorResponse | null;
+}
+
+export interface UseUpdateMutationResult<TInput, _TOutput = void> {
+  mutate: (id: string, data: TInput) => Promise<void>;
+  loading: boolean;
+  error: ErrorResponse | null;
+}
+
+export interface UsePatchMutationResult<TInput> {
+  mutate: (id: string, data: TInput) => Promise<void>;
+  loading: boolean;
+  error: ErrorResponse | null;
+}
+
+export interface UseDeleteMutationResult {
+  mutate: (id: string) => Promise<void>;
   loading: boolean;
   error: ErrorResponse | null;
 }
@@ -163,14 +185,16 @@ export interface GeneratedCrudApi<T> {
   useList: (params?: ListParams) => UseListResult<CompleteEntityType<T>>;
   useQuery: (id: string | undefined | null) => UseQueryResult<CompleteEntityType<T>>;
   useById: (id: string | undefined | null) => UseQueryResult<CompleteEntityType<T>>;
-  useCreate: () => UseMutationResult<
+  useCreate: () => UseCreateMutationResult<
     Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
     CompleteEntityType<T>
   >;
-  useUpdate: (
-    id?: string
-  ) => UseMutationResult<Omit<T, 'id' | 'createdAt' | 'updatedAt'>, CompleteEntityType<T>>;
-  useDelete: (id?: string) => UseMutationResult<void>;
+  useUpdate: () => UseUpdateMutationResult<
+    Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
+    CompleteEntityType<T>
+  >;
+  usePatch: () => UsePatchMutationResult<Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>>;
+  useDelete: () => UseDeleteMutationResult;
 }
 
 export interface ListParams {

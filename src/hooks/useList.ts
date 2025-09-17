@@ -1,55 +1,128 @@
 import { useState, useEffect, useCallback } from 'react';
 import { UseListResult, ErrorResponse, ListParams, PaginationMeta } from '../types';
 import { useApiClient } from '../provider/ApiClientProvider';
+import { useEntityState } from '../context/GlobalStateProvider';
 
+interface UseListOptions {
+  enabled?: boolean;
+  refetchOnMount?: boolean;
+  cacheTime?: number;
+}
+
+// Unified hook that can work with or without global state
 export function useList<T>(
+  entity: string,
   endpoint: string,
   params?: ListParams,
-  options?: {
-    enabled?: boolean;
-    refetchOnMount?: boolean;
-  }
+  options?: UseListOptions
 ): UseListResult<T> {
   const { connector } = useApiClient();
-  const [data, setData] = useState<T[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ErrorResponse | null>(null);
-  const [meta, setMeta] = useState<PaginationMeta | undefined>(undefined);
 
-  const fetchData = useCallback(async () => {
-    if (options?.enabled === false) return;
+  // Only get entity state if global state is enabled
+  const entityState = useEntityState<T>(entity);
+  const globalState = !!entityState;
 
-    setLoading(true);
-    setError(null);
+  // Local state for non-global state mode
+  const [localData, setLocalData] = useState<T[] | null>(null);
+  const [localLoading, setLocalLoading] = useState(true);
+  const [localError, setLocalError] = useState<ErrorResponse | null>(null);
+  const [localMeta, setLocalMeta] = useState<PaginationMeta | undefined>(undefined);
 
-    try {
-      const response = await connector.get<T[]>(endpoint, params);
+  // Determine which state to use
+  const cacheKey = `list${params ? JSON.stringify(params) : ''}`;
 
-      if (response.success) {
-        setData(response.data);
-        setMeta(response.meta);
+  const data = globalState && entityState ? entityState.lists?.[cacheKey] || null : localData;
+
+  const loading =
+    globalState && entityState ? (entityState.loading?.[cacheKey] ?? true) : localLoading;
+
+  const error = globalState && entityState ? entityState.errors?.[cacheKey] || null : localError;
+
+  const meta = globalState && entityState ? entityState.meta?.[cacheKey] : localMeta;
+
+  const lastFetch = globalState && entityState ? entityState.lastFetch?.[cacheKey] || 0 : 0;
+
+  const fetchData = useCallback(
+    async (forceRefetch = false) => {
+      if (options?.enabled === false) return;
+
+      // Check cache validity for global state
+      if (globalState && entityState) {
+        const cacheTime = options?.cacheTime || 5 * 60 * 1000; // 5 minutes default
+        if (!forceRefetch && data && Date.now() - lastFetch < cacheTime) {
+          return;
+        }
+
+        entityState.actions.setLoading(cacheKey, true);
+        entityState.actions.setError(cacheKey, null);
       } else {
-        setError(response as ErrorResponse);
-        setData(null);
-        setMeta(undefined);
+        setLocalLoading(true);
+        setLocalError(null);
       }
-    } catch (err) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: err instanceof Error ? err.message : 'Unknown error',
-        error: { code: 'UNKNOWN_ERROR' },
-      };
-      setError(errorResponse);
-      setData(null);
-      setMeta(undefined);
-    } finally {
-      setLoading(false);
-    }
-  }, [connector, endpoint, params, options?.enabled]);
+
+      try {
+        const response = await connector.get<T[]>(endpoint, params);
+
+        if (response.success) {
+          if (globalState && entityState) {
+            entityState.actions.setList(cacheKey, response.data);
+            if (response.meta) {
+              entityState.actions.setMeta(cacheKey, response.meta);
+            }
+          } else {
+            setLocalData(response.data);
+            setLocalMeta(response.meta);
+          }
+        } else {
+          const errorResponse = response as ErrorResponse;
+          if (globalState && entityState) {
+            entityState.actions.setError(cacheKey, errorResponse);
+          } else {
+            setLocalError(errorResponse);
+            setLocalData(null);
+            setLocalMeta(undefined);
+          }
+        }
+      } catch (err) {
+        const errorResponse: ErrorResponse = {
+          success: false,
+          message: err instanceof Error ? err.message : 'Unknown error',
+          error: { code: 'UNKNOWN_ERROR' },
+        };
+
+        if (globalState && entityState) {
+          entityState.actions.setError(cacheKey, errorResponse);
+        } else {
+          setLocalError(errorResponse);
+          setLocalData(null);
+          setLocalMeta(undefined);
+        }
+      } finally {
+        if (globalState && entityState) {
+          entityState.actions.setLoading(cacheKey, false);
+        } else {
+          setLocalLoading(false);
+        }
+      }
+    },
+    [
+      connector,
+      endpoint,
+      params,
+      options?.enabled,
+      options?.cacheTime,
+      globalState,
+      cacheKey,
+      entityState,
+    ]
+  );
 
   const refetch = useCallback(async () => {
     await fetchData();
   }, [fetchData]);
+
+  // Invalidation system disabled - we update state directly in mutations
+  // This prevents the flash from automatic refetching
 
   useEffect(() => {
     if (options?.refetchOnMount !== false) {

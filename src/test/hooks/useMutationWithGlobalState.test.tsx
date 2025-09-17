@@ -105,7 +105,7 @@ describe('useMutationWithGlobalState', () => {
 
       await act(async () => {
         try {
-          await result.current.mutate(invalidEntity);
+          await result.current.mutate('1', invalidEntity);
         } catch {
           // Expected to fail - error should be caught
         }
@@ -125,7 +125,6 @@ describe('useMutationWithGlobalState', () => {
             testSchema,
             {
               optimistic: true,
-              invalidateRelated: ['relatedEntities'],
             }
           ),
         { wrapper: TestWrapper }
@@ -200,14 +199,14 @@ describe('useMutationWithGlobalState', () => {
         { wrapper: TestWrapper }
       );
 
-      const invalidUpdate = {
-        name: '', // Invalid - empty name
+      const updatedEntity = {
+        name: 'Updated Name',
         value: 100,
       };
 
       await act(async () => {
         try {
-          await result.current.mutate(invalidUpdate);
+          await result.current.mutate('test-id', updatedEntity);
         } catch {
           // Expected to fail
         }
@@ -257,7 +256,7 @@ describe('useMutationWithGlobalState', () => {
 
       await act(async () => {
         try {
-          await result.current.mutate();
+          await result.current.mutate('1');
         } catch {
           // Expected to fail
         }

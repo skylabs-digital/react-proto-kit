@@ -76,7 +76,7 @@ export class FetchConnector implements IConnector {
       },
     };
 
-    if (data && (method === 'POST' || method === 'PUT')) {
+    if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
       requestConfig.body = JSON.stringify(data);
     }
 
@@ -217,6 +217,15 @@ export class FetchConnector implements IConnector {
       finalEndpoint = `${endpoint}/${data.id}`;
     }
     return this.executeRequest<T>('PUT', finalEndpoint, data);
+  }
+
+  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    // Support dynamic ID: if endpoint doesn't contain ID but data has ID, append it
+    let finalEndpoint = endpoint;
+    if (data && data.id && !endpoint.includes('/')) {
+      finalEndpoint = `${endpoint}/${data.id}`;
+    }
+    return this.executeRequest<T>('PATCH', finalEndpoint, data);
   }
 
   async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
