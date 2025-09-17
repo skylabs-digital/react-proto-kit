@@ -2,7 +2,7 @@ import React from 'react';
 import {
   ApiClientProvider,
   createEntitySchema,
-  createCrudApi,
+  createDomainApi,
   createCreateSchema,
   createUpdateSchema,
   z,
@@ -21,10 +21,7 @@ const ProductCreateSchema = createCreateSchema(ProductSchema);
 const ProductUpdateSchema = createUpdateSchema(ProductSchema);
 
 // 3. Create API with validation
-const productApi = createCrudApi('products', ProductSchema, {
-  createSchema: ProductCreateSchema,
-  updateSchema: ProductUpdateSchema,
-});
+const productApi = createDomainApi('products', ProductSchema, ProductCreateSchema);
 
 // 3. Use in components (zero config)
 function ProductList() {

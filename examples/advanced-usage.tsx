@@ -2,20 +2,19 @@ import React from 'react';
 import {
   ApiClientProvider,
   createEntitySchema,
-  createCrudApi,
+  createDomainApi,
   createReadOnlyApi,
-  createCustomApi,
   z,
 } from '../src/index';
 
-// Multiple domain schemas
-const UserSchema = createEntitySchema({
+// Entity schemas (with id, createdAt, updatedAt)
+const UserEntitySchema = createEntitySchema({
   name: z.string(),
   email: z.email(),
   role: z.enum(['admin', 'user']),
 });
 
-const OrderSchema = createEntitySchema({
+const OrderEntitySchema = createEntitySchema({
   userId: z.string(),
   total: z.number(),
   status: z.enum(['pending', 'completed', 'cancelled']),
@@ -28,17 +27,36 @@ const OrderSchema = createEntitySchema({
   ),
 });
 
-const AnalyticsSchema = createEntitySchema({
+const AnalyticsEntitySchema = createEntitySchema({
   metric: z.string(),
   value: z.number(),
   date: z.string(),
 });
 
+// Upsert schemas (without id, createdAt, updatedAt)
+const UserUpsertSchema = z.object({
+  name: z.string(),
+  email: z.email(),
+  role: z.enum(['admin', 'user']),
+});
+
+const OrderUpsertSchema = z.object({
+  userId: z.string(),
+  total: z.number(),
+  status: z.enum(['pending', 'completed', 'cancelled']),
+  items: z.array(
+    z.object({
+      productId: z.string(),
+      quantity: z.number(),
+      price: z.number(),
+    })
+  ),
+});
+
 // Different API patterns
-const userApi = createCrudApi('users', UserSchema);
-const orderApi = createCrudApi('orders', OrderSchema);
-const analyticsApi = createReadOnlyApi('analytics', AnalyticsSchema); // Read-only
-const reportsApi = createCustomApi('reports', AnalyticsSchema, ['list']); // Custom operations
+const userApi = createDomainApi('users', UserEntitySchema, UserUpsertSchema);
+const orderApi = createDomainApi('orders', OrderEntitySchema, OrderUpsertSchema);
+const analyticsApi = createReadOnlyApi('analytics', AnalyticsEntitySchema); // Read-only
 
 // Multi-domain component
 function Dashboard() {
@@ -55,8 +73,8 @@ function Dashboard() {
   // Analytics (read-only)
   const { data: analytics } = analyticsApi.useList!();
 
-  // Reports (custom API)
-  const { data: reports } = reportsApi.useList!();
+  // Analytics queries
+  const { data: analyticsQuery } = analyticsApi.useQuery!('latest');
 
   const handleCreateUser = async () => {
     try {
@@ -111,16 +129,17 @@ function Dashboard() {
         </ul>
       </div>
 
-      {/* Reports Section */}
+      {/* Analytics Detail */}
       <div>
-        <h2>Reports</h2>
-        <ul>
-          {reports?.slice(0, 3).map(report => (
-            <li key={report.id}>
-              {report.metric}: {report.value}
-            </li>
-          ))}
-        </ul>
+        <h2>Latest Analytics</h2>
+        {analyticsQuery && (
+          <div>
+            <p>
+              {analyticsQuery.metric}: {analyticsQuery.value}
+            </p>
+            <p>Date: {analyticsQuery.date}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -128,13 +147,18 @@ function Dashboard() {
 
 // Order detail with multiple operations
 function OrderDetail({ orderId }: { orderId: string }) {
-  const { data: order, loading } = orderApi.useById!(orderId);
-  const updateOrder = orderApi.useUpdate!(orderId);
-  const deleteOrder = orderApi.useDelete!(orderId);
+  const { data: order, loading } = orderApi.useQuery!(orderId);
+  const updateOrder = orderApi.useUpdate!();
+  const deleteOrder = orderApi.useDelete!();
 
   const handleStatusChange = async (status: 'pending' | 'completed' | 'cancelled') => {
     try {
-      await updateOrder.mutate({ status });
+      await updateOrder.mutate(orderId, {
+        userId: order!.userId,
+        total: order!.total,
+        status,
+        items: order!.items,
+      });
     } catch (error) {
       console.error('Failed to update order:', error);
     }
@@ -166,7 +190,7 @@ function OrderDetail({ orderId }: { orderId: string }) {
           Cancel Order
         </button>
         <button
-          onClick={() => deleteOrder.mutate()}
+          onClick={() => deleteOrder.mutate(orderId)}
           disabled={deleteOrder.loading}
           style={{ marginLeft: '10px', color: 'red' }}
         >
