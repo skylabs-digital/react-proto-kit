@@ -257,8 +257,8 @@ describe('Forms Integration Tests', () => {
 
       // Make changes
       act(() => {
-        result.current.handleChange('name', 'Modified Product');
-        result.current.handleChange('category', 'Modified Category');
+        result.current.handleChange('name' as any, 'Modified Product');
+        result.current.handleChange('category' as any, 'Modified Category');
       });
 
       expect(result.current.isDirty).toBe(true);

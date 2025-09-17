@@ -33,7 +33,7 @@ export interface UseFormDataReturn<T> {
 }
 
 export function useFormData<T extends Record<string, any>>(
-  schema: z.ZodSchema<T>,
+  schema: any,
   initialValues: Partial<T> = {},
   options: UseFormDataOptions = {}
 ): UseFormDataReturn<T> {

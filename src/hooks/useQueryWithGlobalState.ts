@@ -22,14 +22,17 @@ export function useQueryWithGlobalState<T>(
   const data = entityState.data?.[cacheKey] || null;
   const loading = entityState.loading?.[cacheKey] || true;
   const error = entityState.errors?.[cacheKey] || null;
-  const lastFetch = entityState.lastFetch?.[cacheKey] || 0;
 
   const fetchData = useCallback(async () => {
     if (options?.enabled === false) return;
 
+    // Get current data and lastFetch to avoid stale closure
+    const currentData = entityState.data?.[cacheKey] || null;
+    const currentLastFetch = entityState.lastFetch?.[cacheKey] || 0;
+
     // Check cache validity
     const cacheTime = options?.cacheTime || 5 * 60 * 1000; // 5 minutes default
-    if (data && Date.now() - lastFetch < cacheTime) {
+    if (currentData && Date.now() - currentLastFetch < cacheTime) {
       return;
     }
 
@@ -54,17 +57,7 @@ export function useQueryWithGlobalState<T>(
     } finally {
       entityState.actions.setLoading(cacheKey, false);
     }
-  }, [
-    connector,
-    endpoint,
-    params,
-    options?.enabled,
-    cacheKey,
-    entityState,
-    data,
-    lastFetch,
-    options?.cacheTime,
-  ]);
+  }, [connector, endpoint, params, options?.enabled, cacheKey, entityState, options?.cacheTime]);
 
   const refetch = useCallback(async () => {
     await fetchData();

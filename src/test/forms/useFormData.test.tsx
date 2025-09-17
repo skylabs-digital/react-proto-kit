@@ -247,8 +247,8 @@ describe('useFormData', () => {
 
       // Change values and add errors
       act(() => {
-        result.current.handleChange('name', 'Changed');
-        result.current.handleChange('email', 'invalid');
+        result.current.handleChange('name' as any, 'Changed');
+        result.current.handleChange('email' as any, 'invalid');
       });
 
       expect(result.current.values.name).toBe('Changed');

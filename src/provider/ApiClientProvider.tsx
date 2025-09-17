@@ -3,6 +3,9 @@ import { ConnectorType, ConnectorConfig, IConnector } from '../types';
 import { LocalStorageConnector } from '../connectors/LocalStorageConnector';
 import { FetchConnector } from '../connectors/FetchConnector';
 
+// Global connector instance for schema registration
+let globalConnectorInstance: IConnector | null = null;
+
 interface ApiClientContextValue {
   connector: IConnector;
   config: ConnectorConfig;
@@ -22,14 +25,21 @@ export const ApiClientProvider: React.FC<ApiClientProviderProps> = ({
   config = {},
 }) => {
   const connector = React.useMemo(() => {
+    let connectorInstance: IConnector;
     switch (connectorType) {
       case 'localStorage':
-        return new LocalStorageConnector(config);
+        connectorInstance = new LocalStorageConnector(config);
+        break;
       case 'fetch':
-        return new FetchConnector(config);
+        connectorInstance = new FetchConnector(config);
+        break;
       default:
         throw new Error(`Unsupported connector type: ${connectorType}`);
     }
+
+    // Set global instance for schema registration
+    globalConnectorInstance = connectorInstance;
+    return connectorInstance;
   }, [connectorType, config]);
 
   const contextValue = React.useMemo(
@@ -49,4 +59,9 @@ export const useApiClient = (): ApiClientContextValue => {
     throw new Error('useApiClient must be used within an ApiClientProvider');
   }
   return context;
+};
+
+// Export function to get global connector for schema registration
+export const getGlobalConnector = (): IConnector | null => {
+  return globalConnectorInstance;
 };

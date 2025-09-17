@@ -38,16 +38,16 @@ export function createTimestampedSchema<T extends z.ZodRawShape>(properties: T) 
 export function createCrudApi<T extends z.ZodSchema>(
   entity: string,
   schema: T,
-  _options?: Partial<DomainApiConfig<T>>
-): GeneratedCrudApi<InferType<T>> {
-  return createDomainApi(entity, schema);
+  _options?: Partial<DomainApiConfig<InferType<T>, InferType<T>>>
+): GeneratedCrudApi<InferType<T>, InferType<T>, string> {
+  return createDomainApi(entity, schema) as GeneratedCrudApi<InferType<T>, InferType<T>, string>;
 }
 
 // Specialized API factories
 export function createReadOnlyApi<T extends z.ZodSchema>(
   entity: string,
   schema: T
-): Pick<GeneratedCrudApi<InferType<T>>, 'useList' | 'useById'> {
+): Pick<GeneratedCrudApi<InferType<T>, InferType<T>, string>, 'useList' | 'useById'> {
   const api = createCrudApi(entity, schema);
   return {
     useList: api.useList,
@@ -59,9 +59,9 @@ export function createCustomApi<T extends z.ZodSchema>(
   entity: string,
   schema: T,
   operations: ('list' | 'byId' | 'create' | 'update' | 'delete')[]
-): Partial<GeneratedCrudApi<InferType<T>>> {
+): Partial<GeneratedCrudApi<InferType<T>, InferType<T>, string>> {
   const api = createCrudApi(entity, schema);
-  const customApi: Partial<GeneratedCrudApi<InferType<T>>> = {};
+  const customApi: Partial<GeneratedCrudApi<InferType<T>, InferType<T>, string>> = {};
 
   if (operations.includes('list')) customApi.useList = api.useList;
   if (operations.includes('byId')) customApi.useById = api.useById;
@@ -87,3 +87,38 @@ export type InferCreateType<T extends z.ZodSchema> = Omit<
   'id' | 'createdAt' | 'updatedAt'
 >;
 export type InferUpdateType<T extends z.ZodSchema> = Partial<InferCreateType<T>>;
+
+// Helper to extract default values from a Zod schema
+export function extractSchemaDefaults(schema: z.ZodSchema): Record<string, any> {
+  const defaults: Record<string, any> = {};
+
+  if (schema instanceof z.ZodObject) {
+    const shape = schema.shape;
+
+    for (const [key, fieldSchema] of Object.entries(shape)) {
+      let currentSchema = fieldSchema as z.ZodTypeAny;
+
+      // Unwrap ZodDefault to get the default value
+      if (currentSchema instanceof z.ZodDefault) {
+        const defaultValue = currentSchema._def.defaultValue;
+        defaults[key] = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+      }
+      // Handle ZodOptional with default
+      else if (currentSchema instanceof z.ZodOptional) {
+        const innerSchema = currentSchema._def.innerType;
+        if (innerSchema instanceof z.ZodDefault) {
+          const defaultValue = innerSchema._def.defaultValue;
+          defaults[key] = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+        }
+      }
+    }
+  }
+
+  return defaults;
+}
+
+// Helper to apply schema defaults to an object
+export function applySchemaDefaults<T>(data: Partial<T>, schema: z.ZodSchema): T {
+  const defaults = extractSchemaDefaults(schema);
+  return { ...defaults, ...data } as T;
+}

@@ -5,6 +5,7 @@ import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
 import { globalInvalidationManager } from '../context/InvalidationManager';
 import { debugLogger } from '../utils/debug';
+import { LocalStorageConnector } from '../connectors/LocalStorageConnector';
 
 export function useMutationWithGlobalState<TInput, TOutput = void>(
   entity: string,
@@ -14,6 +15,7 @@ export function useMutationWithGlobalState<TInput, TOutput = void>(
   options?: {
     optimistic?: boolean;
     invalidateRelated?: string[];
+    entitySchema?: z.ZodSchema; // Schema for default value extraction
   }
 ): UseMutationResult<TInput, TOutput> {
   const { connector } = useApiClient();
@@ -78,7 +80,13 @@ export function useMutationWithGlobalState<TInput, TOutput = void>(
 
         switch (method) {
           case 'POST':
-            response = await connector.post<TOutput>(finalEndpoint, input);
+            // Pass entitySchema to LocalStorageConnector for default value application
+            if (connector instanceof LocalStorageConnector) {
+              const schemaForDefaults = options?.entitySchema || schema;
+              response = await connector.post<TOutput>(finalEndpoint, input, schemaForDefaults);
+            } else {
+              response = await connector.post<TOutput>(finalEndpoint, input);
+            }
             break;
           case 'PUT':
             response = await connector.put<TOutput>(finalEndpoint, input);
@@ -98,9 +106,32 @@ export function useMutationWithGlobalState<TInput, TOutput = void>(
             // For non-optimistic updates, update lists directly instead of invalidating
             if (method === 'POST' && response.data && (response.data as any).id) {
               entityState.actions.setData((response.data as any).id, response.data);
-              // Also update the main list cache by adding the new item
-              const currentList = entityState.lists?.['list'] || [];
-              entityState.actions.setList('list', [...currentList, response.data]);
+
+              // Update all existing list caches by adding the new item
+              const existingLists = entityState.lists || {};
+              console.log('🔍 Mutation Debug:', {
+                entity,
+                endpoint: finalEndpoint,
+                existingLists: Object.keys(existingLists),
+                responseData: response.data,
+              });
+              Object.keys(existingLists).forEach(listKey => {
+                const currentList = existingLists[listKey];
+                if (Array.isArray(currentList)) {
+                  entityState.actions.setList(listKey, [...currentList, response.data]);
+                  console.log('📝 Updated list:', listKey, 'new length:', currentList.length + 1);
+                }
+              });
+
+              // If no lists exist yet, create the main 'list' cache
+              if (Object.keys(existingLists).length === 0) {
+                entityState.actions.setList('list', [response.data]);
+                console.log('📝 Created new list cache with item');
+              }
+
+              // Force invalidation to trigger re-renders for all list observers
+              console.log('🔄 Invalidating entity:', entity);
+              globalInvalidationManager.invalidate(entity, response.data);
             } else if (method === 'PUT' && response.data && (response.data as any).id) {
               entityState.actions.setData((response.data as any).id, response.data);
               // Update the item in the list cache

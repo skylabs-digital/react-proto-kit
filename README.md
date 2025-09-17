@@ -13,6 +13,8 @@ A powerful, type-safe React library for API management with intelligent global s
 - ⚡ **Optimistic Updates** - Instant UI feedback with automatic rollback
 - 📝 **Forms Integration** - Type-safe forms with Zod validation
 - 🧪 **Multiple Connectors** - localStorage for dev, HTTP for production
+- ✨ **Schema Defaults** - Automatic default values from entity schemas
+- 🎯 **Dual Schema Support** - Separate entity and upsert schemas for flexibility
 
 ## ⚡ **Global Context: The game-changer for complex apps**
 
@@ -43,18 +45,32 @@ import {
   createDomainApi 
 } from '@skylabs-digital/react-proto-kit';
 
-// 1. Define your business schemas (API auto-generates id, createdAt, updatedAt)
-const postSchema = z.object({
+// 1. Define your business schemas with defaults
+const postEntitySchema = z.object({
+  id: z.string(),
   title: z.string(),
   content: z.string(),
   published: z.boolean(),
+  author: z.string().default('Anonymous'), // ✨ Auto-applied default
+  views: z.number().default(0),            // ✨ Auto-applied default
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
-// 2. Enable Global Context with one flag
-const postsApi = createDomainApi('posts', postSchema, {
-  globalState: true,        // 🎯 This changes everything
-  optimistic: true,         // Instant UI updates
-  invalidateRelated: ['comments'], // Smart cache invalidation
+const postUpsertSchema = z.object({
+  title: z.string().min(1, 'Title required'),
+  content: z.string().min(1, 'Content required'),
+  published: z.boolean().default(false),
+  // author and views will use entity schema defaults
+});
+
+// 2. Enable Global Context with dual schemas
+const postsApi = createDomainApi('posts', {
+  entitySchema: postEntitySchema,   // Complete structure with defaults
+  upsertSchema: postUpsertSchema,   // Validation for create/update
+  globalState: true,                // 🎯 This changes everything
+  optimistic: true,                 // Instant UI updates
+  invalidateRelated: ['comments'],  // Smart cache invalidation
 });
 
 // 3. Components automatically sync across the entire app
@@ -130,10 +146,14 @@ function App() {
 
 ```typescript
 // Without Global Context (traditional)
-const postsApi = createDomainApi('posts', postSchema);
+const postsApi = createDomainApi('posts', {
+  entitySchema: postSchema,
+});
 
 // With Global Context (modern)
-const postsApi = createDomainApi('posts', postSchema, {
+const postsApi = createDomainApi('posts', {
+  entitySchema: postEntitySchema,       // Complete structure with defaults
+  upsertSchema: postUpsertSchema,       // Validation for create/update
   globalState: true,                    // 🎯 Enable global synchronization
   optimistic: true,                     // Instant UI updates
   invalidateRelated: ['comments'],      // When posts change, refresh comments
@@ -1118,6 +1138,7 @@ type Comment = ExtractEntityType<typeof commentApi>;
 
 - **[Usage Guide](./docs/USAGE_GUIDE.md)** - Comprehensive examples and patterns
 - **[Forms Guide](./docs/FORMS.md)** - Complete forms module documentation with examples
+- **[Schema Defaults](./docs/SCHEMA_DEFAULTS.md)** - ✨ **NEW**: Dual schema support and automatic default values
 - **[Architecture](./docs/ARCHITECTURE.md)** - Technical architecture details
 - **[Schemas](./docs/SCHEMAS.md)** - Advanced schema patterns and validation
 - **[Developer Experience](./docs/DEVELOPER_EXPERIENCE.md)** - Agility features and roadmap

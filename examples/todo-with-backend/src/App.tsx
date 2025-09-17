@@ -27,7 +27,8 @@ const todoSchema = z.object({
 type FilterType = 'all' | 'active' | 'completed';
 
 // Create API with Global Context and FetchConnector
-const todosApi = createDomainApi('todos', todoSchema, {
+const todosApi = createDomainApi('todos', {
+  entitySchema: todoSchema,
   globalState: true,
   optimistic: true,
   cacheTime: 5 * 60 * 1000, // 5 minutes

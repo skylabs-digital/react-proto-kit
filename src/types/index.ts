@@ -110,8 +110,8 @@ export interface GlobalStateConfig {
   devMode?: boolean;
 }
 
-// Domain API types
-export interface DomainApiConfig<T extends z.ZodSchema = z.ZodSchema> {
+// Legacy Domain API types (to be removed)
+export interface LegacyDomainApiConfig<T extends z.ZodSchema = z.ZodSchema> {
   entity: string;
   schema: T;
   createSchema?: z.ZodSchema;
@@ -158,20 +158,71 @@ export interface UseListResult<T> extends UseQueryResult<T[]> {
 // Complete entity type with auto-generated fields
 export type CompleteEntityType<T> = T & { id: string; createdAt: string; updatedAt: string };
 
-// Generated API types - T represents the business schema, CompleteEntityType<T> is what gets returned
-export interface GeneratedCrudApi<T> {
-  useList: (params?: ListParams) => UseListResult<CompleteEntityType<T>>;
-  useQuery: (id: string | undefined | null) => UseQueryResult<CompleteEntityType<T>>;
-  useById: (id: string | undefined | null) => UseQueryResult<CompleteEntityType<T>>;
-  useCreate: () => UseMutationResult<
-    Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
-    CompleteEntityType<T>
-  >;
-  useUpdate: (
-    id?: string
-  ) => UseMutationResult<Omit<T, 'id' | 'createdAt' | 'updatedAt'>, CompleteEntityType<T>>;
-  useDelete: (id?: string) => UseMutationResult<void>;
+// Path parameter extraction utility - simplified approach
+type PathParamNames<T extends string> = T extends `${string}:${infer Param}/${infer Rest}`
+  ? Param | PathParamNames<Rest>
+  : T extends `${string}:${infer Param}`
+    ? Param
+    : never;
+
+export type ExtractPathParams<T extends string> =
+  PathParamNames<T> extends never ? Record<string, never> : { [K in PathParamNames<T>]: string };
+
+// Query params configuration
+export interface QueryParamsConfig<TQueryParams = any> {
+  static?: Record<string, string | number | boolean>;
+  dynamic?: string[];
+  schema?: z.ZodSchema<TQueryParams>;
 }
+
+// Domain API configuration
+export interface DomainApiConfig<_TEntity = any, _TUpsert = any, TQueryParams = any> {
+  entitySchema: any;
+  upsertSchema?: any;
+  queryParams?: QueryParamsConfig<TQueryParams>;
+  globalState?: boolean;
+  optimistic?: boolean;
+  cacheTime?: number;
+  invalidateRelated?: string[];
+}
+
+// Builder interface for chaining
+export interface DomainApiBuilder<
+  TEntity,
+  TInput,
+  TPath extends string,
+  TQueryParams = Record<string, any>,
+> {
+  withParams<TParams extends ExtractPathParams<TPath>>(
+    params: TParams
+  ): DomainApiBuilder<TEntity, TInput, TPath, TQueryParams>;
+  withQuery<TQuery extends Partial<TQueryParams>>(
+    query: TQuery
+  ): DomainApiBuilder<TEntity, TInput, TPath, TQueryParams>;
+
+  useList(
+    params?: ListParams & { queryParams?: Partial<TQueryParams> }
+  ): UseListResult<CompleteEntityType<TEntity>>;
+  useQuery(
+    id: string,
+    options?: { queryParams?: Partial<TQueryParams> }
+  ): UseQueryResult<CompleteEntityType<TEntity>>;
+  useById(
+    id: string | undefined | null,
+    options?: { queryParams?: Partial<TQueryParams> }
+  ): UseQueryResult<CompleteEntityType<TEntity>>;
+  useCreate(): UseMutationResult<TInput, CompleteEntityType<TEntity>>;
+  useUpdate(id?: string): UseMutationResult<Partial<TInput>, CompleteEntityType<TEntity>>;
+  useDelete(id?: string): UseMutationResult<void>;
+}
+
+// Main API interface - extends builder with additional metadata
+export type GeneratedCrudApi<
+  TEntity,
+  TInput,
+  TPath extends string,
+  TQueryParams = Record<string, any>,
+> = DomainApiBuilder<TEntity, TInput, TPath, TQueryParams>;
 
 export interface ListParams {
   page?: number;
