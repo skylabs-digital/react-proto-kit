@@ -45,6 +45,33 @@ export class LocalStorageConnector implements IConnector {
     }
   }
 
+  private processSeedData(data: Record<string, any[]>): Record<string, any[]> {
+    const processed: Record<string, any[]> = {};
+
+    Object.keys(data).forEach(collection => {
+      processed[collection] = data[collection].map(item => {
+        // Add missing fields if they don't exist
+        const processedItem = { ...item };
+
+        if (!processedItem.id) {
+          processedItem.id = this.generateId();
+        }
+
+        if (!processedItem.createdAt) {
+          processedItem.createdAt = new Date().toISOString();
+        }
+
+        if (!processedItem.updatedAt) {
+          processedItem.updatedAt = new Date().toISOString();
+        }
+
+        return processedItem;
+      });
+    });
+
+    return processed;
+  }
+
   private parseEndpoint(endpoint: string): {
     collection: string;
     id?: string;
@@ -102,14 +129,63 @@ export class LocalStorageConnector implements IConnector {
   }
 
   private initializeSeedData(): void {
-    if (this.config.seed?.data) {
-      const existingData = this.getStorageData();
-      const hasData = Object.keys(existingData).some(key => existingData[key].length > 0);
+    if (!this.config.seed?.data) return;
 
-      if (!hasData) {
-        this.setStorageData(this.config.seed.data);
-      }
+    const behavior = this.config.seed.behavior;
+    const existingData = this.getStorageData();
+    const hasData = Object.keys(existingData).some(key => existingData[key].length > 0);
+
+    // Only initialize if initializeEmpty is not false AND there's no existing data
+    if (behavior?.initializeEmpty !== false && !hasData) {
+      const processedSeedData = this.processSeedData(this.config.seed.data);
+      this.setStorageData(processedSeedData);
+      return;
     }
+
+    // Handle merge strategies when there's existing data
+    if (hasData && behavior?.mergeStrategy) {
+      const processedSeedData = this.processSeedData(this.config.seed.data);
+      const mergedData = this.mergeSeedWithExisting(
+        existingData,
+        processedSeedData,
+        behavior.mergeStrategy
+      );
+      this.setStorageData(mergedData);
+    }
+  }
+
+  private mergeSeedWithExisting(
+    existingData: Record<string, any[]>,
+    seedData: Record<string, any[]>,
+    strategy: 'replace' | 'merge' | 'append'
+  ): Record<string, any[]> {
+    const result = { ...existingData };
+
+    Object.keys(seedData).forEach(collection => {
+      const existing = result[collection] || [];
+      const seed = seedData[collection] || [];
+
+      switch (strategy) {
+        case 'replace':
+          result[collection] = [...seed];
+          break;
+        case 'append':
+          result[collection] = [...existing, ...seed];
+          break;
+        case 'merge': {
+          // For merge strategy: only add seed data if collection is empty
+          if (existing.length === 0) {
+            result[collection] = [...seed];
+          } else {
+            // Keep existing data as-is
+            result[collection] = [...existing];
+          }
+          break;
+        }
+      }
+    });
+
+    return result;
   }
 
   async get<T>(endpoint: string, params?: any): Promise<ApiResponse<T>> {

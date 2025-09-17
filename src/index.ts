@@ -15,10 +15,6 @@ export * from './provider/ApiClientProvider';
 export * from './context/GlobalStateProvider';
 export * from './context/InvalidationManager';
 
-// Export hooks
-export * from './hooks/useQuery';
-export * from './hooks/useList';
-
 // Export utility types
 export * from './factory/createDomainApi';
 
@@ -35,9 +31,7 @@ export * from './navigation';
 export {
   createEntitySchema,
   createTimestampedSchema,
-  // createCrudApi, // TODO: Update for new createDomainApi signature
-  // createReadOnlyApi, // TODO: Update for new createDomainApi signature
-  // createCustomApi, // TODO: Update for new createDomainApi signature
+  createReadOnlyApi,
   createCreateSchema,
   createUpdateSchema,
 } from './helpers/schemas';

@@ -1,7 +1,5 @@
 import { z } from 'zod';
-// TODO: Uncomment when helpers are updated for new createDomainApi signature
-// import { createDomainApi } from '../factory/createDomainApi';
-// import { DomainApiConfig, GeneratedCrudApi, InferType } from '../types';
+import { createDomainApi } from '../factory/createDomainApi';
 
 // Schema helpers for common patterns
 export function createEntitySchema<T extends z.ZodRawShape>(properties: T) {
@@ -42,17 +40,19 @@ export function createTimestampedSchema<T extends z.ZodRawShape>(properties: T) 
 //   schema: T,
 
 // Specialized API factories
-// TODO: Update these helpers to work with new createDomainApi signature
-// export function createReadOnlyApi<T extends z.ZodSchema>(
-//   entity: string,
-//   schema: T
-// ): Pick<GeneratedCrudApi<InferType<T>>, 'useList' | 'useById'> {
-//   const api = createCrudApi(entity, schema);
-//   return {
-//     useList: api.useList,
-//     useById: api.useById,
-//   };
-// }
+// Read-only API factory - useful for analytics, logs, etc.
+export function createReadOnlyApi<T extends z.ZodSchema>(entity: string, entitySchema: T) {
+  // For read-only, we use the same schema for both entity and upsert (even though upsert won't be used)
+  const api = createDomainApi(entity, entitySchema, entitySchema);
+
+  // Return only the read operations
+  return {
+    useList: api.useList,
+    useQuery: api.useQuery,
+    withParams: api.withParams,
+    withQuery: api.withQuery,
+  };
+}
 
 // // Write-only API (for data ingestion scenarios)
 // export function createWriteOnlyApi<T extends z.ZodSchema>(
