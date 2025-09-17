@@ -4,6 +4,23 @@
 ### Bug Fixes
 
 * initialize loading state to true by default in data fetching hooks ([b82032f](https://github.com/skylabs-digital/react-proto-kit/commit/b82032ff1558147de5fe9fa189ec237c2f665e6e))
+* prevent duplicate fetches in useById and useList hooks using ref flags ([b419123](https://github.com/skylabs-digital/react-proto-kit/commit/b419123067da47e7836dec46d3ff9c7966f087af))
+
+
+### Features
+
+* add nested comments API with CRUD operations and query params support ([58a8d48](https://github.com/skylabs-digital/react-proto-kit/commit/58a8d48b3f5dd6f3a30fa2ed93acd3e33d680e80))
+* add PATCH support and upsertSchema for partial resource updates ([2854147](https://github.com/skylabs-digital/react-proto-kit/commit/2854147ba47ea495b690f0022c68570d00f1f535))
+* add separate entity and upsert schemas with default value support ([4482ffb](https://github.com/skylabs-digital/react-proto-kit/commit/4482ffb35749cc2ea5b4938f189053d4c41386dc))
+* add support for nested routes in local storage connector with path params ([41dae70](https://github.com/skylabs-digital/react-proto-kit/commit/41dae7065a313e5e57d89b8a38ef0456d559c505))
+* add support for static and dynamic query parameters in API requests ([9e8dd0a](https://github.com/skylabs-digital/react-proto-kit/commit/9e8dd0a86525b0a666043d5fda3f0527fd9530f3))
+
+# [1.5.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.4.0...v1.5.0) (2025-09-17)
+
+
+### Bug Fixes
+
+* initialize loading state to true by default in data fetching hooks ([b82032f](https://github.com/skylabs-digital/react-proto-kit/commit/b82032ff1558147de5fe9fa189ec237c2f665e6e))
 
 
 ### Features
