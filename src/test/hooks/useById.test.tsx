@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 import { useQuery } from '../../hooks/useQuery';
 
-describe('useQuery', () => {
+describe('useById', () => {
   it('should be a valid hook function', () => {
     expect(typeof useQuery).toBe('function');
     expect(useQuery.name).toBe('useQuery');

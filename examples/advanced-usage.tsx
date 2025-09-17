@@ -74,7 +74,7 @@ function Dashboard() {
   const { data: analytics } = analyticsApi.useList!();
 
   // Analytics queries
-  const { data: analyticsQuery } = analyticsApi.useQuery!('latest');
+  const { data: analyticsQuery } = analyticsApi.useById!('latest');
 
   const handleCreateUser = async () => {
     try {
@@ -147,7 +147,7 @@ function Dashboard() {
 
 // Order detail with multiple operations
 function OrderDetail({ orderId }: { orderId: string }) {
-  const { data: order, loading } = orderApi.useQuery!(orderId);
+  const { data: order, loading } = orderApi.useById!(orderId);
   const updateOrder = orderApi.useUpdate!();
   const deleteOrder = orderApi.useDelete!();
 
