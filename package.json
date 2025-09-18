@@ -1,6 +1,6 @@
 {
   "name": "@skylabs-digital/react-proto-kit",
-  "version": "1.24.0",
+  "version": "1.12.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
