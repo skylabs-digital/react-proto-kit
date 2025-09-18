@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
-import { debugLogger } from '../utils/debug';
 import { ErrorResponse } from '../types';
 
 export interface UseDeleteMutationResult {
@@ -31,7 +30,6 @@ export function useDeleteMutation<TEntity>(
       try {
         const baseEndpoint = endpoint || entity;
         const deleteEndpoint = `${baseEndpoint}/${id}`;
-        debugLogger.logRequest('DELETE', deleteEndpoint, undefined);
 
         const response = await connector.delete(deleteEndpoint);
 
@@ -56,11 +54,8 @@ export function useDeleteMutation<TEntity>(
             // No invalidation - we've updated the state directly
             // This prevents the flash from refetching
           }
-
-          debugLogger.logResponse('DELETE', `${entity}/${id}`, response);
         } else {
           setError(response as ErrorResponse);
-          debugLogger.logResponse('DELETE', `${entity}/${id}`, response);
         }
       } catch (err) {
         const errorResponse: ErrorResponse = {
@@ -69,7 +64,6 @@ export function useDeleteMutation<TEntity>(
           error: { code: 'UNKNOWN_ERROR' },
         };
         setError(errorResponse);
-        debugLogger.logResponse('DELETE', `${entity}/${id}`, errorResponse);
       } finally {
         setLoading(false);
       }
