@@ -36,12 +36,12 @@ export function useById<T>(
   const isCurrentlyFetchingRef = useRef(false);
 
   // Determine which state to use
-  const cacheKey = `${endpoint}${params ? JSON.stringify(params) : ''}`;
+  const cacheKey = endpoint || `${entity}${params ? JSON.stringify(params) : ''}`;
 
   const data = globalState && entityState ? entityState.data?.[cacheKey] || null : localData;
 
   const loading =
-    globalState && entityState ? (entityState.loading?.[cacheKey] ?? true) : localLoading;
+    globalState && entityState ? (entityState.loading?.[cacheKey] ?? data === null) : localLoading;
 
   const error = globalState && entityState ? entityState.errors?.[cacheKey] || null : localError;
 
@@ -84,6 +84,7 @@ export function useById<T>(
       }
 
       try {
+        // Use the endpoint directly (it's already complete from createDomainApi)
         const response = await connector.get<T>(endpoint, params);
 
         if (response.success) {

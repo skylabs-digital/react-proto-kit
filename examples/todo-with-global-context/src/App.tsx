@@ -55,6 +55,323 @@ const todosApi = createDomainApi('todos', todoEntitySchema, todoUpsertSchema, {
   cacheTime: 5 * 60 * 1000, // 5 minutes
 });
 
+// Product schemas for testing useById
+const productEntitySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  price: z.number(),
+  category: z.string(),
+  inStock: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const productUpsertSchema = z.object({
+  name: z.string().min(1, 'Product name is required'),
+  price: z.number().min(0, 'Price must be positive'),
+  category: z.string().min(1, 'Category is required'),
+  inStock: z.boolean(),
+});
+
+// Create products API
+const productsApi = createDomainApi('products', productEntitySchema, productUpsertSchema, {
+  optimistic: false,
+  cacheTime: 5 * 60 * 1000, // 5 minutes
+});
+
+type Product = ExtractEntityType<typeof productsApi>;
+
+// Products are now seeded via LocalStorageConnector config
+
+// Separate component to test useById after mutations
+function ProductByIdVerification({ productId }: { productId: string }) {
+  const { data: product, loading, error } = productsApi.useById(productId);
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          margin: '10px 0',
+          padding: '10px',
+          border: '2px solid #FFC107',
+          borderRadius: '6px',
+          backgroundColor: '#FFF8E1',
+        }}
+      >
+        <h5>🔍 Verification useById (Loading...)</h5>
+        <p>Loading product: {productId}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          margin: '10px 0',
+          padding: '10px',
+          border: '2px solid #F44336',
+          borderRadius: '6px',
+          backgroundColor: '#FFEBEE',
+        }}
+      >
+        <h5>🔍 Verification useById (Error)</h5>
+        <p>Error: {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div
+        style={{
+          margin: '10px 0',
+          padding: '10px',
+          border: '2px solid #FF9800',
+          borderRadius: '6px',
+          backgroundColor: '#FFF3E0',
+        }}
+      >
+        <h5>🔍 Verification useById (Not Found)</h5>
+        <p>Product not found: {productId}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        margin: '10px 0',
+        padding: '10px',
+        border: '2px solid #4CAF50',
+        borderRadius: '6px',
+        backgroundColor: '#E8F5E8',
+      }}
+    >
+      <h5>🔍 Verification useById - Independent Component</h5>
+      <div style={{ fontSize: '0.9rem' }}>
+        <p>
+          <strong>ID:</strong> {product.id}
+        </p>
+        <p>
+          <strong>Name:</strong> {product.name}
+        </p>
+        <p>
+          <strong>Price:</strong> ${product.price}
+        </p>
+        <p>
+          <strong>In Stock:</strong> {product.inStock ? 'Yes' : 'No'}
+        </p>
+      </div>
+      <small style={{ fontStyle: 'italic', color: '#666' }}>
+        This is a separate component using useById to verify cache sync after mutations.
+      </small>
+    </div>
+  );
+}
+
+// Product test component using useById
+function ProductByIdTest() {
+  // Test with a fixed product ID from seed data
+  const FIXED_PRODUCT_ID = 'prod-1';
+  const [showVerification, setShowVerification] = useState(false);
+
+  const { data: product, loading, error, refetch } = productsApi.useById(FIXED_PRODUCT_ID);
+  const { mutate: updateProduct, loading: updateLoading } = productsApi.useUpdate();
+  const { mutate: patchProduct, loading: patchLoading } = productsApi.usePatch();
+  const { mutate: deleteProduct, loading: deleteLoading } = productsApi.useDelete();
+
+  console.log('🛍️ ProductByIdTest - useById result:', {
+    productId: FIXED_PRODUCT_ID,
+    product: product
+      ? {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          category: product.category,
+          inStock: product.inStock,
+        }
+      : null,
+    loading,
+    error: error?.message || null,
+  });
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          margin: '20px 0',
+          padding: '15px',
+          border: '2px solid #FF9800',
+          borderRadius: '8px',
+          backgroundColor: '#FFF3E0',
+        }}
+      >
+        <h4>🛍️ Product useById Test (Loading...)</h4>
+        <p>Loading product: {FIXED_PRODUCT_ID}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          margin: '20px 0',
+          padding: '15px',
+          border: '2px solid #F44336',
+          borderRadius: '8px',
+          backgroundColor: '#FFEBEE',
+        }}
+      >
+        <h4>🛍️ Product useById Test (Error)</h4>
+        <p>Error: {error.message}</p>
+        <button onClick={refetch} style={{ marginTop: '10px', padding: '5px 10px' }}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div
+        style={{
+          margin: '20px 0',
+          padding: '15px',
+          border: '2px solid #FF9800',
+          borderRadius: '8px',
+          backgroundColor: '#FFF3E0',
+        }}
+      >
+        <h4>🛍️ Product useById Test (Not Found)</h4>
+        <p>Product not found: {FIXED_PRODUCT_ID}</p>
+        <button onClick={refetch} style={{ marginTop: '10px', padding: '5px 10px' }}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const handleUpdate = async () => {
+    await updateProduct(product.id, {
+      name: `Updated ${product.name} - ${new Date().toLocaleTimeString()}`,
+      price: product.price + 10,
+      category: product.category,
+      inStock: product.inStock,
+    });
+    // Show verification component after update
+    setShowVerification(true);
+  };
+
+  const handlePatch = async () => {
+    await patchProduct(product.id, {
+      inStock: !product.inStock,
+    });
+  };
+
+  const handleDelete = async () => {
+    if (confirm(`Are you sure you want to delete ${product.name}?`)) {
+      await deleteProduct(product.id);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        margin: '20px 0',
+        padding: '15px',
+        border: '2px solid #2196F3',
+        borderRadius: '8px',
+        backgroundColor: '#E3F2FD',
+      }}
+    >
+      <h4>🛍️ Product useById Test - Testing Cache Sync</h4>
+      <div style={{ marginBottom: '15px' }}>
+        <p>
+          <strong>ID:</strong> {product.id}
+        </p>
+        <p>
+          <strong>Name:</strong> {product.name}
+        </p>
+        <p>
+          <strong>Price:</strong> ${product.price}
+        </p>
+        <p>
+          <strong>Category:</strong> {product.category}
+        </p>
+        <p>
+          <strong>In Stock:</strong> {product.inStock ? 'Yes' : 'No'}
+        </p>
+      </div>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button
+          onClick={handleUpdate}
+          disabled={updateLoading}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: updateLoading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {updateLoading ? 'Updating...' : '🔄 UPDATE (PUT)'}
+        </button>
+        <button
+          onClick={handlePatch}
+          disabled={patchLoading}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: '#FF9800',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: patchLoading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {patchLoading ? 'Patching...' : '📦 PATCH Stock'}
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={deleteLoading}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: '#F44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: deleteLoading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {deleteLoading ? 'Deleting...' : '🗑️ DELETE'}
+        </button>
+        <button
+          onClick={refetch}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: '#607D8B',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          🔄 Refetch
+        </button>
+      </div>
+      <small style={{ display: 'block', marginTop: '10px', fontStyle: 'italic' }}>
+        This component uses useById to fetch product "{FIXED_PRODUCT_ID}" from seed data. Test if
+        mutations sync with useById cache after refresh.
+      </small>
+      {showVerification && (
+        <ProductByIdVerification productId={FIXED_PRODUCT_ID} />
+      )}
+    </div>
+  );
+}
+
 // Create nested API for comments (this demonstrates the builder pattern)
 const commentsApi = createDomainApi(
   'todos/:todoId/comments',
@@ -169,6 +486,258 @@ function CommentsExample({ todoId }: { todoId: string }) {
   );
 }
 
+// Component to test useById after creation
+function TodoByIdTest({ todoId }: { todoId: string }) {
+  const { data: todo, loading, error } = todosApi.useById(todoId);
+
+  console.log('🔍 TodoByIdTest - useById result:', { todoId, todo, loading, error });
+
+  if (loading) {
+    return (
+      <div className="todo-by-id-test">
+        <h4>Testing useById (Loading...)</h4>
+        <p>Fetching todo: {todoId}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="todo-by-id-test error">
+        <h4>Testing useById (Error)</h4>
+        <p>Error fetching todo: {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!todo) {
+    return (
+      <div className="todo-by-id-test">
+        <h4>Testing useById (Not Found)</h4>
+        <p>Todo not found: {todoId}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="todo-by-id-test success">
+      <h4>✅ Testing useById (Success)</h4>
+      <p>
+        <strong>ID:</strong> {todoId}
+      </p>
+      <p>
+        <strong>Text:</strong> {todo.text}
+      </p>
+      <p>
+        <strong>Completed:</strong> {todo.completed ? 'Yes' : 'No'}
+      </p>
+      <p>
+        <strong>Views:</strong> {todo.views}
+      </p>
+      <small>This data comes from useById, testing cache synchronization after POST</small>
+    </div>
+  );
+}
+
+// Fixed component to test useById with mutations
+function FixedTodoByIdTest() {
+  // Use a fixed todo ID - we'll use the first one from the list
+  const { data: todos } = todosApi.useList();
+  const firstTodoId = todos?.[0]?.id;
+
+  const { data: todo, loading, error, refetch } = todosApi.useById(firstTodoId || '');
+  const { mutate: updateTodo, loading: updateLoading } = todosApi.useUpdate();
+  const { mutate: patchTodo, loading: patchLoading } = todosApi.usePatch();
+  const { mutate: deleteTodo, loading: deleteLoading } = todosApi.useDelete();
+
+  console.log('🎯 FixedTodoByIdTest - useById result:', {
+    firstTodoId,
+    todo: todo
+      ? { id: todo.id, text: todo.text, completed: todo.completed, views: todo.views }
+      : null,
+    loading,
+    error,
+  });
+
+  if (!firstTodoId) {
+    return (
+      <div
+        style={{
+          margin: '20px 0',
+          padding: '15px',
+          border: '2px solid #FFA500',
+          borderRadius: '8px',
+          backgroundColor: '#FFF8DC',
+        }}
+      >
+        <h4>🎯 Fixed useById Test</h4>
+        <p>No todos available. Create a todo first to test useById mutations.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          margin: '20px 0',
+          padding: '15px',
+          border: '2px solid #FFA500',
+          borderRadius: '8px',
+          backgroundColor: '#FFF8DC',
+        }}
+      >
+        <h4>🎯 Fixed useById Test (Loading...)</h4>
+        <p>Loading todo: {firstTodoId}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          margin: '20px 0',
+          padding: '15px',
+          border: '2px solid #FF6B6B',
+          borderRadius: '8px',
+          backgroundColor: '#FFE8E8',
+        }}
+      >
+        <h4>🎯 Fixed useById Test (Error)</h4>
+        <p>Error: {error.message}</p>
+        <button onClick={refetch}>Retry</button>
+      </div>
+    );
+  }
+
+  if (!todo) {
+    return (
+      <div
+        style={{
+          margin: '20px 0',
+          padding: '15px',
+          border: '2px solid #FFA500',
+          borderRadius: '8px',
+          backgroundColor: '#FFF8DC',
+        }}
+      >
+        <h4>🎯 Fixed useById Test (Not Found)</h4>
+        <p>Todo not found: {firstTodoId}</p>
+        <button onClick={refetch}>Retry</button>
+      </div>
+    );
+  }
+
+  const handleUpdate = async () => {
+    await updateTodo(todo.id, {
+      text: `Updated at ${new Date().toLocaleTimeString()}`,
+      completed: todo.completed,
+    });
+  };
+
+  const handlePatch = async () => {
+    await patchTodo(todo.id, {
+      completed: !todo.completed,
+    });
+  };
+
+  const handleDelete = async () => {
+    if (confirm('Are you sure you want to delete this todo?')) {
+      await deleteTodo(todo.id);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        margin: '20px 0',
+        padding: '15px',
+        border: '2px solid #4CAF50',
+        borderRadius: '8px',
+        backgroundColor: '#f0f8f0',
+      }}
+    >
+      <h4>🎯 Fixed useById Test - Testing Mutations</h4>
+      <div style={{ marginBottom: '10px' }}>
+        <p>
+          <strong>ID:</strong> {todo.id}
+        </p>
+        <p>
+          <strong>Text:</strong> {todo.text}
+        </p>
+        <p>
+          <strong>Completed:</strong> {todo.completed ? 'Yes' : 'No'}
+        </p>
+        <p>
+          <strong>Views:</strong> {todo.views}
+        </p>
+      </div>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button
+          onClick={handleUpdate}
+          disabled={updateLoading}
+          style={{
+            padding: '5px 10px',
+            backgroundColor: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: updateLoading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {updateLoading ? 'Updating...' : '🔄 UPDATE (PUT)'}
+        </button>
+        <button
+          onClick={handlePatch}
+          disabled={patchLoading}
+          style={{
+            padding: '5px 10px',
+            backgroundColor: '#FF9800',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: patchLoading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {patchLoading ? 'Patching...' : '🎯 PATCH Toggle'}
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={deleteLoading}
+          style={{
+            padding: '5px 10px',
+            backgroundColor: '#F44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: deleteLoading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {deleteLoading ? 'Deleting...' : '🗑️ DELETE'}
+        </button>
+        <button
+          onClick={refetch}
+          style={{
+            padding: '5px 10px',
+            backgroundColor: '#9E9E9E',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          🔄 Refetch
+        </button>
+      </div>
+      <small style={{ display: 'block', marginTop: '10px', fontStyle: 'italic' }}>
+        This component uses useById to fetch and display the first todo. Test if mutations
+        (UPDATE/PATCH/DELETE) sync with useById cache.
+      </small>
+    </div>
+  );
+}
+
 // Components
 function TodoForm() {
   const { mutate: createTodo, loading } = todosApi.useCreate();
@@ -176,30 +745,56 @@ function TodoForm() {
     text: '',
     completed: false,
   });
+  const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
 
   const onSubmit = handleSubmit(async data => {
-    await createTodo(data);
+    const result = await createTodo(data);
+    console.log('🎯 TodoForm - createTodo result:', result);
+    if (result && (result as any).id) {
+      setLastCreatedId((result as any).id);
+      // Clear the test after 10 seconds
+      setTimeout(() => setLastCreatedId(null), 10000);
+    }
     reset();
   });
 
   return (
-    <form onSubmit={onSubmit} className="todo-form">
-      <div className="form-field">
-        <input
-          type="text"
-          name="text"
-          value={values.text || ''}
-          onChange={handleInputChange}
-          placeholder="Add a new todo..."
-          className={`todo-input ${errors.text ? 'error' : ''}`}
-          disabled={loading}
-        />
-        {errors.text && <span className="error-message">{errors.text}</span>}
-      </div>
-      <button type="submit" className="btn btn-primary" disabled={loading || !values.text?.trim()}>
-        {loading ? 'Adding...' : 'Add Todo'}
-      </button>
-    </form>
+    <>
+      <form onSubmit={onSubmit} className="todo-form">
+        <div className="form-field">
+          <input
+            type="text"
+            name="text"
+            value={values.text || ''}
+            onChange={handleInputChange}
+            placeholder="Add a new todo..."
+            className={`todo-input ${errors.text ? 'error' : ''}`}
+          />
+          {errors.text && <span className="error-message">{errors.text}</span>}
+        </div>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={loading || !values.text?.trim()}
+        >
+          {loading ? 'Adding...' : 'Add Todo'}
+        </button>
+      </form>
+
+      {lastCreatedId && (
+        <div
+          style={{
+            margin: '20px 0',
+            padding: '15px',
+            border: '2px solid #4CAF50',
+            borderRadius: '8px',
+            backgroundColor: '#f0f8f0',
+          }}
+        >
+          <TodoByIdTest todoId={lastCreatedId} />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -436,7 +1031,30 @@ function TodoList() {
 function App() {
   return (
     <BrowserRouter>
-      <ApiClientProvider connectorType="localStorage">
+      <ApiClientProvider
+        connectorType="localStorage"
+        config={{
+          seed: {
+            data: {
+              products: [
+                {
+                  id: 'prod-1',
+                  name: 'Laptop Pro',
+                  price: 1299.99,
+                  category: 'Electronics',
+                  inStock: true,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+            },
+            behavior: {
+              initializeEmpty: true,
+              mergeStrategy: 'replace',
+            },
+          },
+        }}
+      >
         <GlobalStateProvider>
           <div className="app">
             <header className="header">
@@ -448,6 +1066,7 @@ function App() {
             </header>
 
             <div className="content">
+              <ProductByIdTest />
               <TodoForm />
               <TodoStats />
               <TodoList />

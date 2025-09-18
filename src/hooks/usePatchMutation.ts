@@ -36,25 +36,30 @@ export function usePatchMutation<TInput, TEntity>(
         if (response.success) {
           // Handle global state if available
           if (globalState && entityState) {
-            // Update individual entity data
-            entityState.actions.setData(id, response.data);
+            // Update individual entity data using the same cache key format as useById
+            const baseEndpoint = endpoint || entity;
+            const individualCacheKey = `${baseEndpoint}/${id}`;
+            entityState.actions.setData(individualCacheKey, response.data);
 
             // Update item in specific lists for this endpoint
             const baseEndpointForCache = endpoint || entity;
             const specificCacheKey = `list:${baseEndpointForCache}`;
 
-            Object.keys(entityState.lists).forEach(listKey => {
-              // Only update lists that match this endpoint pattern
-              if (listKey.startsWith(specificCacheKey)) {
-                const currentList = entityState.lists[listKey];
-                if (Array.isArray(currentList)) {
-                  const updatedList = currentList.map((item: any) =>
-                    item.id === id ? { ...item, ...response.data } : item
-                  );
-                  entityState.actions.setList(listKey, updatedList);
+            // Safe check before accessing entityState.lists
+            if (entityState.lists && typeof entityState.lists === 'object') {
+              Object.keys(entityState.lists).forEach(listKey => {
+                // Only update lists that match this endpoint pattern
+                if (listKey.startsWith(specificCacheKey)) {
+                  const currentList = entityState.lists[listKey];
+                  if (Array.isArray(currentList)) {
+                    const updatedList = currentList.map((item: any) =>
+                      item.id === id ? { ...item, ...response.data } : item
+                    );
+                    entityState.actions.setList(listKey, updatedList);
+                  }
                 }
-              }
-            });
+              });
+            }
 
             // No invalidation - we've updated the state directly
             // This prevents the flash from refetching

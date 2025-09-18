@@ -117,20 +117,30 @@ export function useCreateMutation<TInput, TOutput>(
           if (globalState && entityState) {
             // Add new item to global state (both optimistic and regular paths)
 
+            // Store individual entity data for useById compatibility
+            if (response.data && (response.data as any).id) {
+              const requestEndpoint = endpoint || entity;
+              const individualCacheKey = `${requestEndpoint}/${(response.data as any).id}`;
+              entityState.actions.setData(individualCacheKey, response.data);
+            }
+
             // Add to the specific list for this endpoint (prepend to show newest first)
             const requestEndpointForCache = endpoint || entity;
             const specificCacheKey = `list:${requestEndpointForCache}`;
 
-            Object.keys(entityState.lists).forEach(listKey => {
-              // Only update lists that match this endpoint pattern
-              if (listKey.startsWith(specificCacheKey)) {
-                const currentList = entityState.lists[listKey];
-                if (Array.isArray(currentList)) {
-                  // Add the new item to the beginning of this specific list
-                  entityState.actions.setList(listKey, [response.data, ...currentList]);
+            // Safe check before accessing entityState.lists
+            if (entityState.lists && typeof entityState.lists === 'object') {
+              Object.keys(entityState.lists).forEach(listKey => {
+                // Only update lists that match this endpoint pattern
+                if (listKey.startsWith(specificCacheKey)) {
+                  const currentList = entityState.lists[listKey];
+                  if (Array.isArray(currentList)) {
+                    // Add the new item to the beginning of this specific list
+                    entityState.actions.setList(listKey, [response.data, ...currentList]);
+                  }
                 }
-              }
-            });
+              });
+            }
 
             if (optimistic && tempId) {
               // Replace optimistic data with real data (if needed)

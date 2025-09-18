@@ -36,20 +36,28 @@ export function useDeleteMutation<TEntity>(
         if (response.success) {
           // Handle global state if enabled and available
           if (globalState && entityState) {
+            // Remove individual entity data for useById compatibility
+            const baseEndpoint = endpoint || entity;
+            const individualCacheKey = `${baseEndpoint}/${id}`;
+            entityState.actions.setData(individualCacheKey, undefined as any);
+
             // Remove from specific lists for this endpoint
             const baseEndpointForCache = endpoint || entity;
             const specificCacheKey = `list:${baseEndpointForCache}`;
 
-            Object.keys(entityState.lists).forEach(listKey => {
-              // Only update lists that match this endpoint pattern
-              if (listKey.startsWith(specificCacheKey)) {
-                const list = entityState.lists[listKey];
-                if (Array.isArray(list)) {
-                  const filteredList = list.filter((item: any) => item.id !== id);
-                  entityState.actions.setList(listKey, filteredList);
+            // Safe check before accessing entityState.lists
+            if (entityState.lists && typeof entityState.lists === 'object') {
+              Object.keys(entityState.lists).forEach(listKey => {
+                // Only update lists that match this endpoint pattern
+                if (listKey.startsWith(specificCacheKey)) {
+                  const list = entityState.lists[listKey];
+                  if (Array.isArray(list)) {
+                    const filteredList = list.filter((item: any) => item.id !== id);
+                    entityState.actions.setList(listKey, filteredList);
+                  }
                 }
-              }
-            });
+              });
+            }
 
             // No invalidation - we've updated the state directly
             // This prevents the flash from refetching
