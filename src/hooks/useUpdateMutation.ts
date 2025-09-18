@@ -59,7 +59,6 @@ export function useUpdateMutation<TInput, TEntity>(
 
         const baseEndpoint = endpoint || entity;
         const updateEndpoint = `${baseEndpoint}/${id}`;
-        debugLogger.logRequest('PUT', updateEndpoint, data);
 
         const response = await connector.put<TEntity>(updateEndpoint, data);
 
@@ -89,11 +88,8 @@ export function useUpdateMutation<TInput, TEntity>(
             // No invalidation - we've updated the state directly
             // This prevents the flash from refetching
           }
-
-          debugLogger.logResponse('PUT', `${entity}/${id}`, response);
         } else {
           setError(response as ErrorResponse);
-          debugLogger.logResponse('PUT', `${entity}/${id}`, response);
         }
       } catch (err) {
         const errorResponse: ErrorResponse = {
@@ -102,7 +98,6 @@ export function useUpdateMutation<TInput, TEntity>(
           error: { code: 'UNKNOWN_ERROR' },
         };
         setError(errorResponse);
-        debugLogger.logResponse('PUT', `${entity}/${id}`, errorResponse);
       } finally {
         setLoading(false);
       }

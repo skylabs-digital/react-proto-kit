@@ -109,7 +109,6 @@ export function useCreateMutation<TInput, TOutput>(
         }
 
         const requestEndpoint = endpoint || entity;
-        debugLogger.logRequest('POST', requestEndpoint, dataToSend);
 
         const response = await connector.post<TOutput>(requestEndpoint, dataToSend);
 
@@ -142,7 +141,6 @@ export function useCreateMutation<TInput, TOutput>(
             // This prevents the flash from refetching
           }
 
-          debugLogger.logResponse('POST', entity, response);
           return response.data;
         } else {
           const errorResponse = response as ErrorResponse;
@@ -153,7 +151,6 @@ export function useCreateMutation<TInput, TOutput>(
           }
 
           setError(errorResponse);
-          debugLogger.logResponse('POST', entity, response);
           throw new Error(errorResponse.message || 'Create mutation failed');
         }
       } catch (err) {
@@ -168,7 +165,6 @@ export function useCreateMutation<TInput, TOutput>(
           error: { code: 'CREATE_MUTATION_ERROR' },
         };
         setError(errorResponse);
-        debugLogger.logResponse('POST', entity, errorResponse);
         throw err;
       } finally {
         setLoading(false);

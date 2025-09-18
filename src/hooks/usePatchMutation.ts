@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
-import { debugLogger } from '../utils/debug';
 import { ErrorResponse } from '../types';
 
 export interface UsePatchMutationResult<TInput> {
@@ -31,7 +30,6 @@ export function usePatchMutation<TInput, TEntity>(
       try {
         const baseEndpoint = endpoint || entity;
         const patchEndpoint = `${baseEndpoint}/${id}`;
-        debugLogger.logRequest('PATCH', patchEndpoint, data);
 
         const response = await connector.patch<TEntity>(patchEndpoint, data);
 
@@ -61,11 +59,8 @@ export function usePatchMutation<TInput, TEntity>(
             // No invalidation - we've updated the state directly
             // This prevents the flash from refetching
           }
-
-          debugLogger.logResponse('PATCH', `${entity}/${id}`, response);
         } else {
           setError(response as ErrorResponse);
-          debugLogger.logResponse('PATCH', `${entity}/${id}`, response);
         }
       } catch (err) {
         const errorResponse: ErrorResponse = {
@@ -74,7 +69,6 @@ export function usePatchMutation<TInput, TEntity>(
           error: { code: 'UNKNOWN_ERROR' },
         };
         setError(errorResponse);
-        debugLogger.logResponse('PATCH', `${entity}/${id}`, errorResponse);
       } finally {
         setLoading(false);
       }
