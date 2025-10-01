@@ -14,6 +14,7 @@ export * from './provider/ApiClientProvider';
 // Export context and global state
 export * from './context/GlobalStateProvider';
 export * from './context/InvalidationManager';
+export * from './context/DataOrchestratorContext';
 
 // Export utility types
 export * from './factory/createDomainApi';
@@ -26,6 +27,10 @@ export * from './forms';
 
 // Export navigation
 export * from './navigation';
+
+// Export Data Orchestrator
+export { useDataOrchestrator } from './hooks/useDataOrchestrator';
+export { withDataOrchestrator } from './hoc/withDataOrchestrator';
 
 // Helpers (main agility features)
 export {

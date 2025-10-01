@@ -10,6 +10,7 @@ import {
   useUrlSelector,
   z,
 } from '../../../src';
+import DashboardExamples from './DashboardExample';
 
 // Enable debug logging
 configureDebugLogging(true, '[TODO-GLOBAL]');
@@ -365,9 +366,7 @@ function ProductByIdTest() {
         This component uses useById to fetch product "{FIXED_PRODUCT_ID}" from seed data. Test if
         mutations sync with useById cache after refresh.
       </small>
-      {showVerification && (
-        <ProductByIdVerification productId={FIXED_PRODUCT_ID} />
-      )}
+      {showVerification && <ProductByIdVerification productId={FIXED_PRODUCT_ID} />}
     </div>
   );
 }
@@ -535,205 +534,6 @@ function TodoByIdTest({ todoId }: { todoId: string }) {
         <strong>Views:</strong> {todo.views}
       </p>
       <small>This data comes from useById, testing cache synchronization after POST</small>
-    </div>
-  );
-}
-
-// Fixed component to test useById with mutations
-function FixedTodoByIdTest() {
-  // Use a fixed todo ID - we'll use the first one from the list
-  const { data: todos } = todosApi.useList();
-  const firstTodoId = todos?.[0]?.id;
-
-  const { data: todo, loading, error, refetch } = todosApi.useById(firstTodoId || '');
-  const { mutate: updateTodo, loading: updateLoading } = todosApi.useUpdate();
-  const { mutate: patchTodo, loading: patchLoading } = todosApi.usePatch();
-  const { mutate: deleteTodo, loading: deleteLoading } = todosApi.useDelete();
-
-  console.log('🎯 FixedTodoByIdTest - useById result:', {
-    firstTodoId,
-    todo: todo
-      ? { id: todo.id, text: todo.text, completed: todo.completed, views: todo.views }
-      : null,
-    loading,
-    error,
-  });
-
-  if (!firstTodoId) {
-    return (
-      <div
-        style={{
-          margin: '20px 0',
-          padding: '15px',
-          border: '2px solid #FFA500',
-          borderRadius: '8px',
-          backgroundColor: '#FFF8DC',
-        }}
-      >
-        <h4>🎯 Fixed useById Test</h4>
-        <p>No todos available. Create a todo first to test useById mutations.</p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div
-        style={{
-          margin: '20px 0',
-          padding: '15px',
-          border: '2px solid #FFA500',
-          borderRadius: '8px',
-          backgroundColor: '#FFF8DC',
-        }}
-      >
-        <h4>🎯 Fixed useById Test (Loading...)</h4>
-        <p>Loading todo: {firstTodoId}</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div
-        style={{
-          margin: '20px 0',
-          padding: '15px',
-          border: '2px solid #FF6B6B',
-          borderRadius: '8px',
-          backgroundColor: '#FFE8E8',
-        }}
-      >
-        <h4>🎯 Fixed useById Test (Error)</h4>
-        <p>Error: {error.message}</p>
-        <button onClick={refetch}>Retry</button>
-      </div>
-    );
-  }
-
-  if (!todo) {
-    return (
-      <div
-        style={{
-          margin: '20px 0',
-          padding: '15px',
-          border: '2px solid #FFA500',
-          borderRadius: '8px',
-          backgroundColor: '#FFF8DC',
-        }}
-      >
-        <h4>🎯 Fixed useById Test (Not Found)</h4>
-        <p>Todo not found: {firstTodoId}</p>
-        <button onClick={refetch}>Retry</button>
-      </div>
-    );
-  }
-
-  const handleUpdate = async () => {
-    await updateTodo(todo.id, {
-      text: `Updated at ${new Date().toLocaleTimeString()}`,
-      completed: todo.completed,
-    });
-  };
-
-  const handlePatch = async () => {
-    await patchTodo(todo.id, {
-      completed: !todo.completed,
-    });
-  };
-
-  const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this todo?')) {
-      await deleteTodo(todo.id);
-    }
-  };
-
-  return (
-    <div
-      style={{
-        margin: '20px 0',
-        padding: '15px',
-        border: '2px solid #4CAF50',
-        borderRadius: '8px',
-        backgroundColor: '#f0f8f0',
-      }}
-    >
-      <h4>🎯 Fixed useById Test - Testing Mutations</h4>
-      <div style={{ marginBottom: '10px' }}>
-        <p>
-          <strong>ID:</strong> {todo.id}
-        </p>
-        <p>
-          <strong>Text:</strong> {todo.text}
-        </p>
-        <p>
-          <strong>Completed:</strong> {todo.completed ? 'Yes' : 'No'}
-        </p>
-        <p>
-          <strong>Views:</strong> {todo.views}
-        </p>
-      </div>
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <button
-          onClick={handleUpdate}
-          disabled={updateLoading}
-          style={{
-            padding: '5px 10px',
-            backgroundColor: '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: updateLoading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {updateLoading ? 'Updating...' : '🔄 UPDATE (PUT)'}
-        </button>
-        <button
-          onClick={handlePatch}
-          disabled={patchLoading}
-          style={{
-            padding: '5px 10px',
-            backgroundColor: '#FF9800',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: patchLoading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {patchLoading ? 'Patching...' : '🎯 PATCH Toggle'}
-        </button>
-        <button
-          onClick={handleDelete}
-          disabled={deleteLoading}
-          style={{
-            padding: '5px 10px',
-            backgroundColor: '#F44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: deleteLoading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {deleteLoading ? 'Deleting...' : '🗑️ DELETE'}
-        </button>
-        <button
-          onClick={refetch}
-          style={{
-            padding: '5px 10px',
-            backgroundColor: '#9E9E9E',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          🔄 Refetch
-        </button>
-      </div>
-      <small style={{ display: 'block', marginTop: '10px', fontStyle: 'italic' }}>
-        This component uses useById to fetch and display the first todo. Test if mutations
-        (UPDATE/PATCH/DELETE) sync with useById cache.
-      </small>
     </div>
   );
 }
@@ -1029,6 +829,8 @@ function TodoList() {
 }
 
 function App() {
+  const [view, setView] = useState<'todos' | 'dashboard'>('todos');
+
   return (
     <BrowserRouter>
       <ApiClientProvider
@@ -1058,18 +860,58 @@ function App() {
         <GlobalStateProvider>
           <div className="app">
             <header className="header">
-              <h1>Todo App</h1>
-              <p>With Global Context - Testing all CRUD operations!</p>
-              <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', opacity: 0.8 }}>
-                ✨ CREATE (POST) • 🔄 UPDATE (PUT) • 🎯 PATCH (partial) • 🗑️ DELETE
-              </p>
+              <h1>React Proto Kit Example</h1>
+              <p>Global Context + Data Orchestrator</p>
+              <div
+                style={{
+                  marginTop: '1rem',
+                  display: 'flex',
+                  gap: '1rem',
+                  justifyContent: 'center',
+                }}
+              >
+                <button
+                  onClick={() => setView('todos')}
+                  style={{
+                    padding: '8px 16px',
+                    border: view === 'todos' ? '2px solid #4CAF50' : '2px solid #ddd',
+                    borderRadius: '4px',
+                    background: view === 'todos' ? '#4CAF50' : '#fff',
+                    color: view === 'todos' ? '#fff' : '#333',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Todo App (CRUD)
+                </button>
+                <button
+                  onClick={() => setView('dashboard')}
+                  style={{
+                    padding: '8px 16px',
+                    border: view === 'dashboard' ? '2px solid #2196F3' : '2px solid #ddd',
+                    borderRadius: '4px',
+                    background: view === 'dashboard' ? '#2196F3' : '#fff',
+                    color: view === 'dashboard' ? '#fff' : '#333',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Data Orchestrator
+                </button>
+              </div>
             </header>
 
             <div className="content">
-              <ProductByIdTest />
-              <TodoForm />
-              <TodoStats />
-              <TodoList />
+              {view === 'todos' ? (
+                <>
+                  <ProductByIdTest />
+                  <TodoForm />
+                  <TodoStats />
+                  <TodoList />
+                </>
+              ) : (
+                <DashboardExamples />
+              )}
             </div>
           </div>
         </GlobalStateProvider>

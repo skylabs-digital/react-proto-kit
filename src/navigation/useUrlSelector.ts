@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 // Overloads para manejar single vs array values
-/* eslint-disable no-redeclare */
 export function useUrlSelector<T = string>(
   name: string,
   transform?: (value: string) => T,
@@ -61,4 +60,3 @@ export function useUrlSelector<T = string>(
 
   return [current, set] as const;
 }
-/* eslint-enable no-redeclare */

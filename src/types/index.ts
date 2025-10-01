@@ -209,3 +209,122 @@ export type InferCreateType<T extends z.ZodSchema> = Omit<
 >;
 export type InferUpdateType<T extends z.ZodSchema> = Partial<InferCreateType<T>>;
 export type InferListResponse<T extends z.ZodSchema> = SuccessResponse<z.infer<T>[]>;
+
+// ============================================================================
+// Data Orchestrator Types
+// ============================================================================
+
+// Hook factory that returns a query result
+export type QueryHookFactory<T> = () => UseQueryResult<T>;
+
+// Basic configuration - all resources are required by default
+export type DataOrchestratorConfig = {
+  [key: string]: QueryHookFactory<any>;
+};
+
+// Advanced configuration with required/optional resources
+export interface RequiredOptionalConfig {
+  required?: DataOrchestratorConfig;
+  optional?: DataOrchestratorConfig;
+}
+
+// Union type for config
+export type DataOrchestratorInput<T = DataOrchestratorConfig> = T | RequiredOptionalConfig | null;
+
+// Extract data type from a hook factory
+export type ExtractDataType<T> = T extends QueryHookFactory<infer U> ? U : never;
+
+// Extract data types from config
+export type ExtractDataFromConfig<T extends DataOrchestratorConfig> = {
+  [K in keyof T]: ExtractDataType<T[K]> | null;
+};
+
+// Extract data types with required/optional distinction
+export type ExtractDataFromRequiredOptional<T extends RequiredOptionalConfig> = {
+  [K in keyof T['required']]: T['required'][K] extends QueryHookFactory<infer U> ? U : never;
+} & {
+  [K in keyof T['optional']]: T['optional'][K] extends QueryHookFactory<infer U> ? U | null : never;
+};
+
+// Options for useDataOrchestrator
+export interface UseDataOrchestratorOptions {
+  resetKey?: string | number;
+  onError?: (errors: Record<string, ErrorResponse>) => void;
+}
+
+// Main result type for useDataOrchestrator
+export interface UseDataOrchestratorResult<T extends DataOrchestratorConfig> {
+  // Data indexed by key
+  data: ExtractDataFromConfig<T>;
+
+  // Aggregated states
+  isLoading: boolean; // First load of required resources (blocks rendering)
+  isFetching: boolean; // First load + refetches (non-blocking indicator)
+  hasErrors: boolean;
+
+  // Granular states
+  loadingStates: {
+    [K in keyof T]: boolean;
+  };
+
+  errors: {
+    [K in keyof T]?: ErrorResponse;
+  };
+
+  // Retry functions
+  retry: (key: keyof T) => void;
+  retryAll: () => void;
+
+  // Refetch functions (legacy - use retry)
+  refetch: {
+    [K in keyof T]: () => Promise<void>;
+  };
+}
+
+// Result type with required/optional distinction
+export interface UseDataOrchestratorResultWithOptional<T extends RequiredOptionalConfig> {
+  data: ExtractDataFromRequiredOptional<T>;
+
+  // Aggregated states (only consider required resources)
+  isLoading: boolean;
+  isFetching: boolean;
+  hasErrors: boolean;
+
+  // Granular states for all resources
+  loadingStates: {
+    [K in keyof T['required']]: boolean;
+  } & {
+    [K in keyof T['optional']]: boolean;
+  };
+
+  errors: {
+    [K in keyof T['required']]?: ErrorResponse;
+  } & {
+    [K in keyof T['optional']]?: ErrorResponse;
+  };
+
+  // Retry functions
+  retry: (key: keyof T['required'] | keyof T['optional']) => void;
+  retryAll: () => void;
+
+  // Refetch functions for all resources (legacy)
+  refetch: {
+    [K in keyof T['required']]: () => Promise<void>;
+  } & {
+    [K in keyof T['optional']]: () => Promise<void>;
+  };
+}
+
+// Props for DataOrchestratorProvider
+export interface DataOrchestratorProviderProps {
+  children: React.ReactNode;
+  defaultLoader?: React.ReactNode;
+  defaultErrorComponent?: React.ComponentType<DataOrchestratorErrorProps>;
+  mode?: 'fullscreen' | 'passive';
+}
+
+// Props for error component
+export interface DataOrchestratorErrorProps {
+  errors: Record<string, ErrorResponse>;
+  retry?: () => void;
+}

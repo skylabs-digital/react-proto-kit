@@ -64,6 +64,7 @@ That's it! You now have a fully functional CRUD API with TypeScript support, opt
 - **🎨 Builder Pattern**: Chainable API for dynamic configurations
 - **📊 Query Parameters**: Static and dynamic query parameter management
 - **🔍 URL State**: Automatic URL synchronization for filters and pagination
+- **🎭 Data Orchestrator**: Aggregate multiple API calls with smart loading states
 
 ## 📖 Table of Contents
 
@@ -344,6 +345,58 @@ function TodoItem({ todo }: { todo: Todo }) {
   );
 }
 ```
+
+### Data Orchestrator
+
+Manage multiple API calls in a single component with smart loading states:
+
+```tsx
+import { useDataOrchestrator } from '@skylabs-digital/react-proto-kit';
+
+function Dashboard() {
+  const { data, isLoading, isFetching, hasErrors, errors, retryAll } = useDataOrchestrator({
+    required: {
+      users: userApi.useList,
+      products: productApi.useList,
+    },
+    optional: {
+      stats: statsApi.useQuery,
+    },
+  });
+
+  // First load - blocks rendering
+  if (isLoading) return <FullPageLoader />;
+  
+  // Required resources failed
+  if (hasErrors) return <ErrorPage errors={errors} onRetry={retryAll} />;
+
+  return (
+    <div>
+      {/* Non-blocking refetch indicator */}
+      {isFetching && <TopBarSpinner />}
+      
+      <h1>Users: {data.users!.length}</h1>
+      <h1>Products: {data.products!.length}</h1>
+      
+      {/* Optional resource with independent error handling */}
+      {errors.stats ? (
+        <ErrorBanner error={errors.stats} />
+      ) : data.stats ? (
+        <StatsWidget data={data.stats} />
+      ) : null}
+    </div>
+  );
+}
+```
+
+**Key Features:**
+- **`isLoading`**: Blocks rendering during first load of required resources
+- **`isFetching`**: Shows non-blocking indicator for refetches
+- **Required vs Optional**: Control which resources block rendering
+- **Granular Retry**: Retry individual resources or all at once
+- **Type-Safe**: Full TypeScript inference for all data
+
+See [Data Orchestrator Documentation](./docs/DATA_ORCHESTRATOR.md) for more details.
 
 ### Local Storage Mode
 

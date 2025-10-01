@@ -42,7 +42,9 @@ export default [
       'react/display-name': 'off',
       'no-unused-vars': 'off',
       'no-undef': 'off',
+      'no-redeclare': 'off', // Disable for TypeScript (allows function overloads)
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-redeclare': 'off', // TypeScript handles this with overload checking
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
