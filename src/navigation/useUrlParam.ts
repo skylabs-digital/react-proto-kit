@@ -2,24 +2,24 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 // Overloads para manejar single vs array values
-export function useUrlSelector<T = string>(
+export function useUrlParam<T = string>(
   name: string,
   transform?: (value: string) => T,
   options?: { multiple: true }
 ): readonly [T[] | undefined, (newValue?: T | T[] | null) => void];
 
-export function useUrlSelector<T = string>(
+export function useUrlParam<T = string>(
   name: string,
   transform?: (value: string) => T,
   options?: { multiple: false }
 ): readonly [T | undefined, (newValue?: T | null) => void];
 
-export function useUrlSelector<T = string>(
+export function useUrlParam<T = string>(
   name: string,
   transform?: (value: string) => T
 ): readonly [T | undefined, (newValue?: T | null) => void];
 
-export function useUrlSelector<T = string>(
+export function useUrlParam<T = string>(
   name: string,
   transform: (value: string) => T = value => value as T,
   options: { multiple?: boolean } = {}

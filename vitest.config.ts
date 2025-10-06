@@ -12,13 +12,13 @@ export default defineConfig({
     pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: true, // Use single fork to reduce memory usage
+        singleFork: false, // Enable multiple forks for better isolation
       },
     },
     testTimeout: 10000, // 10 second timeout
     hookTimeout: 5000, // 5 second hook timeout
     teardownTimeout: 5000,
-    isolate: false, // Disable test isolation to reduce memory usage
+    isolate: true, // Enable test isolation to prevent shared state issues
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

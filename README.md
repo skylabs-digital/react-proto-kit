@@ -65,6 +65,7 @@ That's it! You now have a fully functional CRUD API with TypeScript support, opt
 - **📊 Query Parameters**: Static and dynamic query parameter management
 - **🔍 URL State**: Automatic URL synchronization for filters and pagination
 - **🎭 Data Orchestrator**: Aggregate multiple API calls with smart loading states
+- **🎨 UI Components**: Built-in Modal, Drawer, Tabs, Stepper, Accordion, and Snackbar components with URL state management
 
 ## 📖 Table of Contents
 
@@ -497,14 +498,106 @@ npm install
 npm run dev
 ```
 
+## 🎨 UI Components
+
+### Snackbar Notifications
+
+Built-in toast-style notifications with auto-dismiss and queue management:
+
+```tsx
+import { SnackbarProvider, SnackbarContainer, useSnackbar } from '@skylabs-digital/react-proto-kit';
+
+// Setup (once in your app)
+function App() {
+  return (
+    <SnackbarProvider>
+      <SnackbarContainer position="top-right" maxVisible={3} />
+      <YourApp />
+    </SnackbarProvider>
+  );
+}
+
+// Use in any component
+function SaveButton() {
+  const { showSnackbar } = useSnackbar();
+  
+  const handleSave = async () => {
+    try {
+      await saveData();
+      showSnackbar({
+        message: 'Changes saved successfully!',
+        variant: 'success',
+        duration: 3000
+      });
+    } catch (error) {
+      showSnackbar({
+        message: 'Error saving changes',
+        variant: 'error',
+        duration: 5000
+      });
+    }
+  };
+  
+  return <button onClick={handleSave}>Save</button>;
+}
+```
+
+**Snackbar Features:**
+- ✅ 4 variants: `success`, `error`, `warning`, `info`
+- ✅ Auto-dismiss with configurable timeout
+- ✅ Queue system for multiple notifications
+- ✅ Optional action buttons (undo, etc.)
+- ✅ Fully customizable via `SnackbarComponent` prop
+- ✅ 6 position options (top/bottom, left/center/right)
+- ✅ Portal rendering for proper z-index
+
+**Custom Snackbar Component:**
+```tsx
+import { SnackbarItemProps } from '@skylabs-digital/react-proto-kit';
+
+function CustomSnackbar({ snackbar, onClose, animate }: SnackbarItemProps) {
+  return (
+    <div style={{ /* your custom styles */ }}>
+      <span>{snackbar.message}</span>
+      {snackbar.action && (
+        <button onClick={() => {
+          snackbar.action.onClick();
+          onClose(snackbar.id);
+        }}>
+          {snackbar.action.label}
+        </button>
+      )}
+      <button onClick={() => onClose(snackbar.id)}>×</button>
+    </div>
+  );
+}
+
+// Use custom component
+<SnackbarContainer SnackbarComponent={CustomSnackbar} />
+```
+
+**Integration with CRUD APIs:**
+```tsx
+const todosApi = createDomainApi('todos', todoSchema);
+const { showSnackbar } = useSnackbar();
+
+const createMutation = todosApi.useCreate({
+  onSuccess: () => showSnackbar({ message: 'Todo created!', variant: 'success' }),
+  onError: (e) => showSnackbar({ message: e.message, variant: 'error' })
+});
+```
+
 ## 📖 Documentation
 
 Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
-- **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation
+- **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation with all hooks and components
+- **[UI Components Guide](./docs/UI_COMPONENTS.md)** - Complete guide with examples for Modal, Drawer, Tabs, Stepper, Accordion, and Snackbar
+- **[UI Components RFC](./docs/RFC_URL_NAVIGATION.md)** - Technical design and architecture decisions
 - **[Advanced Usage](./docs/ADVANCED_USAGE.md)** - Complex patterns and best practices
 - **[Forms Guide](./docs/FORMS.md)** - Form handling and validation
 - **[Global Context Guide](./docs/GLOBAL_CONTEXT_GUIDE.md)** - State management
+- **[Data Orchestrator](./docs/DATA_ORCHESTRATOR.md)** - Aggregate multiple API calls
 - **[Architecture](./docs/ARCHITECTURE.md)** - Internal architecture and design decisions
 - **[Migration Guide](./docs/MIGRATION_GUIDE.md)** - Upgrading between versions
 

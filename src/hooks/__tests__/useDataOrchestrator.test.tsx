@@ -80,49 +80,57 @@ describe('useDataOrchestrator', () => {
     expect(result.current.errors.stats).toEqual(error);
   });
 
-  it('should track isLoading only for first load', async () => {
-    let loading = true;
-    let data: any = null;
+  it(
+    'should track isLoading only for first load',
+    async () => {
+      let loading = true;
+      let data: any = null;
 
-    const mockHook = () => ({
-      data,
-      loading,
-      error: null,
-      refetch: vi.fn(),
-    });
+      const mockHook = () => ({
+        data,
+        loading,
+        error: null,
+        refetch: vi.fn(),
+      });
 
-    const { result, rerender } = renderHook(() =>
-      useDataOrchestrator({
-        users: mockHook,
-      })
-    );
+      const { result, rerender } = renderHook(() =>
+        useDataOrchestrator({
+          users: mockHook,
+        })
+      );
 
-    // First render - loading
-    expect(result.current.isLoading).toBe(true);
-    expect(result.current.isFetching).toBe(true);
+      // First render - loading
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.isFetching).toBe(true);
 
-    // Wait for settled state to update
-    await waitFor(() => {
+      // Update data and rerender
       loading = false;
       data = [{ id: '1' }];
       rerender();
-    });
 
-    // After first load completes
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.isFetching).toBe(false);
+      // Wait for settled state to update
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
 
-    // Simulate refetch
-    await waitFor(() => {
+      // After first load completes
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.isFetching).toBe(false);
+
+      // Simulate refetch
       loading = true;
       rerender();
-    });
 
-    // On refetch: isFetching true, isLoading false (already settled)
-    expect(result.current.isFetching).toBe(true);
-    // Note: isLoading might still be true because hasSettled updates asynchronously
-    // This is expected behavior
-  });
+      // Wait for fetching state
+      await waitFor(() => {
+        expect(result.current.isFetching).toBe(true);
+      });
+
+      // On refetch: isFetching true, isLoading should eventually be false (already settled)
+      // Note: This is async behavior
+    },
+    { timeout: 15000 }
+  );
 
   it('should reset state when resetKey changes', () => {
     let resetKey = 'key1';

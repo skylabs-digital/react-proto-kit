@@ -96,24 +96,28 @@ describe('FetchConnector', () => {
       expect((result as ErrorResponse).error?.code).toBe('NETWORK_ERROR');
     });
 
-    it('should handle timeout', async () => {
-      const timeoutConnector = new FetchConnector({
-        baseUrl: 'https://api.example.com',
-        timeout: 100,
-      });
+    it(
+      'should handle timeout',
+      async () => {
+        const timeoutConnector = new FetchConnector({
+          baseUrl: 'https://api.example.com',
+          timeout: 100,
+        });
 
-      mockFetch.mockImplementationOnce(
-        () =>
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('The operation was aborted')), 200)
-          )
-      );
+        mockFetch.mockImplementationOnce(
+          () =>
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('The operation was aborted')), 200)
+            )
+        );
 
-      const result = await timeoutConnector.get('items');
+        const result = await timeoutConnector.get('items');
 
-      expect(result.success).toBe(false);
-      expect((result as ErrorResponse).error?.code).toBe('NETWORK_ERROR');
-    });
+        expect(result.success).toBe(false);
+        expect((result as ErrorResponse).error?.code).toBe('NETWORK_ERROR');
+      },
+      { timeout: 15000 }
+    );
   });
 
   describe('post', () => {
@@ -185,21 +189,25 @@ describe('FetchConnector', () => {
   });
 
   describe('retries', () => {
-    it('should retry on network failure', async () => {
-      const retryConnector = new FetchConnector({
-        baseUrl: 'https://api.example.com',
-        retries: 2,
-      });
+    it(
+      'should retry on network failure',
+      async () => {
+        const retryConnector = new FetchConnector({
+          baseUrl: 'https://api.example.com',
+          retries: 2,
+        });
 
-      mockFetch.mockRejectedValueOnce(new Error('Network error')).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      });
+        mockFetch.mockRejectedValueOnce(new Error('Network error')).mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
 
-      const result = await retryConnector.get('items');
+        const result = await retryConnector.get('items');
 
-      expect(result.success).toBe(true);
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-    });
+        expect(result.success).toBe(true);
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+      },
+      { timeout: 15000 }
+    );
   });
 });

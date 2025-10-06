@@ -418,11 +418,371 @@ interface UseFormDataResult<T> {
 }
 ```
 
-## Navigation Utilities
+## Navigation & UI Components
+
+React Proto Kit includes a complete suite of URL-synchronized UI components for building dynamic interfaces.
+
+### `useSnackbar()`
+
+Hook for displaying toast-style notifications with auto-dismiss and queue management.
+
+```tsx
+import { SnackbarProvider, SnackbarContainer, useSnackbar } from '@skylabs-digital/react-proto-kit';
+
+// Setup (once in your app root)
+function App() {
+  return (
+    <SnackbarProvider>
+      <SnackbarContainer position="top-right" maxVisible={3} />
+      <YourApp />
+    </SnackbarProvider>
+  );
+}
+
+// Use in any component
+function SaveButton() {
+  const { showSnackbar } = useSnackbar();
+  
+  const handleSave = async () => {
+    try {
+      await saveData();
+      showSnackbar({
+        message: 'Saved successfully!',
+        variant: 'success',
+        duration: 3000
+      });
+    } catch (error) {
+      showSnackbar({
+        message: 'Error saving data',
+        variant: 'error',
+        duration: 5000,
+        action: {
+          label: 'Retry',
+          onClick: () => handleSave()
+        }
+      });
+    }
+  };
+  
+  return <button onClick={handleSave}>Save</button>;
+}
+```
+
+#### API
+
+```tsx
+interface UseSnackbarReturn {
+  showSnackbar: (options: ShowSnackbarOptions) => string;  // Returns snackbar ID
+  hideSnackbar: (id: string) => void;                      // Close by ID
+  hideAll: () => void;                                     // Close all
+}
+
+interface ShowSnackbarOptions {
+  message: string;                                  // Notification message
+  variant?: 'success' | 'error' | 'warning' | 'info';  // Visual style
+  duration?: number | null;                         // Auto-dismiss delay (null = persist)
+  onClose?: () => void;                            // Callback when closed
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+}
+```
+
+#### Components
+
+**SnackbarContainer**: Container that renders all active snackbars
+
+```tsx
+interface SnackbarContainerProps {
+  position?: 'top-right' | 'top-left' | 'top-center' | 'bottom-right' | 'bottom-left' | 'bottom-center';
+  maxVisible?: number;        // Max simultaneous snackbars (default: 3)
+  className?: string;
+  animate?: boolean;          // Enable animations (default: true)
+  SnackbarComponent?: React.ComponentType<SnackbarItemProps>;  // Custom snackbar component
+}
+```
+
+**Custom Snackbar Component**: Override default styling
+
+```tsx
+import { SnackbarItemProps } from '@skylabs-digital/react-proto-kit';
+
+function CustomSnackbar({ snackbar, onClose, animate }: SnackbarItemProps) {
+  return (
+    <div className="my-custom-snackbar">
+      <span>{snackbar.message}</span>
+      {snackbar.action && (
+        <button onClick={() => {
+          snackbar.action.onClick();
+          onClose(snackbar.id);
+        }}>
+          {snackbar.action.label}
+        </button>
+      )}
+      <button onClick={() => onClose(snackbar.id)}>×</button>
+    </div>
+  );
+}
+
+// Use custom component
+<SnackbarContainer SnackbarComponent={CustomSnackbar} />
+```
+
+---
+
+### `useUrlModal(modalId, options?)`
+
+Manages modal state via URL parameter (`?modal=modalId`). Ensures only one modal is open at a time.
+
+```tsx
+import { useUrlModal } from '@skylabs-digital/react-proto-kit';
+
+function UserEditModal() {
+  const [isOpen, setOpen] = useUrlModal('editUser', {
+    onOpen: () => console.log('Modal opened'),
+    onClose: () => console.log('Modal closed')
+  });
+  
+  return (
+    <>
+      <button onClick={() => setOpen(true)}>Edit User</button>
+      {isOpen && (
+        <div className="modal">
+          <h2>Edit User</h2>
+          <button onClick={() => setOpen(false)}>Close</button>
+        </div>
+      )}
+    </>
+  );
+}
+```
+
+#### API
+
+```tsx
+type UseUrlModalReturn = readonly [
+  boolean,                      // isOpen
+  (value?: boolean) => void     // setOpen (toggles if no value)
+];
+
+interface UseUrlModalOptions {
+  onOpen?: () => void;
+  onClose?: () => void;
+}
+```
+
+---
+
+### `useUrlDrawer(drawerId, options?)`
+
+Manages drawer/sidebar state via URL parameter (`?drawer=drawerId`).
+
+```tsx
+import { useUrlDrawer } from '@skylabs-digital/react-proto-kit';
+
+function FilterDrawer() {
+  const [isOpen, setOpen] = useUrlDrawer('filters', {
+    position: 'right',
+    onOpen: () => console.log('Drawer opened')
+  });
+  
+  return (
+    <>
+      <button onClick={() => setOpen(true)}>Show Filters</button>
+      {isOpen && (
+        <aside className="drawer">
+          <h3>Filters</h3>
+          <button onClick={() => setOpen(false)}>Close</button>
+        </aside>
+      )}
+    </>
+  );
+}
+```
+
+#### API
+
+```tsx
+interface UseUrlDrawerOptions {
+  position?: 'left' | 'right' | 'top' | 'bottom';
+  onOpen?: () => void;
+  onClose?: () => void;
+}
+```
+
+---
+
+### `useUrlTabs(options)`
+
+Manages tab state via URL parameter (`?tab=tabId`).
+
+```tsx
+import { useUrlTabs } from '@skylabs-digital/react-proto-kit';
+
+function SettingsTabs() {
+  const { activeTab, setTab, isActive } = useUrlTabs({
+    tabs: ['profile', 'security', 'notifications'],
+    defaultTab: 'profile',
+    paramName: 'section'  // Custom param name (default: 'tab')
+  });
+  
+  return (
+    <div>
+      <nav>
+        <button onClick={() => setTab('profile')} className={isActive('profile') ? 'active' : ''}>
+          Profile
+        </button>
+        <button onClick={() => setTab('security')} className={isActive('security') ? 'active' : ''}>
+          Security
+        </button>
+      </nav>
+      
+      {activeTab === 'profile' && <ProfileSettings />}
+      {activeTab === 'security' && <SecuritySettings />}
+    </div>
+  );
+}
+```
+
+#### API
+
+```tsx
+interface UseUrlTabsReturn {
+  activeTab: string;
+  setTab: (tabId: string) => void;
+  isActive: (tabId: string) => boolean;
+  nextTab: () => void;
+  prevTab: () => void;
+}
+```
+
+---
+
+### `useUrlStepper(options)`
+
+Manages multi-step form state via URL parameter (`?step=stepId`).
+
+```tsx
+import { useUrlStepper } from '@skylabs-digital/react-proto-kit';
+
+function OnboardingFlow() {
+  const { currentStep, nextStep, prevStep, goToStep, isComplete } = useUrlStepper({
+    steps: ['welcome', 'profile', 'preferences', 'complete'],
+    defaultStep: 'welcome'
+  });
+  
+  return (
+    <div>
+      <h2>Step {currentStep}</h2>
+      {currentStep === 'welcome' && <WelcomeStep />}
+      {currentStep === 'profile' && <ProfileStep />}
+      
+      <button onClick={prevStep} disabled={currentStep === 'welcome'}>
+        Previous
+      </button>
+      <button onClick={nextStep} disabled={isComplete}>
+        Next
+      </button>
+    </div>
+  );
+}
+```
+
+#### API
+
+```tsx
+interface UseUrlStepperReturn {
+  currentStep: string;
+  currentStepIndex: number;
+  goToStep: (step: string | number) => void;
+  nextStep: () => void;
+  prevStep: () => void;
+  canGoNext: boolean;
+  canGoPrev: boolean;
+  isComplete: boolean;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+}
+```
+
+---
+
+### `useUrlAccordion(options)`
+
+Manages accordion state via URL parameter. Supports single or multiple expanded panels.
+
+```tsx
+import { useUrlAccordion } from '@skylabs-digital/react-proto-kit';
+
+// Single mode
+function FAQAccordion() {
+  const { expanded, toggle, isExpanded } = useUrlAccordion({
+    mode: 'single',
+    paramName: 'faq'
+  });
+  
+  return (
+    <div>
+      <div onClick={() => toggle('shipping')}>
+        <h3>Shipping Info</h3>
+        {isExpanded('shipping') && <p>Ships in 2-3 days</p>}
+      </div>
+      
+      <div onClick={() => toggle('returns')}>
+        <h3>Returns</h3>
+        {isExpanded('returns') && <p>30-day return policy</p>}
+      </div>
+    </div>
+  );
+}
+
+// Multiple mode
+function FilterAccordion() {
+  const { expanded, toggle, isExpanded, expandAll, collapseAll } = useUrlAccordion({
+    mode: 'multiple',
+    paramName: 'filters'
+  });
+  
+  return (
+    <div>
+      <button onClick={expandAll}>Expand All</button>
+      <button onClick={collapseAll}>Collapse All</button>
+      {/* ... accordion items */}
+    </div>
+  );
+}
+```
+
+#### API
+
+```tsx
+// Single mode
+interface AccordionHelpersSingle {
+  expanded: string | undefined;
+  toggle: (id: string) => void;
+  isExpanded: (id: string) => boolean;
+  expand: (id: string) => void;
+  collapse: () => void;
+}
+
+// Multiple mode
+interface AccordionHelpersMultiple {
+  expanded: string[];
+  toggle: (id: string) => void;
+  isExpanded: (id: string) => boolean;
+  expand: (id: string) => void;
+  collapse: (id: string) => void;
+  expandAll: (ids: string[]) => void;
+  collapseAll: () => void;
+}
+```
+
+---
 
 ### `useUrlSelector(key, parser, options?)`
 
-Synchronizes component state with URL parameters.
+Low-level hook for synchronizing any component state with URL parameters.
 
 ```tsx
 import { useUrlSelector } from '@skylabs-digital/react-proto-kit';
@@ -448,15 +808,7 @@ function TodoList() {
 }
 ```
 
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `key` | `string` | URL parameter key |
-| `parser` | `(value: string) => T` | Function to parse URL value |
-| `options?` | `UrlSelectorOptions<T>` | Configuration options |
-
-#### Options
+#### API
 
 ```tsx
 interface UrlSelectorOptions<T> {
