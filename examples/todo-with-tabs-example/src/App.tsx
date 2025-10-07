@@ -137,6 +137,7 @@ const TodoListWithData = withDataOrchestrator<{ todos: Todo[] }>(TodoListContent
   options: {
     // 🔥 Magic: Auto-reset when 'status' URL param changes!
     watchSearchParams: ['status'],
+    refetchBehavior: 'stale-while-revalidate',
   },
 });
 

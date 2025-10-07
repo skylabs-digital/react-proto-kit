@@ -100,6 +100,9 @@ export interface RequestConfig {
   data?: any;
 }
 
+// Refetch behavior for data orchestrator
+export type RefetchBehavior = 'stale-while-revalidate' | 'blocking';
+
 // Global state configuration
 export interface GlobalStateConfig {
   optimistic?: boolean;
@@ -265,6 +268,28 @@ export interface UseDataOrchestratorOptions {
    * ```
    */
   watchSearchParams?: string[];
+  /**
+   * Behavior when refetching data after URL parameter changes.
+   *
+   * - 'stale-while-revalidate' (default): Shows previous data while fetching new data.
+   *   Provides smooth transitions without UI blocking.
+   *
+   * - 'blocking': Clears data and shows loading state while fetching.
+   *   More explicit but can cause UI flashes.
+   *
+   * @default 'stale-while-revalidate'
+   * @example
+   * ```tsx
+   * withDataOrchestrator(Component, {
+   *   hooks: { todos: () => todosApi.useList() },
+   *   options: {
+   *     watchSearchParams: ['status'],
+   *     refetchBehavior: 'stale-while-revalidate' // smooth transitions
+   *   }
+   * })
+   * ```
+   */
+  refetchBehavior?: RefetchBehavior;
 }
 
 // Main result type for useDataOrchestrator

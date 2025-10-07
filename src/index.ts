@@ -15,6 +15,7 @@ export * from './provider/ApiClientProvider';
 export * from './context/GlobalStateProvider';
 export * from './context/InvalidationManager';
 export * from './context/DataOrchestratorContext';
+export * from './context/RefetchBehaviorContext';
 
 // Export utility types
 export * from './factory/createDomainApi';
@@ -57,6 +58,7 @@ export type {
   SuccessResponse,
   ErrorResponse,
   PaginationMeta,
+  RefetchBehavior,
 
   // Connector types
   ConnectorType,

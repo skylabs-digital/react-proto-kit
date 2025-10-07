@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { UseQueryResult, ErrorResponse } from '../types';
+import { UseQueryResult, ErrorResponse, RefetchBehavior } from '../types';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
 import { globalInvalidationManager } from '../context/InvalidationManager';
+import { useRefetchBehavior } from '../context/RefetchBehaviorContext';
 
 interface UseByIdOptions {
   enabled?: boolean;
   refetchOnMount?: boolean;
   cacheTime?: number;
+  refetchBehavior?: RefetchBehavior;
 }
 
 // Unified hook that can work with or without global state
@@ -38,10 +40,65 @@ export function useById<T>(
   // Determine which state to use
   const cacheKey = endpoint || `${entity}${params ? JSON.stringify(params) : ''}`;
 
-  const data = globalState && entityState ? entityState.data?.[cacheKey] || null : localData;
+  // Get refetch behavior from context or options
+  const contextBehavior = useRefetchBehavior();
+  const refetchBehavior = options?.refetchBehavior || contextBehavior;
 
-  const loading =
-    globalState && entityState ? (entityState.loading?.[cacheKey] ?? data === null) : localLoading;
+  // Get current data for this cacheKey
+  const currentData = globalState && entityState ? entityState.data?.[cacheKey] || null : localData;
+  const currentLoading =
+    globalState && entityState ? (entityState.loading?.[cacheKey] ?? currentData === null) : localLoading;
+
+  // Store data by cacheKey for stale-while-revalidate
+  const dataByCacheKeyRef = useRef<Map<string, T | null>>(new Map());
+  const previousCacheKeyRef = useRef<string>(cacheKey);
+
+  // Detect if cacheKey changed (e.g., navigating from /users/123 to /users/456)
+  const cacheKeyChanged = previousCacheKeyRef.current !== cacheKey;
+
+  // Save current data to Map when it's loaded
+  useEffect(() => {
+    if (currentData !== null && !currentLoading) {
+      dataByCacheKeyRef.current.set(cacheKey, currentData);
+    }
+  }, [cacheKey, currentData, currentLoading]);
+
+  // Determine what data to show based on refetchBehavior
+  let data: T | null;
+  let loading: boolean;
+
+  if (refetchBehavior === 'stale-while-revalidate') {
+    if (cacheKeyChanged && (currentData === null || currentLoading)) {
+      // CacheKey changed (different ID) and new data not loaded yet
+      // Try to show stale data from PREVIOUS cacheKey
+      const previousData = dataByCacheKeyRef.current.get(previousCacheKeyRef.current);
+      
+      if (previousData !== undefined) {
+        // We have previous data - show it while loading new data
+        data = previousData;
+        loading = false; // Don't block UI - show stale data
+      } else {
+        // No previous data (first load)
+        data = currentData;
+        loading = currentLoading;
+      }
+    } else {
+      // Either cacheKey didn't change, or new data already loaded
+      data = currentData;
+      loading = currentLoading && currentData === null;
+    }
+  } else {
+    // Blocking mode: always show current state
+    data = currentData;
+    loading = currentLoading;
+  }
+
+  // Update the previous cacheKey reference
+  useEffect(() => {
+    if (cacheKeyChanged) {
+      previousCacheKeyRef.current = cacheKey;
+    }
+  }, [cacheKey, cacheKeyChanged]);
 
   const error = globalState && entityState ? entityState.errors?.[cacheKey] || null : localError;
 

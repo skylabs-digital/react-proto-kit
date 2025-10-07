@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { useDataOrchestrator } from '../hooks/useDataOrchestrator';
 import { useDataOrchestratorContext } from '../context/DataOrchestratorContext';
+import { RefetchBehaviorProvider } from '../context/RefetchBehaviorContext';
 import {
   DataOrchestratorConfig,
   RequiredOptionalConfig,
@@ -295,6 +296,13 @@ export function withDataOrchestrator<
     }
 
     // All required resources loaded - render component with data + orchestrator
-    return <Component {...(props as TProps)} {...(data as TData)} orchestrator={orchestrator} />;
+    // Wrap with RefetchBehaviorProvider to pass behavior down to hooks
+    const refetchBehavior = options?.refetchBehavior || 'stale-while-revalidate';
+
+    return (
+      <RefetchBehaviorProvider behavior={refetchBehavior}>
+        <Component {...(props as TProps)} {...(data as TData)} orchestrator={orchestrator} />
+      </RefetchBehaviorProvider>
+    );
   };
 }
