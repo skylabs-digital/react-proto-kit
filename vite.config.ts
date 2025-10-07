@@ -19,11 +19,11 @@ export default defineConfig({
       fileName: format => `index.${format === 'es' ? 'es.js' : 'js'}`,
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'zod'],
+      external: ['react', 'react-router-dom', 'zod'],
       output: {
         globals: {
           react: 'React',
-          'react-dom': 'ReactDOM',
+          'react-router-dom': 'ReactRouterDOM',
           zod: 'z',
         },
       },
