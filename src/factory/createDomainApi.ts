@@ -88,8 +88,27 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
 
       // Merge static params with dynamic params
       const staticParams = config?.queryParams?.static || {};
-      currentQueryParams = { ...staticParams, ...queryParams };
-      return api; // Return self for chaining
+      const mergedQueryParams = { ...staticParams, ...queryParams };
+
+      // Return a NEW API object with query params baked in
+      // This ensures each call to withQuery creates a fresh builder
+      return {
+        ...api,
+        useList: (params?: ListParams) => {
+          if (hasUnresolvedParams(currentPath)) {
+            const paramNames = extractParamNames(currentPath);
+            throw new Error(
+              `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
+                `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useList().`
+            );
+          }
+
+          return useList<EntityType>(entity, currentPath, params, {
+            cacheTime: config?.cacheTime,
+            queryParams: Object.keys(mergedQueryParams).length > 0 ? mergedQueryParams : undefined,
+          });
+        },
+      };
     },
 
     useList: (params?: ListParams) => {

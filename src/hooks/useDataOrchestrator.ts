@@ -52,10 +52,11 @@ export function useDataOrchestrator<T extends DataOrchestratorConfig | RequiredO
   // Reset tracking when resetKey changes
   const prevResetKey = useRef(resetKey);
   useEffect(() => {
-    if (prevResetKey.current !== resetKey) {
+    if (prevResetKey.current !== resetKey && prevResetKey.current !== undefined) {
       hasSettledRef.current = {};
-      prevResetKey.current = resetKey;
+      // Hooks will automatically refetch when their deps change
     }
+    prevResetKey.current = resetKey;
   }, [resetKey]);
 
   // Determine if we have required/optional structure

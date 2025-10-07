@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { useDataOrchestrator } from '../hooks/useDataOrchestrator';
 import { useDataOrchestratorContext } from '../context/DataOrchestratorContext';
 import {
@@ -170,7 +170,7 @@ function DefaultErrorComponent({ errors, retry }: DataOrchestratorErrorProps) {
  *   // This component will auto-reset when status or category change
  *   return withDataOrchestrator<TodoData>(TodoListContent, {
  *     hooks: {
- *       todos: () => todosApi.useList({ queryParams: { status, category } })
+ *       todos: () => todosApi.withQuery({ status, category }).useList()
  *     },
  *     options: {
  *       watchSearchParams: ['status', 'category'] // Auto-reset on change!
@@ -192,29 +192,45 @@ export function withDataOrchestrator<
   return function WithDataOrchestratorWrapper(props: TProps) {
     const context = useDataOrchestratorContext();
     const [searchParams] = useSearchParams();
+    const location = useLocation();
+
+    // Extract watch params and resetKey outside useMemo to avoid stale closures
+    const watchSearchParams = options?.watchSearchParams;
+    const userResetKey = options?.resetKey;
+
+    // Use location.search which DOES change when query params change
+    // This is the reactive value we need for detecting URL changes
+    const locationSearch = location.search;
+
+    // Extract only the values of watched params (not the entire searchParams object)
+    // This ensures we only react to changes in the specific params we're watching
+    const watchedParamValues = useMemo(() => {
+      if (!watchSearchParams || watchSearchParams.length === 0) {
+        return null;
+      }
+      // Create stable string from watched param values only
+      const values = watchSearchParams.map(param => `${param}=${searchParams.get(param) || ''}`);
+      return values.join('&');
+      // Using locationSearch to react to actual URL changes
+    }, [locationSearch, searchParams, watchSearchParams]);
 
     // Build dynamic resetKey based on watched search params
     const dynamicResetKey = useMemo(() => {
-      const { watchSearchParams, resetKey } = options || {};
-
-      if (!watchSearchParams || watchSearchParams.length === 0) {
-        return resetKey;
+      if (!watchedParamValues) {
+        return userResetKey;
       }
 
-      // Create a stable key from watched params
-      const watchedValues = watchSearchParams
-        .map(param => `${param}=${searchParams.get(param) || ''}`)
-        .join('|');
-
       // Combine with user's resetKey if provided
-      return resetKey !== undefined ? `${resetKey}:${watchedValues}` : watchedValues;
-    }, [searchParams, options]);
+      return userResetKey !== undefined
+        ? `${userResetKey}:${watchedParamValues}`
+        : watchedParamValues;
+    }, [watchedParamValues, userResetKey]);
 
     // Merge dynamic resetKey with options
     const enhancedOptions = useMemo(
       () => ({
         ...options,
-        resetKey: dynamicResetKey,
+        resetKey: dynamicResetKey !== undefined ? dynamicResetKey : userResetKey,
       }),
       [options, dynamicResetKey]
     );

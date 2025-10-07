@@ -33,8 +33,11 @@ export function useList<T>(
   const hasFetchedRef = useRef(false);
   const isCurrentlyFetchingRef = useRef(false);
 
-  // Determine which state to use - include endpoint to differentiate between different paths
-  const cacheKey = `list:${endpoint}${params ? ':' + JSON.stringify(params) : ''}`;
+  // Determine which state to use - include endpoint, params AND queryParams
+  const cacheKeyParts = [endpoint];
+  if (params) cacheKeyParts.push(JSON.stringify(params));
+  if (options?.queryParams) cacheKeyParts.push(JSON.stringify(options.queryParams));
+  const cacheKey = `list:${cacheKeyParts.join(':')}`;
 
   const data = globalState && entityState ? entityState.lists?.[cacheKey] || null : localData;
 
@@ -147,18 +150,16 @@ export function useList<T>(
     await fetchData(true); // Force refetch
   }, [fetchData]);
 
-  // Reset fetch flags when key parameters change
+  // Reset fetch flags and refetch when key parameters change
   useEffect(() => {
     hasFetchedRef.current = false;
     isCurrentlyFetchingRef.current = false;
-  }, [endpoint, cacheKey]);
 
-  // Initial fetch on mount - only runs once
-  useEffect(() => {
-    if (options?.refetchOnMount !== false && !hasFetchedRef.current) {
+    // Auto-fetch when cacheKey changes (e.g., query params change)
+    if (options?.refetchOnMount !== false) {
       fetchData();
     }
-  }, []); // Empty dependency array - only runs on mount
+  }, [endpoint, cacheKey]); // Don't include fetchData to avoid loops
 
   return {
     data,

@@ -581,9 +581,8 @@ export function TodoListPage() {
   const TodoList = withDataOrchestrator(TodoListContent, {
     hooks: {
       // Hooks capture current status/category values
-      todos: () => todosApi.useList({ 
-        queryParams: { status, category } 
-      })
+      // Use withQuery() to inject query params
+      todos: () => todosApi.withQuery({ status, category }).useList()
     },
     options: {
       // 🔥 Auto-reset when these params change!
