@@ -80,7 +80,7 @@ export function useList<T>(
       // CacheKey just changed and new data not loaded yet
       // Try to show stale data from PREVIOUS cacheKey
       const previousData = dataByCacheKeyRef.current.get(previousCacheKeyRef.current);
-      
+
       if (previousData !== undefined) {
         // We have previous data - show it while loading new data
         data = previousData;

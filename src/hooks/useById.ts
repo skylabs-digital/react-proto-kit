@@ -47,7 +47,9 @@ export function useById<T>(
   // Get current data for this cacheKey
   const currentData = globalState && entityState ? entityState.data?.[cacheKey] || null : localData;
   const currentLoading =
-    globalState && entityState ? (entityState.loading?.[cacheKey] ?? currentData === null) : localLoading;
+    globalState && entityState
+      ? (entityState.loading?.[cacheKey] ?? currentData === null)
+      : localLoading;
 
   // Store data by cacheKey for stale-while-revalidate
   const dataByCacheKeyRef = useRef<Map<string, T | null>>(new Map());
@@ -72,7 +74,7 @@ export function useById<T>(
       // CacheKey changed (different ID) and new data not loaded yet
       // Try to show stale data from PREVIOUS cacheKey
       const previousData = dataByCacheKeyRef.current.get(previousCacheKeyRef.current);
-      
+
       if (previousData !== undefined) {
         // We have previous data - show it while loading new data
         data = previousData;
