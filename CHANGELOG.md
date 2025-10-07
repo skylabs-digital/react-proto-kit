@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.25.1...v1.26.0) (2025-10-07)
+
+
+### Features
+
+* add HOC pattern with refetch capabilities to data orchestrator ([28bc34d](https://github.com/skylabs-digital/react-proto-kit/commit/28bc34d515d6c97e2e5ff9ce192f5c568d7581ac))
+
 ## [1.25.1](https://github.com/skylabs-digital/react-proto-kit/compare/v1.25.0...v1.25.1) (2025-10-07)
 
 
