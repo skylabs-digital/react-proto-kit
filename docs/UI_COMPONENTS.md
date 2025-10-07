@@ -346,43 +346,49 @@ function MobileNav() {
 
 ## 📑 Tabs
 
-URL-synchronized tabs for settings, dashboards, or multi-view interfaces.
+URL-synchronized tabs for settings, dashboards, or multi-view interfaces. Provides both a **hook** (`useUrlTabs`) and a **component** (`UrlTabs`) for maximum flexibility.
 
-### Basic Usage
+### Using the Hook
+
+The `useUrlTabs` hook returns a tuple `[activeTab, setTab]`:
 
 ```tsx
 import { useUrlTabs } from '@skylabs-digital/react-proto-kit';
 
+type SettingsTab = 'profile' | 'security' | 'notifications' | 'billing';
+
 function SettingsPage() {
-  const { activeTab, setTab, isActive } = useUrlTabs({
-    tabs: ['profile', 'security', 'notifications', 'billing'],
-    defaultTab: 'profile'
-  });
+  // Returns [activeTab, setTab] tuple
+  const [activeTab, setTab] = useUrlTabs<SettingsTab>(
+    'tab',                                            // URL param name
+    ['profile', 'security', 'notifications', 'billing'],  // Allowed values
+    'profile'                                         // Default tab (optional)
+  );
   
   return (
     <div>
       <nav className="tabs">
         <button 
           onClick={() => setTab('profile')} 
-          className={isActive('profile') ? 'active' : ''}
+          className={activeTab === 'profile' ? 'active' : ''}
         >
           Profile
         </button>
         <button 
           onClick={() => setTab('security')} 
-          className={isActive('security') ? 'active' : ''}
+          className={activeTab === 'security' ? 'active' : ''}
         >
           Security
         </button>
         <button 
           onClick={() => setTab('notifications')} 
-          className={isActive('notifications') ? 'active' : ''}
+          className={activeTab === 'notifications' ? 'active' : ''}
         >
           Notifications
         </button>
         <button 
           onClick={() => setTab('billing')} 
-          className={isActive('billing') ? 'active' : ''}
+          className={activeTab === 'billing' ? 'active' : ''}
         >
           Billing
         </button>
@@ -399,23 +405,136 @@ function SettingsPage() {
 }
 ```
 
-### With Navigation Controls
+### Using the Component
+
+The `UrlTabs` component provides declarative tab rendering:
+
+#### Value-Based Rendering
+
+```tsx
+import { UrlTabs } from '@skylabs-digital/react-proto-kit';
+
+function SettingsPage() {
+  return (
+    <div>
+      {/* Tab Navigation - you control this */}
+      <nav className="tabs">
+        <button onClick={() => pushToStack('tab', 'profile')}>Profile</button>
+        <button onClick={() => pushToStack('tab', 'security')}>Security</button>
+        <button onClick={() => pushToStack('tab', 'notifications')}>Notifications</button>
+      </nav>
+
+      {/* Tab Content - UrlTabs manages visibility */}
+      <UrlTabs param="tab" value="profile" defaultValue="profile">
+        <ProfileSettings />
+      </UrlTabs>
+      
+      <UrlTabs param="tab" value="security">
+        <SecuritySettings />
+      </UrlTabs>
+      
+      <UrlTabs param="tab" value="notifications">
+        <NotificationSettings />
+      </UrlTabs>
+    </div>
+  );
+}
+```
+
+#### Render Function Pattern
 
 ```tsx
 function Dashboard() {
-  const { activeTab, nextTab, prevTab, canGoNext, canGoPrev } = useUrlTabs({
-    tabs: ['overview', 'analytics', 'reports']
-  });
+  return (
+    <UrlTabs 
+      param="tab" 
+      allowedValues={['overview', 'analytics', 'reports']}
+      defaultValue="overview"
+    >
+      {(activeTab) => (
+        <div>
+          {activeTab === 'overview' && <OverviewContent />}
+          {activeTab === 'analytics' && <AnalyticsContent />}
+          {activeTab === 'reports' && <ReportsContent />}
+        </div>
+      )}
+    </UrlTabs>
+  );
+}
+```
+
+#### With Unmount on Hide
+
+Unmount inactive tabs to save resources:
+
+```tsx
+function ProductTabs() {
+  return (
+    <div>
+      <UrlTabs 
+        param="tab" 
+        value="details" 
+        defaultValue="details"
+        unmountOnHide={true}  // Unmount when not active
+      >
+        <ProductDetails />
+      </UrlTabs>
+      
+      <UrlTabs 
+        param="tab" 
+        value="reviews"
+        unmountOnHide={true}
+      >
+        <ProductReviews />  {/* Only mounts when active */}
+      </UrlTabs>
+    </div>
+  );
+}
+```
+
+### Combined Hook + Component Pattern
+
+```tsx
+function AdvancedTabs() {
+  type Tab = 'overview' | 'analytics' | 'reports';
+  const [activeTab, setTab] = useUrlTabs<Tab>('tab', ['overview', 'analytics', 'reports']);
   
   return (
     <div>
-      <div className="tab-navigation">
-        <button onClick={prevTab} disabled={!canGoPrev}>← Previous</button>
-        <span>Current: {activeTab}</span>
-        <button onClick={nextTab} disabled={!canGoNext}>Next →</button>
-      </div>
+      {/* Custom Navigation with Hook */}
+      <nav className="tabs">
+        <button 
+          onClick={() => setTab('overview')}
+          className={activeTab === 'overview' ? 'active' : ''}
+        >
+          Overview
+        </button>
+        <button 
+          onClick={() => setTab('analytics')}
+          className={activeTab === 'analytics' ? 'active' : ''}
+        >
+          Analytics
+        </button>
+        <button 
+          onClick={() => setTab('reports')}
+          className={activeTab === 'reports' ? 'active' : ''}
+        >
+          Reports
+        </button>
+      </nav>
+
+      {/* Content with Component */}
+      <UrlTabs param="tab" value="overview" defaultValue="overview">
+        <OverviewContent />
+      </UrlTabs>
       
-      {/* Tab content */}
+      <UrlTabs param="tab" value="analytics">
+        <AnalyticsContent />
+      </UrlTabs>
+      
+      <UrlTabs param="tab" value="reports">
+        <ReportsContent />
+      </UrlTabs>
     </div>
   );
 }
@@ -657,15 +776,17 @@ const [modal2, setModal2] = useUrlModal('modal');  // Conflict!
 
 ```tsx
 // ✅ Good: Stable tab IDs
-const { activeTab } = useUrlTabs({
-  tabs: ['profile', 'settings', 'billing'],  // Stable, URL-friendly
-  defaultTab: 'profile'
-});
+const [activeTab, setTab] = useUrlTabs(
+  'tab',
+  ['profile', 'settings', 'billing'],  // Stable, URL-friendly
+  'profile'
+);
 
 // ❌ Bad: Dynamic or changing tabs
-const { activeTab } = useUrlTabs({
-  tabs: user.permissions.map(p => p.name),  // Unstable
-});
+const [activeTab, setTab] = useUrlTabs(
+  'tab',
+  user.permissions.map(p => p.name),  // Unstable - array reference changes
+);
 ```
 
 ### 4. Snackbar Duration

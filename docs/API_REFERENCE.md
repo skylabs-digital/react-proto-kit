@@ -315,7 +315,19 @@ const result = useDataOrchestrator({
 interface UseDataOrchestratorOptions {
   resetKey?: string | number;  // Reset state when this changes
   onError?: (errors: Record<string, ErrorResponse>) => void;
+  watchSearchParams?: string[];  // Auto-reset when these URL params change
 }
+```
+
+**watchSearchParams** - Automatically reset orchestrator when specified URL search params change. Essential for HOC patterns with filtered data.
+
+```tsx
+withDataOrchestrator(Component, {
+  hooks: { todos: () => todosApi.useList({ queryParams: { status } }) },
+  options: {
+    watchSearchParams: ['status', 'category']  // Reset when ?status or ?category change
+  }
+});
 ```
 
 #### Return Value
@@ -812,27 +824,35 @@ interface UseUrlDrawerOptions {
 
 ---
 
-### `useUrlTabs(options)`
+### `useUrlTabs<T>(param, allowedValues, defaultValue?)`
 
-Manages tab state via URL parameter (`?tab=tabId`).
+Manages tab state via URL parameter with validation. Returns a tuple `[activeTab, setTab]`.
 
 ```tsx
 import { useUrlTabs } from '@skylabs-digital/react-proto-kit';
 
+type SettingsTab = 'profile' | 'security' | 'notifications';
+
 function SettingsTabs() {
-  const { activeTab, setTab, isActive } = useUrlTabs({
-    tabs: ['profile', 'security', 'notifications'],
-    defaultTab: 'profile',
-    paramName: 'section'  // Custom param name (default: 'tab')
-  });
+  const [activeTab, setTab] = useUrlTabs<SettingsTab>(
+    'tab',                                      // URL param name
+    ['profile', 'security', 'notifications'],   // Allowed values
+    'profile'                                   // Default tab (optional)
+  );
   
   return (
     <div>
       <nav>
-        <button onClick={() => setTab('profile')} className={isActive('profile') ? 'active' : ''}>
+        <button 
+          onClick={() => setTab('profile')} 
+          className={activeTab === 'profile' ? 'active' : ''}
+        >
           Profile
         </button>
-        <button onClick={() => setTab('security')} className={isActive('security') ? 'active' : ''}>
+        <button 
+          onClick={() => setTab('security')} 
+          className={activeTab === 'security' ? 'active' : ''}
+        >
           Security
         </button>
       </nav>
@@ -844,15 +864,55 @@ function SettingsTabs() {
 }
 ```
 
-#### API
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `param` | `string` | URL parameter name (e.g., `'tab'`) |
+| `allowedValues` | `readonly T[]` | Array of allowed tab values |
+| `defaultValue` | `T` (optional) | Default tab, uses first value if not provided |
+
+#### Return Value
 
 ```tsx
-interface UseUrlTabsReturn {
-  activeTab: string;
-  setTab: (tabId: string) => void;
-  isActive: (tabId: string) => boolean;
-  nextTab: () => void;
-  prevTab: () => void;
+readonly [T, (value: T) => void]
+// [0]: activeTab - Current active tab
+// [1]: setTab - Function to change tab
+```
+
+---
+
+### `UrlTabs` Component
+
+Declarative component for tab content rendering with automatic visibility management.
+
+```tsx
+import { UrlTabs } from '@skylabs-digital/react-proto-kit';
+
+// Value-based rendering
+<UrlTabs param="tab" value="profile" defaultValue="profile">
+  <ProfileSettings />
+</UrlTabs>
+
+// Render function pattern
+<UrlTabs param="tab" allowedValues={['overview', 'details']}>
+  {(activeTab) => (
+    activeTab === 'overview' ? <Overview /> : <Details />
+  )}
+</UrlTabs>
+```
+
+#### Props
+
+```tsx
+interface UrlTabsProps<T extends string> {
+  param: string;                                    // URL param name
+  value?: T;                                        // Tab value (for value-based mode)
+  allowedValues?: readonly T[];                     // Allowed values (for render function)
+  defaultValue?: T;                                 // Default tab
+  children: React.ReactNode | ((activeTab: T) => React.ReactNode);
+  unmountOnHide?: boolean;                          // Unmount when not active (default: false)
+  className?: string;                               // CSS class
 }
 ```
 

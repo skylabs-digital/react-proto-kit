@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useDataOrchestrator } from '../hooks/useDataOrchestrator';
 import { useDataOrchestratorContext } from '../context/DataOrchestratorContext';
 import {
@@ -158,6 +159,25 @@ function DefaultErrorComponent({ errors, retry }: DataOrchestratorErrorProps) {
  *   }
  * });
  * ```
+ *
+ * @example With URL search params
+ * ```tsx
+ * // Component that filters based on URL params
+ * function TodoList() {
+ *   const [status] = useUrlParam('status');
+ *   const [category] = useUrlParam('category');
+ *
+ *   // This component will auto-reset when status or category change
+ *   return withDataOrchestrator<TodoData>(TodoListContent, {
+ *     hooks: {
+ *       todos: () => todosApi.useList({ queryParams: { status, category } })
+ *     },
+ *     options: {
+ *       watchSearchParams: ['status', 'category'] // Auto-reset on change!
+ *     }
+ *   });
+ * }
+ * ```
  */
 export function withDataOrchestrator<
   TData extends Record<string, any> = Record<string, any>,
@@ -171,7 +191,35 @@ export function withDataOrchestrator<
 
   return function WithDataOrchestratorWrapper(props: TProps) {
     const context = useDataOrchestratorContext();
-    const result = useDataOrchestrator(hooks as any, options);
+    const [searchParams] = useSearchParams();
+
+    // Build dynamic resetKey based on watched search params
+    const dynamicResetKey = useMemo(() => {
+      const { watchSearchParams, resetKey } = options || {};
+
+      if (!watchSearchParams || watchSearchParams.length === 0) {
+        return resetKey;
+      }
+
+      // Create a stable key from watched params
+      const watchedValues = watchSearchParams
+        .map(param => `${param}=${searchParams.get(param) || ''}`)
+        .join('|');
+
+      // Combine with user's resetKey if provided
+      return resetKey !== undefined ? `${resetKey}:${watchedValues}` : watchedValues;
+    }, [searchParams, options]);
+
+    // Merge dynamic resetKey with options
+    const enhancedOptions = useMemo(
+      () => ({
+        ...options,
+        resetKey: dynamicResetKey,
+      }),
+      [options, dynamicResetKey]
+    );
+
+    const result = useDataOrchestrator(hooks as any, enhancedOptions);
 
     const {
       isLoading,

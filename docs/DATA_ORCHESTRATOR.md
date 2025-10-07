@@ -555,6 +555,60 @@ export const Dashboard = withDataOrchestrator<DashboardData>(
 );
 ```
 
+### Auto-Reset with URL Search Params
+
+A common pattern is to filter data based on URL query parameters. The HOC supports **automatic reset** when specific search params change:
+
+```tsx
+import { useUrlParam, withDataOrchestrator } from '@skylabs-digital/react-proto-kit';
+
+function TodoListContent({ todos, orchestrator }) {
+  return (
+    <div>
+      <h1>Todos</h1>
+      <ul>
+        {todos.map(todo => <li key={todo.id}>{todo.text}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+export function TodoListPage() {
+  const [status] = useUrlParam('status');  // Reads ?status=completed
+  const [category] = useUrlParam('category');  // Reads ?category=work
+
+  // Component wrapped with HOC
+  const TodoList = withDataOrchestrator(TodoListContent, {
+    hooks: {
+      // Hooks capture current status/category values
+      todos: () => todosApi.useList({ 
+        queryParams: { status, category } 
+      })
+    },
+    options: {
+      // 🔥 Auto-reset when these params change!
+      watchSearchParams: ['status', 'category']
+    }
+  });
+
+  return <TodoList />;
+}
+```
+
+**How it works:**
+1. User changes `?status=active` to `?status=completed` in URL
+2. HOC detects change in watched param `status`
+3. Automatically resets orchestrator state
+4. Hooks re-execute with new `status` value
+5. Fresh data loads with new filters ✨
+
+**Without `watchSearchParams`:**
+- Changing URL params wouldn't trigger re-fetch
+- Would need manual `orchestrator.refetch()` calls
+- Hooks would still use old captured values
+
+---
+
 ### Hook vs HOC: When to Use What
 
 **Use `useDataOrchestrator` (Hook) when:**
@@ -568,6 +622,7 @@ export const Dashboard = withDataOrchestrator<DashboardData>(
 - ✅ Standard full-page loader/error is sufficient
 - ✅ Component is purely presentational
 - ✅ You want refetch capabilities with minimal boilerplate
+- ✅ Data depends on URL query parameters (use `watchSearchParams`)
 
 ## Type Safety
 

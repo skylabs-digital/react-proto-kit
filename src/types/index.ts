@@ -250,6 +250,21 @@ export type ExtractDataFromRequiredOptional<T extends RequiredOptionalConfig> = 
 export interface UseDataOrchestratorOptions {
   resetKey?: string | number;
   onError?: (errors: Record<string, ErrorResponse>) => void;
+  /**
+   * Array of URL search param names to watch for changes.
+   * When any of these params change, the orchestrator will automatically reset.
+   * Useful for hooks that depend on URL query parameters.
+   *
+   * @example
+   * ```tsx
+   * // Automatically reset when 'status' or 'category' change in URL
+   * withDataOrchestrator(Component, {
+   *   hooks: { todos: () => todosApi.useList({ queryParams: { status } }) },
+   *   options: { watchSearchParams: ['status', 'category'] }
+   * })
+   * ```
+   */
+  watchSearchParams?: string[];
 }
 
 // Main result type for useDataOrchestrator
