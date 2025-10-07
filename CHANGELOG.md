@@ -1,3 +1,15 @@
+# [1.29.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.28.0...v1.29.0) (2025-10-07)
+
+
+### Bug Fixes
+
+* fix code formatting and whitespace in useById and useList hooks ([5aca880](https://github.com/skylabs-digital/react-proto-kit/commit/5aca880b690fbcfc0d51751eaa6f18fb5110e164))
+
+
+### Features
+
+* implement stale-while-revalidate data fetching behavior for smoother UI transitions ([c926c8f](https://github.com/skylabs-digital/react-proto-kit/commit/c926c8fbeee1a8579dc7315548eb6adbab11fe05))
+
 # [1.28.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.27.0...v1.28.0) (2025-10-07)
 
 
