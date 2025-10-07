@@ -124,8 +124,37 @@ const result = useDataOrchestrator({
 interface UseDataOrchestratorOptions {
   resetKey?: string | number;  // Reset state when this changes
   onError?: (errors: Record<string, ErrorResponse>) => void;
+  watchSearchParams?: string[]; // Auto-reset when URL params change
+  refetchBehavior?: 'stale-while-revalidate' | 'blocking'; // Loading UX mode
 }
 ```
+
+**New Options:**
+
+- **`watchSearchParams`**: Array of URL search parameter names to watch. When any of these params change in the URL, the orchestrator automatically resets and refetches all data.
+  
+  ```tsx
+  withDataOrchestrator(Component, {
+    hooks: { /* ... */ },
+    options: {
+      watchSearchParams: ['status', 'category'], // Refetch when ?status= or ?category= changes
+    },
+  });
+  ```
+
+- **`refetchBehavior`**: Controls how data transitions during refetches (default: `'stale-while-revalidate'`):
+  - `'stale-while-revalidate'`: Shows previous data while fetching new data. Provides smooth transitions without loading flashes.
+  - `'blocking'`: Clears data and shows loading state during refetch. More explicit but can feel slower.
+  
+  ```tsx
+  withDataOrchestrator(Component, {
+    hooks: { /* ... */ },
+    options: {
+      watchSearchParams: ['tab'],
+      refetchBehavior: 'stale-while-revalidate', // Smooth tab transitions
+    },
+  });
+  ```
 
 #### Return Value
 
@@ -281,6 +310,126 @@ function App() {
 const Dashboard = withDataOrchestrator(DashboardContent, {
   hooks: { users: usersApi.useList },
   // No need to specify loader/errorComponent
+});
+```
+
+### Pattern 5: URL-Driven Tabs with Smooth Transitions ⭐ NEW
+
+Perfect for tabbed interfaces where the active tab is controlled by URL search params:
+
+```tsx
+import { withDataOrchestrator, useUrlTabs, useUrlParam } from '@skylabs-digital/react-proto-kit';
+
+interface TodoListData {
+  todos: Todo[];
+}
+
+// Component receives filtered data based on active tab
+function TodoListContent({ todos, orchestrator }: TodoListData & { orchestrator: any }) {
+  const [activeTab, setTab] = useUrlTabs<'active' | 'completed' | 'archived'>(
+    'status',
+    ['active', 'completed', 'archived'],
+    'active'
+  );
+
+  return (
+    <div>
+      {/* Tab navigation updates URL */}
+      <nav>
+        <button onClick={() => setTab('active')}>Active</button>
+        <button onClick={() => setTab('completed')}>Completed</button>
+        <button onClick={() => setTab('archived')}>Archived</button>
+      </nav>
+
+      {/* Non-blocking refetch indicator */}
+      {orchestrator.isFetching && <span>🔄 Refreshing...</span>}
+
+      {/* List updates automatically when tab changes */}
+      <TodoList todos={todos} />
+    </div>
+  );
+}
+
+// HOC configuration with URL watching
+const TodoListWithData = withDataOrchestrator<TodoListData>(TodoListContent, {
+  hooks: {
+    todos: () => {
+      // Hook reads current status from URL
+      const [status] = useUrlParam('status');
+      return todosApi.withQuery({ status: status || 'active' }).useList();
+    },
+  },
+  options: {
+    // Automatically refetch when ?status= changes
+    watchSearchParams: ['status'],
+    
+    // Show previous tab's data while loading new tab (smooth transitions)
+    refetchBehavior: 'stale-while-revalidate',
+  },
+});
+```
+
+**How it works:**
+
+1. User clicks "Completed" tab
+2. URL updates to `?status=completed`
+3. `watchSearchParams` detects change
+4. Hook re-executes with new `status` value
+5. `stale-while-revalidate` shows "Active" todos while loading "Completed"
+6. Smooth transition when new data arrives
+
+**Benefits:**
+- ✅ Shareable URLs (`?status=completed`)
+- ✅ Browser back/forward works
+- ✅ No loading flashes between tabs
+- ✅ Previous tab data stays visible during transitions
+
+### Pattern 6: Multi-Filter with URL State
+
+Combine multiple URL parameters for complex filtering:
+
+```tsx
+interface ProductListData {
+  products: Product[];
+}
+
+function ProductListContent({ products, orchestrator }: ProductListData & { orchestrator: any }) {
+  const [category] = useUrlParam('category');
+  const [sortBy] = useUrlParam('sortBy');
+  const [status] = useUrlParam('status');
+
+  return (
+    <div>
+      {/* URL-driven filters */}
+      <FilterBar 
+        category={category} 
+        sortBy={sortBy}
+        status={status}
+      />
+
+      {/* Smooth transitions between filter combinations */}
+      {orchestrator.isFetching && <Spinner />}
+      
+      <ProductGrid products={products} />
+    </div>
+  );
+}
+
+const ProductListWithData = withDataOrchestrator<ProductListData>(ProductListContent, {
+  hooks: {
+    products: () => {
+      const [category] = useUrlParam('category');
+      const [sortBy] = useUrlParam('sortBy');
+      const [status] = useUrlParam('status');
+      
+      return productsApi.withQuery({ category, sortBy, status }).useList();
+    },
+  },
+  options: {
+    // Refetch when any of these URL params change
+    watchSearchParams: ['category', 'sortBy', 'status'],
+    refetchBehavior: 'stale-while-revalidate',
+  },
 });
 ```
 
@@ -641,15 +790,99 @@ result.errors.profile?: ErrorResponse
 result.retry: (key: 'users' | 'profile') => void
 ```
 
+## Refetch Behavior Explained
+
+### Stale-While-Revalidate (Default) ⭐
+
+Shows previous data while fetching new data, providing smooth transitions without loading flashes:
+
+```tsx
+// Tab 1: Active todos load → [Todo1, Todo2, Todo3]
+// User clicks Tab 2: Completed
+// During fetch: Shows [Todo1, Todo2, Todo3] (stale from Tab 1)
+// After fetch completes: Smoothly transitions to [Todo4, Todo5] (fresh data)
+```
+
+**Perfect for:**
+- Tab switching
+- Filter changes
+- Pagination
+- Any UI where immediate feedback is important
+
+**Caching:**
+- `useList`: Caches by `cacheKey` (endpoint + params + queryParams)
+- `useById`: Caches by ID
+- Each unique combination is cached independently
+
+**Behavior:**
+- **First load**: Shows loading state (no previous data available)
+- **Subsequent changes**: Shows previous data while fetching
+- **Error handling**: Falls back to blocking mode if no previous data
+
+### Blocking Mode
+
+Clears data and shows loading state during refetch:
+
+```tsx
+// Tab 1: Active todos load → [Todo1, Todo2, Todo3]
+// User clicks Tab 2: Completed
+// During fetch: Shows loading spinner (data cleared)
+// After fetch completes: Shows [Todo4, Todo5]
+```
+
+**Perfect for:**
+- Critical data updates where stale data is misleading
+- When you want explicit loading feedback
+- Small datasets that load quickly
+
+**Use cases:**
+```tsx
+withDataOrchestrator(Component, {
+  hooks: { /* ... */ },
+  options: {
+    refetchBehavior: 'blocking', // Explicit loading states
+  },
+});
+```
+
+### Configuration Levels
+
+**1. Global (App-wide):**
+```tsx
+<RefetchBehaviorProvider behavior="stale-while-revalidate">
+  <App />
+</RefetchBehaviorProvider>
+```
+
+**2. Per Orchestrator:**
+```tsx
+withDataOrchestrator(Component, {
+  hooks: { /* ... */ },
+  options: {
+    refetchBehavior: 'stale-while-revalidate', // Overrides global
+  },
+});
+```
+
+**3. Per Hook (advanced):**
+```tsx
+todosApi.useList({ refetchBehavior: 'blocking' }) // Overrides orchestrator
+```
+
+**Precedence:** Hook > Orchestrator > Context > Default
+
 ## Best Practices
 
 ### ✅ DO
 
 - Use `isLoading` for full-page loading states
-- Use `isFetching` for refetch indicators
+- Use `isFetching` for refetch indicators (non-blocking)
 - Mark truly optional resources as `optional`
+- Use `watchSearchParams` for URL-driven data
+- Use `stale-while-revalidate` for smooth UX (default)
 - Use `resetKey` when data depends on route params
 - Provide `onError` callback for logging/tracking
+- Combine `watchSearchParams` + `refetchBehavior` for tab UIs
 
 ### ❌ DON'T
 
@@ -657,6 +890,8 @@ result.retry: (key: 'users' | 'profile') => void
 - Don't forget to handle `null` data after loading checks
 - Don't ignore `isFetching` - it improves UX
 - Don't skip `resetKey` for route-dependent data
+- Don't use `blocking` mode unless you need explicit loading states
+- Don't forget to wrap hooks in factories when using URL params
 
 ## Migration from Manual Hooks
 
@@ -695,11 +930,24 @@ function Dashboard() {
 
 ## Examples
 
-See the complete examples in:
-- `/examples/todo-with-global-context/src/DashboardExample.tsx`
+See complete working examples in:
+
+### URL-Driven Tab Switching
+- **`/examples/todo-with-tabs-example/`** - Complete example showing:
+  - `watchSearchParams` for automatic refetching on URL changes
+  - `refetchBehavior: 'stale-while-revalidate'` for smooth tab transitions
+  - `useUrlTabs` for tab state management
+  - `useUrlParam` for reading URL parameters in hooks
+
+### Complex Dashboard
+- **`/examples/todo-with-global-context/src/DashboardExample.tsx`** - Shows:
+  - Multiple data sources with required/optional pattern
+  - Progressive loading per section
+  - Granular error handling
 
 ## Related
 
+- [RFC: withDataOrchestrator Refetch Support](./RFC_WITH_DATA_ORCHESTRATOR_REFETCH.md) - Implementation details
+- [URL Navigation Guide](./RFC_URL_NAVIGATION.md) - URL state management
 - [createDomainApi Documentation](./CREATE_DOMAIN_API.md)
 - [Global State Documentation](./GLOBAL_STATE.md)
-- [RFC: Data Orchestrator](./RFC_PAGE_DATA_WRAPPER.md)

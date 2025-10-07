@@ -1,9 +1,10 @@
 # RFC: Enhanced withDataOrchestrator HOC with Refetch Support
 
-**Status:** Draft  
+**Status:** ✅ IMPLEMENTED  
 **Author:** React Proto Kit Team  
 **Created:** 2025-10-07  
-**Last Updated:** 2025-10-07
+**Last Updated:** 2025-10-07  
+**Implemented:** 2025-10-07
 
 ---
 
@@ -689,4 +690,120 @@ export const UserProfile = withDataOrchestrator<PageData>(
 
 This enhancement maintains backward compatibility while significantly improving the developer experience for components using `withDataOrchestrator`. The addition of refetch capabilities and proper TypeScript generics makes the HOC more powerful and easier to use correctly.
 
-**Recommendation:** Approve and proceed with implementation.
+**Status:** ✅ **IMPLEMENTED** - All features from this RFC have been successfully implemented.
+
+---
+
+## Additional Features Implemented
+
+### `watchSearchParams` - Automatic Refetch on URL Changes
+
+Auto-reset data when URL search parameters change. Perfect for tab switching, filtering, and pagination:
+
+```tsx
+const TodoListWithData = withDataOrchestrator<{ todos: Todo[] }>(TodoListContent, {
+  hooks: {
+    todos: () => {
+      const [status] = useUrlParam('status');
+      return todosApi.withQuery({ status }).useList();
+    },
+  },
+  options: {
+    watchSearchParams: ['status'], // Auto-refetch when ?status= changes
+  },
+});
+```
+
+**How it works:**
+1. Monitors specified URL search parameters
+2. Automatically resets orchestrator when any watched param changes
+3. Hooks re-execute with new parameter values
+4. Data automatically refetches
+
+### `refetchBehavior` - Control Loading UX
+
+Choose between stale-while-revalidate (smooth transitions) or blocking (explicit loading):
+
+```tsx
+withDataOrchestrator<PageData>(Component, {
+  hooks: { /* ... */ },
+  options: {
+    watchSearchParams: ['status'],
+    refetchBehavior: 'stale-while-revalidate', // or 'blocking'
+  },
+});
+```
+
+**Behaviors:**
+- **`'stale-while-revalidate'`** (default): Shows previous data while fetching new data. No loading flashes, smooth transitions.
+- **`'blocking'`**: Clears data and shows loading state. More explicit but can feel slower.
+
+**Supported hooks:**
+- ✅ `useList` - Caches data by cacheKey (endpoint + params + queryParams)
+- ✅ `useById` - Caches data by ID (e.g., transitioning between /users/123 and /users/456)
+
+**Example with tabs:**
+```tsx
+// Tab switching with smooth transitions
+const TodosWithTabs = withDataOrchestrator<{ todos: Todo[] }>(Content, {
+  hooks: {
+    todos: () => {
+      const [status] = useUrlParam('status'); // 'active', 'completed', 'archived'
+      return todosApi.withQuery({ status }).useList();
+    },
+  },
+  options: {
+    watchSearchParams: ['status'],
+    refetchBehavior: 'stale-while-revalidate',
+  },
+});
+```
+
+**Result:**
+1. Load "Active" tab → Normal loading state
+2. Click "Completed" → Shows "Active" todos while loading "Completed"
+3. "Completed" data arrives → Smoothly transitions
+4. Click "Active" → Instantly shows from cache
+
+### `RefetchBehaviorContext` - App-wide Configuration
+
+Set default behavior for entire app:
+
+```tsx
+import { RefetchBehaviorProvider } from '@skylabs-digital/react-proto-kit';
+
+<RefetchBehaviorProvider behavior="stale-while-revalidate">
+  <App />
+</RefetchBehaviorProvider>
+```
+
+**Precedence:**
+1. Hook-level option (highest)
+2. `withDataOrchestrator` option
+3. Context provider
+4. Default: `'stale-while-revalidate'`
+
+---
+
+## Implementation Summary
+
+✅ **Phase 1 Complete:**
+- Orchestrator controls injected via `orchestrator` prop
+- Type helpers: `WithOrchestratorProps<TData>`, `OrchestratorControls`
+- Backward compatible
+
+✅ **Additional Features:**
+- `watchSearchParams` for URL-driven refetches
+- `refetchBehavior` with stale-while-revalidate support
+- Per-hook and global configuration
+- Support in both `useList` and `useById`
+
+✅ **Documentation:**
+- Updated DATA_ORCHESTRATOR.md
+- Added examples for all features
+- TypeScript examples included
+
+✅ **Testing:**
+- Tested with todo-with-tabs example
+- Smooth transitions verified
+- Backward compatibility maintained

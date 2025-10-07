@@ -65,6 +65,8 @@ That's it! You now have a fully functional CRUD API with TypeScript support, opt
 - **📊 Query Parameters**: Static and dynamic query parameter management
 - **🔍 URL State**: Automatic URL synchronization for filters and pagination
 - **🎭 Data Orchestrator**: Aggregate multiple API calls with smart loading states
+- **⚡ Auto-Refetch**: Watch URL params and automatically refetch data on changes
+- **✨ Smooth Transitions**: Stale-while-revalidate for flicker-free UX
 - **🎨 UI Components**: Built-in Modal, Drawer, Tabs, Stepper, Accordion, and Snackbar components with URL state management
 
 ## 📖 Table of Contents
@@ -417,15 +419,74 @@ export const Dashboard = withDataOrchestrator<DashboardData>(DashboardContent, {
 });
 ```
 
+#### URL-Driven Data with Auto-Refetch ⭐ NEW
+
+Perfect for tabs, filters, and pagination driven by URL parameters:
+
+```tsx
+import { withDataOrchestrator, useUrlTabs, useUrlParam } from '@skylabs-digital/react-proto-kit';
+
+interface TodoListData {
+  todos: Todo[];
+}
+
+function TodoListContent({ todos, orchestrator }: TodoListData & { orchestrator: any }) {
+  const [activeTab, setTab] = useUrlTabs('status', ['active', 'completed', 'archived'], 'active');
+
+  return (
+    <div>
+      {/* Tab navigation updates URL */}
+      <button onClick={() => setTab('active')}>Active</button>
+      <button onClick={() => setTab('completed')}>Completed</button>
+      <button onClick={() => setTab('archived')}>Archived</button>
+
+      {/* Non-blocking refetch indicator */}
+      {orchestrator.isFetching && <span>🔄 Refreshing...</span>}
+
+      {/* List updates automatically when tab changes */}
+      <ul>
+        {todos.map(todo => <li key={todo.id}>{todo.text}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+const TodoListWithData = withDataOrchestrator<TodoListData>(TodoListContent, {
+  hooks: {
+    todos: () => {
+      const [status] = useUrlParam('status'); // Reads ?status=active
+      return todoApi.withQuery({ status: status || 'active' }).useList();
+    },
+  },
+  options: {
+    watchSearchParams: ['status'], // Auto-refetch when ?status= changes
+    refetchBehavior: 'stale-while-revalidate', // Smooth transitions (default)
+  },
+});
+```
+
+**How it works:**
+1. User clicks "Completed" tab → URL updates to `?status=completed`
+2. `watchSearchParams` detects change
+3. Hook re-executes with new status value
+4. `stale-while-revalidate` shows "Active" todos while loading "Completed"
+5. Smooth transition when new data arrives
+
 **Key Features:**
 - **`isLoading`**: Blocks rendering during first load of required resources
 - **`isFetching`**: Shows non-blocking indicator for refetches
+- **`watchSearchParams`**: Auto-refetch when specified URL params change ⭐ NEW
+- **`refetchBehavior`**: `'stale-while-revalidate'` (smooth) or `'blocking'` (explicit) ⭐ NEW
 - **Required vs Optional**: Control which resources block rendering
 - **Granular Retry**: Retry individual resources or all at once
 - **Orchestrator Prop**: HOC injects refetch capabilities automatically
 - **Type-Safe**: Full TypeScript inference for all data
 
-See [Data Orchestrator Documentation](./docs/DATA_ORCHESTRATOR.md) for more details.
+**Refetch Behaviors:**
+- **`stale-while-revalidate`** (default): Shows previous data while fetching new data. Perfect for tabs, filters, pagination.
+- **`blocking`**: Clears data and shows loading state. Use for critical updates where stale data is misleading.
+
+See [Data Orchestrator Documentation](./docs/DATA_ORCHESTRATOR.md) for complete examples.
 
 ### Local Storage Mode
 
