@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.26.0...v1.27.0) (2025-10-07)
+
+
+### Features
+
+* add URL param auto-reset support to data orchestrator and tabs components ([98a524e](https://github.com/skylabs-digital/react-proto-kit/commit/98a524ed7f644dcf8752c423c6a8dd4b79f5cd42))
+
 # [1.26.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.25.1...v1.26.0) (2025-10-07)
 
 
