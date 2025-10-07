@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.24.1...v1.25.0) (2025-10-07)
+
+
+### Features
+
+* add UI components section with snackbar notifications docs and examples ([ef78341](https://github.com/skylabs-digital/react-proto-kit/commit/ef78341618e927c849343d290426c669f4a920bf))
+
 # [1.12.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.11.1...v1.12.0) (2025-09-18)
 
 
