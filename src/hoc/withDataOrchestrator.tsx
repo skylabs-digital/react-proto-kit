@@ -129,22 +129,72 @@ function DefaultErrorComponent({ errors, retry }: DataOrchestratorErrorProps) {
  * HOC that wraps a component with data orchestration
  * Only renders the component when all required resources are loaded
  *
- * The returned component doesn't require the props that will be injected by the orchestrator
+ * Injects data props and an `orchestrator` prop with refetch capabilities
+ *
+ * @template TData - Shape of data being orchestrated (for type inference)
+ * @template TProps - Additional props the component accepts
+ * @template TConfig - DataOrchestratorConfig type
+ *
+ * @example
+ * ```tsx
+ * interface PageData {
+ *   user: User;
+ *   posts: Post[];
+ * }
+ *
+ * const Component = ({ user, posts, orchestrator }: WithOrchestratorProps<PageData>) => {
+ *   return (
+ *     <div>
+ *       <button onClick={orchestrator.retryAll}>Refresh</button>
+ *       {orchestrator.loading.posts && <Spinner />}
+ *     </div>
+ *   );
+ * };
+ *
+ * export const Page = withDataOrchestrator<PageData>(Component, {
+ *   hooks: {
+ *     user: () => userApi.useQuery(userId),
+ *     posts: () => postsApi.useList()
+ *   }
+ * });
+ * ```
  */
 export function withDataOrchestrator<
-  T extends DataOrchestratorConfig | RequiredOptionalConfig,
-  P extends Record<string, any> = Record<string, any>,
+  TData extends Record<string, any> = Record<string, any>,
+  TProps extends Record<string, any> = Record<string, any>,
+  TConfig extends DataOrchestratorConfig | RequiredOptionalConfig = DataOrchestratorConfig,
 >(
-  Component: React.ComponentType<P>,
-  config: WithDataOrchestratorConfig<T>
-): React.ComponentType<Partial<P>> {
+  Component: React.ComponentType<TProps & TData & { orchestrator: any }>,
+  config: WithDataOrchestratorConfig<TConfig>
+): React.ComponentType<TProps> {
   const { hooks, loader, errorComponent: ErrorComponent, options } = config;
 
-  return function WithDataOrchestratorWrapper(props: Partial<P>) {
+  return function WithDataOrchestratorWrapper(props: TProps) {
     const context = useDataOrchestratorContext();
     const result = useDataOrchestrator(hooks as any, options);
 
-    const { isLoading, hasErrors, errors, retryAll, data } = result;
+    const {
+      isLoading,
+      isFetching,
+      hasErrors,
+      errors,
+      retry,
+      retryAll,
+      refetch,
+      loadingStates,
+      data,
+    } = result;
+
+    // Build orchestrator controls object
+    const orchestrator = {
+      retry,
+      retryAll,
+      refetch,
+      loading: loadingStates,
+      errors,
+      isFetching,
+      isLoading,
+    };
 
     // Determine which loader to use
     const LoaderComponent =
@@ -180,7 +230,7 @@ export function withDataOrchestrator<
       return <ErrorComponentToUse errors={definedErrors} retry={retryAll} />;
     }
 
-    // All required resources loaded - render component with data as props
-    return <Component {...(props as P)} {...(data as any)} />;
+    // All required resources loaded - render component with data + orchestrator
+    return <Component {...(props as TProps)} {...(data as TData)} orchestrator={orchestrator} />;
   };
 }

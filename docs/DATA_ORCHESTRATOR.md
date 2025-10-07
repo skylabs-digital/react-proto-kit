@@ -45,27 +45,46 @@ function Dashboard() {
 }
 ```
 
-### 2. HOC Mode (Declarative)
+### 2. HOC Mode (Declarative with Refetch)
 
 ```tsx
 import { withDataOrchestrator } from '@skylabs-digital/react-proto-kit';
 
-interface DashboardProps {
+interface DashboardData {
   users: User[];
   products: Product[];
 }
 
-function DashboardContent({ users, products }: DashboardProps) {
+function DashboardContent({ 
+  users, 
+  products, 
+  orchestrator 
+}: DashboardData & { orchestrator: any }) {
   return (
     <div>
+      {/* Refresh all data */}
+      <button 
+        onClick={orchestrator.retryAll}
+        disabled={orchestrator.isFetching}
+      >
+        {orchestrator.isFetching ? 'Refreshing...' : 'Refresh All'}
+      </button>
+
       <h1>Users: {users.length}</h1>
+      
+      {/* Refresh individual resource */}
+      <button onClick={() => orchestrator.retry('products')}>
+        Refresh Products
+      </button>
+      {orchestrator.loading.products && <Spinner />}
+      
       <h1>Products: {products.length}</h1>
     </div>
   );
 }
 
 // Only renders when all data is loaded
-export const Dashboard = withDataOrchestrator(DashboardContent, {
+export const Dashboard = withDataOrchestrator<DashboardData>(DashboardContent, {
   hooks: {
     users: usersApi.useList,
     products: productsApi.useList,
@@ -328,6 +347,227 @@ const { retry, retryAll, errors } = useDataOrchestrator({
 // Retry everything
 <button onClick={retryAll}>Refresh All</button>
 ```
+
+## withDataOrchestrator HOC
+
+The `withDataOrchestrator` HOC provides a declarative way to fetch data with automatic loading/error handling. It **injects an `orchestrator` prop** with refetch capabilities.
+
+### Basic Usage
+
+```tsx
+import { withDataOrchestrator } from '@skylabs-digital/react-proto-kit';
+
+interface PageData {
+  users: User[];
+  posts: Post[];
+}
+
+function MyComponent({ 
+  users, 
+  posts, 
+  orchestrator 
+}: PageData & { orchestrator: any }) {
+  return (
+    <div>
+      <button onClick={orchestrator.retryAll}>Refresh All</button>
+      <UserList users={users} />
+      <PostList posts={posts} />
+    </div>
+  );
+}
+
+export const MyPage = withDataOrchestrator<PageData>(MyComponent, {
+  hooks: {
+    users: usersApi.useList,
+    posts: postsApi.useList,
+  }
+});
+```
+
+### Orchestrator Prop API
+
+The `orchestrator` prop provides full control over data fetching:
+
+```tsx
+interface OrchestratorControls {
+  // Refetch methods
+  retry: (key: string) => void;              // Refetch single resource
+  retryAll: () => void;                      // Refetch all resources
+  refetch: { [key: string]: () => Promise<void> };  // Async refetch per resource
+  
+  // State access
+  loading: { [key: string]: boolean };       // Loading state per resource
+  errors: { [key: string]?: ErrorResponse }; // Error state per resource
+  isFetching: boolean;                       // Any resource currently fetching
+  isLoading: boolean;                        // Initial load in progress
+}
+```
+
+### Patterns with HOC
+
+#### Pattern A: Refresh All Button
+
+```tsx
+function Dashboard({ users, products, orchestrator }: DashboardData & { orchestrator: any }) {
+  return (
+    <div>
+      <button 
+        onClick={orchestrator.retryAll}
+        disabled={orchestrator.isFetching}
+      >
+        {orchestrator.isFetching ? 'Refreshing...' : 'Refresh'}
+      </button>
+      
+      <UserList users={users} />
+      <ProductList products={products} />
+    </div>
+  );
+}
+
+export const DashboardPage = withDataOrchestrator<DashboardData>(Dashboard, {
+  hooks: {
+    users: usersApi.useList,
+    products: productsApi.useList,
+  }
+});
+```
+
+#### Pattern B: Individual Resource Refresh
+
+```tsx
+function ProductPage({ product, reviews, orchestrator }: PageData & { orchestrator: any }) {
+  return (
+    <div>
+      <ProductDetails product={product} />
+      
+      <section>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <h2>Reviews</h2>
+          <button 
+            onClick={() => orchestrator.retry('reviews')}
+            disabled={orchestrator.loading.reviews}
+          >
+            {orchestrator.loading.reviews ? '⟳' : 'Refresh Reviews'}
+          </button>
+        </div>
+        
+        {orchestrator.loading.reviews && <Skeleton />}
+        <ReviewsList reviews={reviews} />
+      </section>
+    </div>
+  );
+}
+
+export const ProductPageWithData = withDataOrchestrator<PageData>(ProductPage, {
+  hooks: {
+    product: () => productsApi.useQuery(productId),
+    reviews: () => reviewsApi.useList({ productId }),
+  }
+});
+```
+
+#### Pattern C: After Mutation Refetch
+
+```tsx
+function TodoList({ todos, orchestrator }: TodoData & { orchestrator: any }) {
+  const createMutation = todosApi.useCreate({
+    onSuccess: () => {
+      // Refetch todos after creating
+      orchestrator.refetch.todos();
+    }
+  });
+  
+  const deleteMutation = todosApi.useDelete({
+    onSuccess: () => {
+      orchestrator.refetch.todos();
+    }
+  });
+  
+  return (
+    <div>
+      <TodoForm onSubmit={createMutation.mutate} />
+      <TodoList todos={todos} onDelete={deleteMutation.mutate} />
+    </div>
+  );
+}
+
+export const TodoPage = withDataOrchestrator<TodoData>(TodoList, {
+  hooks: { todos: todosApi.useList }
+});
+```
+
+#### Pattern D: Pull-to-Refresh
+
+```tsx
+function Feed({ posts, notifications, orchestrator }: FeedData & { orchestrator: any }) {
+  const [isPulling, setIsPulling] = useState(false);
+  
+  const handlePullToRefresh = async () => {
+    setIsPulling(true);
+    await orchestrator.retryAll();
+    setIsPulling(false);
+  };
+  
+  return (
+    <PullToRefresh onRefresh={handlePullToRefresh} refreshing={isPulling}>
+      <NotificationBadge 
+        count={notifications.length}
+        loading={orchestrator.loading.notifications}
+      />
+      <PostFeed posts={posts} loading={orchestrator.loading.posts} />
+    </PullToRefresh>
+  );
+}
+
+export const FeedPage = withDataOrchestrator<FeedData>(Feed, {
+  hooks: {
+    posts: postsApi.useList,
+    notifications: () => notificationsApi.useList({ unread: true }),
+  }
+});
+```
+
+### HOC Configuration
+
+```tsx
+interface WithDataOrchestratorConfig<T> {
+  hooks: T;                                    // Required: data hooks
+  loader?: React.ReactNode;                    // Optional: custom loader
+  errorComponent?: React.ComponentType<...>;   // Optional: custom error component
+  options?: UseDataOrchestratorOptions;        // Optional: orchestrator options
+}
+
+// Example with all options
+export const Dashboard = withDataOrchestrator<DashboardData>(
+  DashboardComponent,
+  {
+    hooks: {
+      users: usersApi.useList,
+      products: productsApi.useList,
+    },
+    loader: <CustomLoader />,
+    errorComponent: CustomErrorPage,
+    options: {
+      resetKey: userId,
+      onError: (errors) => console.error('Data loading failed:', errors),
+    }
+  }
+);
+```
+
+### Hook vs HOC: When to Use What
+
+**Use `useDataOrchestrator` (Hook) when:**
+- ✅ You need custom loading/error UI
+- ✅ You want progressive loading per section
+- ✅ You need fine-grained control over rendering
+- ✅ Component has complex conditional logic
+
+**Use `withDataOrchestrator` (HOC) when:**
+- ✅ You want declarative data fetching
+- ✅ Standard full-page loader/error is sufficient
+- ✅ Component is purely presentational
+- ✅ You want refetch capabilities with minimal boilerplate
 
 ## Type Safety
 

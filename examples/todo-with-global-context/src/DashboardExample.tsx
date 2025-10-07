@@ -194,31 +194,63 @@ function DashboardWithHook() {
 // EXAMPLE 2: HOC with Declarative Approach
 // ============================================================================
 
-interface DashboardContentProps {
+interface DashboardData {
   todos: Todo[] | null;
   products: Product[] | null;
   stats?: Stats | null;
 }
 
-function DashboardContent({ todos, products, stats }: DashboardContentProps) {
+function DashboardContent({
+  todos,
+  products,
+  stats,
+  orchestrator,
+}: DashboardData & { orchestrator: any }) {
   // HOC ensures required resources are loaded, so we can safely assert non-null
   if (!todos || !products) return null;
   return (
-    <div className="dashboard-hoc">
-      <h1>Dashboard (HOC Example)</h1>
+    <div style={{ padding: 20 }}>
+      <h1>Dashboard (HOC Pattern)</h1>
+      <p>This component only renders when required resources (todos and products) are loaded.</p>
+
+      <button
+        onClick={orchestrator.retryAll}
+        disabled={orchestrator.isFetching}
+        style={{
+          padding: '8px 16px',
+          marginBottom: 20,
+          background: orchestrator.isFetching ? '#ccc' : '#007bff',
+          color: 'white',
+          border: 'none',
+          borderRadius: 4,
+          cursor: orchestrator.isFetching ? 'not-allowed' : 'pointer',
+        }}
+      >
+        {orchestrator.isFetching ? 'Refreshing...' : 'Refresh All Data'}
+      </button>
 
       {stats && (
-        <div className="stats-summary">
+        <div style={{ background: '#e8f4f8', padding: 16, borderRadius: 8, marginBottom: 20 }}>
+          <h3>Stats (Optional Resource)</h3>
           <p>
-            📝 {stats.totalTodos} todos ({stats.completedTodos} completed)
+            Total Views: {stats.totalViews} | Average: {stats.averagePerItem.toFixed(1)}
           </p>
-          <p>📦 {stats.totalProducts} products</p>
+          {orchestrator.loading.stats && <small>Loading stats...</small>}
         </div>
       )}
 
-      <div className="content-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div>
-          <h2>Todos</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>Todos</h2>
+            <button
+              onClick={() => orchestrator.retry('todos')}
+              disabled={orchestrator.loading.todos}
+              style={{ padding: '4px 12px', fontSize: '0.9rem' }}
+            >
+              {orchestrator.loading.todos ? '⟳' : 'Refresh'}
+            </button>
+          </div>
           <ul>
             {todos.map(todo => (
               <li key={todo.id}>
@@ -229,7 +261,16 @@ function DashboardContent({ todos, products, stats }: DashboardContentProps) {
         </div>
 
         <div>
-          <h2>Products</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>Products</h2>
+            <button
+              onClick={() => orchestrator.retry('products')}
+              disabled={orchestrator.loading.products}
+              style={{ padding: '4px 12px', fontSize: '0.9rem' }}
+            >
+              {orchestrator.loading.products ? '⟳' : 'Refresh'}
+            </button>
+          </div>
           <ul>
             {products.map(product => (
               <li key={product.id}>
@@ -244,15 +285,11 @@ function DashboardContent({ todos, products, stats }: DashboardContentProps) {
 }
 
 // Wrap with HOC - only renders when all required resources are loaded
-export const DashboardWithHOC = withDataOrchestrator(DashboardContent, {
+export const DashboardWithHOC = withDataOrchestrator<DashboardData>(DashboardContent, {
   hooks: {
-    required: {
-      todos: todosApi.useList,
-      products: productsApi.useList,
-    },
-    optional: {
-      stats: () => statsApi.useById('global'),
-    },
+    todos: todosApi.useList,
+    products: productsApi.useList,
+    stats: () => statsApi.useById('global'),
   },
   options: {
     resetKey: 'dashboard-hoc',

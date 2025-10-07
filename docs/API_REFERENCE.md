@@ -6,6 +6,7 @@ Complete reference for all React Proto Kit APIs, hooks, and utilities.
 
 - [Core API](#core-api)
 - [Hooks](#hooks)
+- [Data Orchestrator](#data-orchestrator)
 - [Type Utilities](#type-utilities)
 - [Providers](#providers)
 - [Form Utilities](#form-utilities)
@@ -266,6 +267,204 @@ const { mutate: deleteUser, loading, error } = api.useDelete();
 // Usage
 await deleteUser('user-123');
 ```
+
+## Data Orchestrator
+
+The Data Orchestrator helps manage multiple data fetching operations with smart loading states and refetch capabilities.
+
+### `useDataOrchestrator(config, options?)`
+
+Aggregate multiple hook calls into a single orchestrated state.
+
+```tsx
+import { useDataOrchestrator } from '@skylabs-digital/react-proto-kit';
+
+const { data, isLoading, isFetching, hasErrors, errors, retry, retryAll, refetch } = useDataOrchestrator({
+  users: usersApi.useList,
+  products: productsApi.useList,
+});
+```
+
+#### Config
+
+**Simple Config** - All resources are required by default:
+
+```tsx
+const result = useDataOrchestrator({
+  users: usersApi.useList,
+  profile: () => profileApi.useQuery(userId),
+});
+```
+
+**Advanced Config** - Required vs Optional resources:
+
+```tsx
+const result = useDataOrchestrator({
+  required: {
+    users: usersApi.useList,       // Must load before rendering
+  },
+  optional: {
+    stats: statsApi.useQuery,      // Can fail without blocking
+  },
+});
+```
+
+#### Options
+
+```tsx
+interface UseDataOrchestratorOptions {
+  resetKey?: string | number;  // Reset state when this changes
+  onError?: (errors: Record<string, ErrorResponse>) => void;
+}
+```
+
+#### Return Value
+
+```tsx
+interface UseDataOrchestratorResult<T> {
+  // Data by key
+  data: { [K in keyof T]: DataType | null };
+  
+  // Aggregated states
+  isLoading: boolean;      // First load of required resources (blocks rendering)
+  isFetching: boolean;     // First load + refetches (non-blocking indicator)
+  hasErrors: boolean;      // Only considers required resource errors
+  
+  // Granular states
+  loadingStates: { [K in keyof T]: boolean };
+  errors: { [K in keyof T]?: ErrorResponse };
+  
+  // Retry functions
+  retry: (key: keyof T) => void;
+  retryAll: () => void;
+  refetch: { [K in keyof T]: () => Promise<void> };
+}
+```
+
+---
+
+### `withDataOrchestrator<TData>(Component, config)`
+
+HOC that wraps a component with data orchestration. Injects an `orchestrator` prop with refetch capabilities.
+
+```tsx
+import { withDataOrchestrator } from '@skylabs-digital/react-proto-kit';
+
+interface PageData {
+  users: User[];
+  posts: Post[];
+}
+
+function MyComponent({ 
+  users, 
+  posts, 
+  orchestrator 
+}: PageData & { orchestrator: any }) {
+  return (
+    <div>
+      <button onClick={orchestrator.retryAll}>Refresh All</button>
+      <button onClick={() => orchestrator.retry('posts')}>Refresh Posts</button>
+      {orchestrator.loading.posts && <Spinner />}
+      
+      <UserList users={users} />
+      <PostList posts={posts} />
+    </div>
+  );
+}
+
+export const MyPage = withDataOrchestrator<PageData>(MyComponent, {
+  hooks: {
+    users: usersApi.useList,
+    posts: postsApi.useList,
+  }
+});
+```
+
+#### Orchestrator Prop API
+
+The injected `orchestrator` prop provides:
+
+```tsx
+interface OrchestratorControls {
+  // Refetch methods
+  retry: (key: string) => void;              // Refetch single resource
+  retryAll: () => void;                      // Refetch all resources
+  refetch: { [key: string]: () => Promise<void> };  // Async refetch per resource
+  
+  // State access
+  loading: { [key: string]: boolean };       // Loading state per resource
+  errors: { [key: string]?: ErrorResponse }; // Error state per resource
+  isFetching: boolean;                       // Any resource currently fetching
+  isLoading: boolean;                        // Initial load in progress
+}
+```
+
+#### Configuration
+
+```tsx
+interface WithDataOrchestratorConfig<T> {
+  hooks: T;                                    // Required: data hooks
+  loader?: React.ReactNode;                    // Optional: custom loader
+  errorComponent?: React.ComponentType<...>;   // Optional: custom error component
+  options?: UseDataOrchestratorOptions;        // Optional: orchestrator options
+}
+```
+
+**Example with all options:**
+
+```tsx
+export const Dashboard = withDataOrchestrator<DashboardData>(
+  DashboardComponent,
+  {
+    hooks: {
+      users: usersApi.useList,
+      products: productsApi.useList,
+    },
+    loader: <CustomLoader />,
+    errorComponent: CustomErrorPage,
+    options: {
+      resetKey: userId,
+      onError: (errors) => console.error('Failed:', errors),
+    }
+  }
+);
+```
+
+#### Use Cases
+
+**Refresh All Button:**
+
+```tsx
+<button 
+  onClick={orchestrator.retryAll}
+  disabled={orchestrator.isFetching}
+>
+  {orchestrator.isFetching ? 'Refreshing...' : 'Refresh'}
+</button>
+```
+
+**Individual Resource Refresh:**
+
+```tsx
+<button onClick={() => orchestrator.retry('reviews')}>
+  Refresh Reviews
+</button>
+{orchestrator.loading.reviews && <Spinner />}
+```
+
+**After Mutation:**
+
+```tsx
+const createMutation = todosApi.useCreate({
+  onSuccess: () => {
+    orchestrator.refetch.todos();
+  }
+});
+```
+
+See [Data Orchestrator Documentation](./DATA_ORCHESTRATOR.md) for detailed patterns and examples.
+
+---
 
 ## Type Utilities
 

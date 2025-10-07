@@ -349,7 +349,9 @@ function TodoItem({ todo }: { todo: Todo }) {
 
 ### Data Orchestrator
 
-Manage multiple API calls in a single component with smart loading states:
+Manage multiple API calls in a single component with smart loading states. Choose between **Hook** (flexible) or **HOC** (declarative) patterns:
+
+#### Hook Pattern
 
 ```tsx
 import { useDataOrchestrator } from '@skylabs-digital/react-proto-kit';
@@ -365,29 +367,54 @@ function Dashboard() {
     },
   });
 
-  // First load - blocks rendering
   if (isLoading) return <FullPageLoader />;
-  
-  // Required resources failed
   if (hasErrors) return <ErrorPage errors={errors} onRetry={retryAll} />;
 
   return (
     <div>
-      {/* Non-blocking refetch indicator */}
       {isFetching && <TopBarSpinner />}
-      
       <h1>Users: {data.users!.length}</h1>
       <h1>Products: {data.products!.length}</h1>
-      
-      {/* Optional resource with independent error handling */}
-      {errors.stats ? (
-        <ErrorBanner error={errors.stats} />
-      ) : data.stats ? (
-        <StatsWidget data={data.stats} />
-      ) : null}
     </div>
   );
 }
+```
+
+#### HOC Pattern (with Refetch)
+
+```tsx
+import { withDataOrchestrator } from '@skylabs-digital/react-proto-kit';
+
+interface DashboardData {
+  users: User[];
+  products: Product[];
+}
+
+function DashboardContent({ users, products, orchestrator }: DashboardData & { orchestrator: any }) {
+  return (
+    <div>
+      {/* Refresh all data */}
+      <button onClick={orchestrator.retryAll} disabled={orchestrator.isFetching}>
+        {orchestrator.isFetching ? 'Refreshing...' : 'Refresh All'}
+      </button>
+      
+      <h1>Users: {users.length}</h1>
+      
+      {/* Refresh individual resource */}
+      <button onClick={() => orchestrator.retry('products')}>Refresh Products</button>
+      {orchestrator.loading.products && <Spinner />}
+      
+      <h1>Products: {products.length}</h1>
+    </div>
+  );
+}
+
+export const Dashboard = withDataOrchestrator<DashboardData>(DashboardContent, {
+  hooks: {
+    users: userApi.useList,
+    products: productApi.useList,
+  }
+});
 ```
 
 **Key Features:**
@@ -395,6 +422,7 @@ function Dashboard() {
 - **`isFetching`**: Shows non-blocking indicator for refetches
 - **Required vs Optional**: Control which resources block rendering
 - **Granular Retry**: Retry individual resources or all at once
+- **Orchestrator Prop**: HOC injects refetch capabilities automatically
 - **Type-Safe**: Full TypeScript inference for all data
 
 See [Data Orchestrator Documentation](./docs/DATA_ORCHESTRATOR.md) for more details.

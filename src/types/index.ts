@@ -328,3 +328,106 @@ export interface DataOrchestratorErrorProps {
   errors: Record<string, ErrorResponse>;
   retry?: () => void;
 }
+
+// ============================================
+// withDataOrchestrator HOC Types
+// ============================================
+
+/**
+ * Orchestrator control methods injected by withDataOrchestrator HOC
+ * Provides refetch capabilities and loading state access
+ *
+ * @template T - DataOrchestratorConfig type
+ *
+ * @example
+ * ```tsx
+ * const Component = ({ user, posts, orchestrator }: WithOrchestratorProps<PageData>) => {
+ *   return (
+ *     <div>
+ *       <button onClick={orchestrator.retryAll}>Refresh All</button>
+ *       <button onClick={() => orchestrator.retry('posts')}>Refresh Posts</button>
+ *       {orchestrator.loading.posts && <Spinner />}
+ *     </div>
+ *   );
+ * };
+ * ```
+ */
+export interface OrchestratorControls<T extends DataOrchestratorConfig> {
+  /**
+   * Refetch a specific resource by key
+   * @param key - The resource key to refetch
+   */
+  retry: (key: keyof T) => void;
+
+  /**
+   * Refetch all resources (required and optional)
+   */
+  retryAll: () => void;
+
+  /**
+   * Individual refetch functions for each resource
+   * Returns a Promise that resolves when refetch completes
+   */
+  refetch: {
+    [K in keyof T]: () => Promise<void>;
+  };
+
+  /**
+   * Loading state for each resource
+   * True when the resource is currently fetching
+   */
+  loading: {
+    [K in keyof T]: boolean;
+  };
+
+  /**
+   * Error state for each resource
+   * Contains the error if the resource failed to load
+   */
+  errors: {
+    [K in keyof T]?: ErrorResponse;
+  };
+
+  /**
+   * True if any resource is currently fetching (initial load or refetch)
+   */
+  isFetching: boolean;
+
+  /**
+   * True if currently performing initial load of required resources
+   */
+  isLoading: boolean;
+}
+
+/**
+ * Helper type for components wrapped with withDataOrchestrator
+ * Combines custom props, data props, and orchestrator controls
+ *
+ * @template TData - Shape of the data being orchestrated (resource names to types)
+ * @template TProps - Additional props the component accepts (optional)
+ *
+ * @example
+ * ```tsx
+ * interface PageData {
+ *   user: User;
+ *   posts: Post[];
+ * }
+ *
+ * interface CustomProps {
+ *   theme: 'light' | 'dark';
+ * }
+ *
+ * type Props = WithOrchestratorProps<PageData, CustomProps>;
+ *
+ * const Component = ({ user, posts, theme, orchestrator }: Props) => {
+ *   return <div>...</div>;
+ * };
+ * ```
+ */
+export type WithOrchestratorProps<
+  TData extends Record<string, any>,
+  TProps extends Record<string, any> = Record<string, never>,
+> = TProps &
+  TData & {
+    orchestrator: OrchestratorControls<any>;
+  };

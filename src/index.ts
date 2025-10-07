@@ -89,6 +89,15 @@ export type {
   InferCreateType,
   InferUpdateType,
   InferListResponse,
+
+  // Data Orchestrator types
+  DataOrchestratorConfig,
+  RequiredOptionalConfig,
+  UseDataOrchestratorOptions,
+  UseDataOrchestratorResult,
+  UseDataOrchestratorResultWithOptional,
+  OrchestratorControls,
+  WithOrchestratorProps,
 } from './types';
 
 // Re-export Zod for convenience
