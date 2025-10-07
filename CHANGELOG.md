@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/skylabs-digital/react-proto-kit/compare/v1.25.0...v1.25.1) (2025-10-07)
+
+
+### Bug Fixes
+
+* update external dependencies from react-dom to react-router-dom ([5645a44](https://github.com/skylabs-digital/react-proto-kit/commit/5645a44bf0e99a405a745bca8ee8f73a865c9f0c))
+
 # [1.25.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.24.1...v1.25.0) (2025-10-07)
 
 
