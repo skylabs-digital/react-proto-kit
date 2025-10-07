@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.27.0...v1.28.0) (2025-10-07)
+
+
+### Features
+
+* update data orchestrator example to use withQuery() for params injection ([002a967](https://github.com/skylabs-digital/react-proto-kit/commit/002a967143d34685f5ad80b7d334d893bc5162e0))
+
 # [1.27.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.26.0...v1.27.0) (2025-10-07)
 
 
