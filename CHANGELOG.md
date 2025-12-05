@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.29.0...v1.30.0) (2025-12-05)
+
+
+### Features
+
+* update React peer dependency to v19 and simplify FetchInstance interface ([58c8889](https://github.com/skylabs-digital/react-proto-kit/commit/58c8889e817c58b184b7a6f66acd157fc5336c6d))
+
 # [1.29.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.28.0...v1.29.0) (2025-10-07)
 
 
