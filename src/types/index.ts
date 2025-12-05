@@ -74,14 +74,10 @@ export interface SeedConfig {
 }
 
 export interface FetchInstance {
-  baseURL: string;
-  headers: Record<string, string>;
   interceptors: {
     request: RequestInterceptor[];
     response: ResponseInterceptor[];
   };
-  timeout?: number;
-  retries?: number;
 }
 
 export interface PaginationConfig {

@@ -60,7 +60,7 @@
   },
   "homepage": "https://github.com/skylabs-digital/react-proto-kit#readme",
   "peerDependencies": {
-    "react": ">=16.8.0",
+    "react": ">=19.0.0",
     "react-router-dom": ">=6.0.0",
     "zod": "^4.0.0"
   },
