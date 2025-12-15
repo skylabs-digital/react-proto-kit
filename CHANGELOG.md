@@ -1,3 +1,11 @@
+## [1.30.1](https://github.com/skylabs-digital/react-proto-kit/compare/v1.30.0...v1.30.1) (2025-12-15)
+
+
+### Bug Fixes
+
+* remove initialValues from useFormData reset dependency array to prevent stale closures ([e171580](https://github.com/skylabs-digital/react-proto-kit/commit/e1715809f5fdda47c628c5c41afef18db8572588))
+* upgrade Node.js to 22.14.0 and pin semantic-release dependencies to prevent version conflicts ([7f4fb6f](https://github.com/skylabs-digital/react-proto-kit/commit/7f4fb6f03e0321532ad7e2cbc68fc3b72d4900e6))
+
 # [1.30.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.29.0...v1.30.0) (2025-12-05)
 
 
