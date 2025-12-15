@@ -159,16 +159,13 @@ export function useFormData<T extends Record<string, any>>(
     [values, validateAll]
   );
 
-  const reset = useCallback(
-    (newInitialValues?: Partial<T>) => {
-      const resetValues = newInitialValues || initialValues;
-      setValues(resetValues);
-      setErrors({});
-      setGeneralError(null);
-      setIsDirty(false);
-    },
-    [initialValues]
-  );
+  const reset = useCallback((newInitialValues?: Partial<T>) => {
+    const resetValues = newInitialValues || initialValues;
+    setValues(resetValues);
+    setErrors({});
+    setGeneralError(null);
+    setIsDirty(false);
+  }, []);
 
   const loadData = useCallback((data: Partial<T>) => {
     setValues(data);
