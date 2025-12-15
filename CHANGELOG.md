@@ -1,3 +1,10 @@
+# [1.31.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.30.1...v1.31.0) (2025-12-15)
+
+
+### Features
+
+* add dirty field as alias for isDirty in useFormData hook ([162363f](https://github.com/skylabs-digital/react-proto-kit/commit/162363f89291cde017448e841aafb9b755e1c3b7))
+
 ## [1.30.1](https://github.com/skylabs-digital/react-proto-kit/compare/v1.30.0...v1.30.1) (2025-12-15)
 
 
