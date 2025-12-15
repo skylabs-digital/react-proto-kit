@@ -70,6 +70,13 @@ export function useFormData<T extends Record<string, any>>(
         setErrors(prev => {
           const newErrors = { ...prev };
           delete newErrors[name as string];
+
+          if (Object.keys(newErrors).length === 0) {
+            setGeneralError(prevGeneralError => {
+              return prevGeneralError === 'Please fix the errors below' ? null : prevGeneralError;
+            });
+          }
+
           return newErrors;
         });
         return true;
