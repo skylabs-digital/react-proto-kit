@@ -17,6 +17,7 @@ export interface UseFormDataReturn<T> {
   errors: FormErrors;
   generalError: string | null;
   isValid: boolean;
+  dirty: boolean;
   isDirty: boolean;
   handleChange: (name: keyof T, value: FormFieldValue) => void;
   handleInputChange: (
@@ -47,6 +48,10 @@ export function useFormData<T extends Record<string, any>>(
   const isValid = useMemo(() => {
     return Object.keys(errors).length === 0 && !generalError;
   }, [errors, generalError]);
+
+  const dirty = useMemo(() => {
+    return isDirty;
+  }, [isDirty]);
 
   const validateField = useCallback(
     (name: keyof T, value: any) => {
@@ -195,6 +200,7 @@ export function useFormData<T extends Record<string, any>>(
     errors,
     generalError,
     isValid,
+    dirty,
     isDirty,
     handleChange,
     handleInputChange,
