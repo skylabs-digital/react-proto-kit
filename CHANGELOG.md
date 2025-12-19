@@ -1,3 +1,10 @@
+# [1.32.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.31.1...v1.32.0) (2025-12-19)
+
+
+### Features
+
+* add support for nested field paths in useFormData hook ([481ecd9](https://github.com/skylabs-digital/react-proto-kit/commit/481ecd938e41f7a720592637eb63c2648ea8b21b))
+
 ## [1.31.1](https://github.com/skylabs-digital/react-proto-kit/compare/v1.31.0...v1.31.1) (2025-12-15)
 
 
