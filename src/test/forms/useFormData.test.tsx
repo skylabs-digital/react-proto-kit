@@ -11,6 +11,12 @@ const TestSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
+const NestedSchema = z.object({
+  parent: z.object({
+    child: z.string().min(1, 'Child is required'),
+  }),
+});
+
 describe('useFormData', () => {
   describe('initialization', () => {
     it('should initialize with empty values by default', () => {
@@ -20,6 +26,7 @@ describe('useFormData', () => {
       expect(result.current.errors).toEqual({});
       expect(result.current.generalError).toBeNull();
       expect(result.current.isValid).toBe(true);
+      expect(result.current.dirty).toBe(false);
       expect(result.current.isDirty).toBe(false);
     });
 
@@ -41,6 +48,7 @@ describe('useFormData', () => {
       });
 
       expect(result.current.values.name).toBe('John Doe');
+      expect(result.current.dirty).toBe(true);
       expect(result.current.isDirty).toBe(true);
     });
 
@@ -169,6 +177,77 @@ describe('useFormData', () => {
       });
 
       expect(result.current.errors.email).toBeUndefined();
+    });
+
+    it('should clear generalError and become valid when the last field error is fixed', () => {
+      const { result } = renderHook(() => useFormData(TestSchema));
+
+      act(() => {
+        result.current.handleChange('name', 'John');
+        result.current.handleChange('age', 25);
+        result.current.handleChange('isActive', true);
+        result.current.handleChange('email', 'invalid');
+      });
+
+      act(() => {
+        const isValid = result.current.validate();
+        expect(isValid).toBe(false);
+      });
+
+      expect(result.current.generalError).toBe('Please fix the errors below');
+      expect(result.current.errors.email).toBe('Invalid email');
+      expect(result.current.isValid).toBe(false);
+
+      act(() => {
+        result.current.handleChange('email', 'john@example.com');
+      });
+
+      expect(result.current.errors.email).toBeUndefined();
+      expect(result.current.generalError).toBeNull();
+      expect(result.current.isValid).toBe(true);
+    });
+  });
+
+  describe('nested field paths', () => {
+    it('should deep-set values for dotted paths via handleChange', () => {
+      const { result } = renderHook(() => useFormData(NestedSchema));
+
+      act(() => {
+        result.current.handleChange('parent.child', 'value');
+      });
+
+      expect((result.current.values as any).parent.child).toBe('value');
+    });
+
+    it('should deep-set values for dotted paths via handleInputChange', () => {
+      const { result } = renderHook(() => useFormData(NestedSchema));
+
+      const mockEvent = {
+        target: { name: 'parent.child', type: 'text', value: 'value' },
+      } as React.ChangeEvent<HTMLInputElement>;
+
+      act(() => {
+        result.current.handleInputChange(mockEvent);
+      });
+
+      expect((result.current.values as any).parent.child).toBe('value');
+    });
+
+    it('should validate dotted paths and store errors under the dotted key', () => {
+      const { result } = renderHook(() => useFormData(NestedSchema));
+
+      act(() => {
+        result.current.handleChange('parent.child', '');
+      });
+
+      expect(result.current.errors['parent.child']).toBe('Child is required');
+      expect(result.current.isValid).toBe(false);
+
+      act(() => {
+        result.current.handleChange('parent.child', 'ok');
+      });
+
+      expect(result.current.errors['parent.child']).toBeUndefined();
     });
   });
 
@@ -365,18 +444,21 @@ describe('useFormData', () => {
     it('should track isDirty state correctly', () => {
       const { result } = renderHook(() => useFormData(TestSchema));
 
+      expect(result.current.dirty).toBe(false);
       expect(result.current.isDirty).toBe(false);
 
       act(() => {
         result.current.handleChange('name', 'Test');
       });
 
+      expect(result.current.dirty).toBe(true);
       expect(result.current.isDirty).toBe(true);
 
       act(() => {
         result.current.reset();
       });
 
+      expect(result.current.dirty).toBe(false);
       expect(result.current.isDirty).toBe(false);
     });
   });

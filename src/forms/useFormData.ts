@@ -1,6 +1,54 @@
 import { useState, useCallback, useMemo } from 'react';
 import { z } from 'zod';
 
+function setDeepValue<TObj extends Record<string, any>>(obj: TObj, path: string, value: any): TObj {
+  const parts = path.split('.').filter(Boolean);
+  if (parts.length === 0) {
+    return obj;
+  }
+
+  const root: any = Array.isArray(obj) ? [...obj] : { ...(obj ?? {}) };
+  let cursor: any = root;
+
+  for (let i = 0; i < parts.length - 1; i++) {
+    const key = parts[i];
+    const next = cursor?.[key];
+    const nextObj: any = Array.isArray(next) ? [...next] : { ...(next ?? {}) };
+    cursor[key] = nextObj;
+    cursor = nextObj;
+  }
+
+  cursor[parts[parts.length - 1]] = value;
+  return root;
+}
+
+function getSchemaForPath(schema: z.ZodTypeAny, path: string): z.ZodTypeAny | null {
+  const parts = path.split('.').filter(Boolean);
+  let current: any = schema;
+
+  const unwrap = (s: any): any => {
+    if (s && typeof s.unwrap === 'function') {
+      return unwrap(s.unwrap());
+    }
+    if (s && typeof s.innerType === 'function') {
+      return unwrap(s.innerType());
+    }
+    return s;
+  };
+
+  for (const part of parts) {
+    current = unwrap(current);
+    const shape = current?.shape;
+    const next = shape?.[part];
+    if (!next) {
+      return null;
+    }
+    current = next;
+  }
+
+  return unwrap(current);
+}
+
 export type FormFieldValue = string | number | boolean | Date | string[] | null;
 
 export interface FormErrors {
@@ -19,7 +67,7 @@ export interface UseFormDataReturn<T> {
   isValid: boolean;
   dirty: boolean;
   isDirty: boolean;
-  handleChange: (name: keyof T, value: FormFieldValue) => void;
+  handleChange: (name: keyof T | string, value: FormFieldValue) => void;
   handleInputChange: (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => void;
@@ -28,7 +76,7 @@ export interface UseFormDataReturn<T> {
   ) => (event?: React.FormEvent) => Promise<void>;
   reset: (initialValues?: Partial<T>) => void;
   loadData: (data: Partial<T>) => void;
-  setFieldError: (field: keyof T, error: string) => void;
+  setFieldError: (field: keyof T | string, error: string) => void;
   clearErrors: () => void;
   validate: () => boolean;
 }
@@ -54,22 +102,20 @@ export function useFormData<T extends Record<string, any>>(
   }, [isDirty]);
 
   const validateField = useCallback(
-    (name: keyof T, value: any) => {
+    (name: keyof T | string, value: any) => {
+      const path = String(name);
       try {
-        // For individual field validation, we'll validate just this field
-        // by creating a partial schema for this field only
-        const fieldSchema = (schema as any).shape?.[name as string];
+        const fieldSchema = getSchemaForPath(schema as any, path);
         if (fieldSchema) {
           fieldSchema.parse(value);
         } else {
-          // Fallback: validate the entire object and check for this field's errors
-          const testValues = { ...values, [name]: value };
+          const testValues = setDeepValue(values as any, path, value);
           schema.parse(testValues);
         }
 
         setErrors(prev => {
           const newErrors = { ...prev };
-          delete newErrors[name as string];
+          delete newErrors[path];
 
           if (Object.keys(newErrors).length === 0) {
             setGeneralError(prevGeneralError => {
@@ -82,12 +128,19 @@ export function useFormData<T extends Record<string, any>>(
         return true;
       } catch (error) {
         if (error instanceof z.ZodError) {
-          const fieldError = error.issues[0]?.message || 'Invalid value';
+          const issueForPath = error.issues.find(issue => issue.path.join('.') === path);
+          const fieldError = issueForPath?.message ?? error.issues[0]?.message ?? 'Invalid value';
 
           setErrors(prev => ({
             ...prev,
-            [name as string]: fieldError,
+            [path]: fieldError,
           }));
+        } else {
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[path];
+            return newErrors;
+          });
         }
         return false;
       }
@@ -116,12 +169,13 @@ export function useFormData<T extends Record<string, any>>(
   }, [schema, values]);
 
   const handleChange = useCallback(
-    (name: keyof T, value: FormFieldValue) => {
-      setValues(prev => ({ ...prev, [name]: value }));
+    (name: keyof T | string, value: FormFieldValue) => {
+      const path = String(name);
+      setValues(prev => setDeepValue(prev as any, path, value));
       setIsDirty(true);
 
       if (validateOnChange) {
-        validateField(name, value);
+        validateField(path, value);
       }
     },
     [validateOnChange, validateField]
@@ -186,10 +240,10 @@ export function useFormData<T extends Record<string, any>>(
     setIsDirty(false);
   }, []);
 
-  const setFieldError = useCallback((field: keyof T, error: string) => {
+  const setFieldError = useCallback((field: keyof T | string, error: string) => {
     setErrors(prev => ({
       ...prev,
-      [field as string]: error,
+      [String(field)]: error,
     }));
   }, []);
 
