@@ -9,9 +9,28 @@ const wrapper = ({ children }: { children: React.ReactNode }) =>
 
 // NOTE: useUrlDrawer now uses localStorage-only (no URL mode)
 // localStorage tests skipped due to test environment limitations (works in real browsers)
-describe.skip('useUrlDrawer - localStorage mode', () => {
+describe('useUrlDrawer - localStorage mode', () => {
+  let store: Record<string, string>;
+
   beforeEach(() => {
     window.history.pushState({}, '', '/');
+    store = {};
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: (key: string) =>
+          Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null,
+        setItem: (key: string, value: string) => {
+          store[key] = String(value);
+        },
+        removeItem: (key: string) => {
+          delete store[key];
+        },
+        clear: () => {
+          store = {};
+        },
+      },
+      configurable: true,
+    });
     localStorage.clear();
   });
 
