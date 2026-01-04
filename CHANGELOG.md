@@ -1,3 +1,10 @@
+## [1.32.2](https://github.com/skylabs-digital/react-proto-kit/compare/v1.32.1...v1.32.2) (2026-01-04)
+
+
+### Bug Fixes
+
+* normalize baseUrl with trailing slash to ensure proper URL resolution in FetchConnector ([4a73a41](https://github.com/skylabs-digital/react-proto-kit/commit/4a73a419ba743f80f090022b69cfd0b7f08f5d1e))
+
 ## [1.32.1](https://github.com/skylabs-digital/react-proto-kit/compare/v1.32.0...v1.32.1) (2025-12-27)
 
 
