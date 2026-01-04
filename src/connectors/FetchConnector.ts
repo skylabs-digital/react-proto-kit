@@ -15,7 +15,9 @@ export class FetchConnector implements IConnector {
       },
       ...config,
     };
-    this.baseUrl = config.baseUrl || '';
+    // Ensure baseUrl ends with trailing slash for proper URL resolution
+    const rawBaseUrl = config.baseUrl || '';
+    this.baseUrl = rawBaseUrl && !rawBaseUrl.endsWith('/') ? `${rawBaseUrl}/` : rawBaseUrl;
   }
 
   private buildUrl(endpoint: string, params?: Record<string, any>): string {

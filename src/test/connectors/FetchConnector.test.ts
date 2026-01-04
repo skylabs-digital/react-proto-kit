@@ -210,4 +210,82 @@ describe('FetchConnector', () => {
       { timeout: 15000 }
     );
   });
+
+  describe('baseUrl trailing slash normalization', () => {
+    it('should correctly resolve URLs when baseUrl has no trailing slash', async () => {
+      const connectorWithoutSlash = new FetchConnector({
+        baseUrl: 'https://api.example.com/v1',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: 1 }),
+      });
+
+      await connectorWithoutSlash.get('items');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.example.com/v1/items',
+        expect.any(Object)
+      );
+    });
+
+    it('should correctly resolve URLs when baseUrl has trailing slash', async () => {
+      const connectorWithSlash = new FetchConnector({
+        baseUrl: 'https://api.example.com/v1/',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: 1 }),
+      });
+
+      await connectorWithSlash.get('items');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.example.com/v1/items',
+        expect.any(Object)
+      );
+    });
+
+    it('should handle nested paths correctly without trailing slash', async () => {
+      const connectorWithoutSlash = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connectorWithoutSlash.get('users/123/posts');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/api/users/123/posts',
+        expect.any(Object)
+      );
+    });
+
+    it('should handle nested paths correctly with trailing slash', async () => {
+      const connectorWithSlash = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api/',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connectorWithSlash.get('users/123/posts');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/api/users/123/posts',
+        expect.any(Object)
+      );
+    });
+  });
 });
