@@ -1,3 +1,10 @@
+# [1.33.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.32.2...v1.33.0) (2026-01-05)
+
+
+### Features
+
+* add comprehensive documentation for single record API factories ([378577b](https://github.com/skylabs-digital/react-proto-kit/commit/378577b26c2c676e906e096790263b7bf8977e93))
+
 ## [1.32.2](https://github.com/skylabs-digital/react-proto-kit/compare/v1.32.1...v1.32.2) (2026-01-04)
 
 
