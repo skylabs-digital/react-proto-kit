@@ -6,6 +6,7 @@ This guide covers advanced patterns, best practices, and complex use cases for R
 
 - [Complex Schema Patterns](#complex-schema-patterns)
 - [Advanced API Patterns](#advanced-api-patterns)
+- [Single Record APIs](#single-record-apis)
 - [State Management Strategies](#state-management-strategies)
 - [Performance Optimization](#performance-optimization)
 - [Error Handling Patterns](#error-handling-patterns)
@@ -300,6 +301,278 @@ function InfinitePostList() {
   );
 }
 ```
+
+## Single Record APIs
+
+Many applications have endpoints that don't fit the traditional list-based CRUD pattern. These are typically configuration endpoints, user settings, or computed/aggregate data.
+
+### When to Use Single Record APIs
+
+Use `createSingleRecordApi` or `createSingleRecordReadOnlyApi` when:
+
+- **Settings/Config**: `GET/PUT /users/:userId/settings` - User preferences, app configuration
+- **Profile**: `GET/PATCH /users/:userId/profile` - User profile data
+- **Dashboard Stats**: `GET /dashboard/stats` - Computed metrics (read-only)
+- **Analytics**: `GET /analytics/summary` - Aggregate data (read-only)
+- **Feature Flags**: `GET /config/features` - Feature configuration (read-only)
+
+### Full CRUD Single Record
+
+```tsx
+import { createSingleRecordApi } from '@skylabs-digital/react-proto-kit';
+
+// Schema for the settings entity
+const settingsSchema = z.object({
+  theme: z.enum(['light', 'dark', 'system']),
+  language: z.string(),
+  notifications: z.object({
+    email: z.boolean(),
+    push: z.boolean(),
+    sms: z.boolean(),
+  }),
+  privacy: z.object({
+    profileVisible: z.boolean(),
+    showOnlineStatus: z.boolean(),
+  }),
+});
+
+// Schema for update operations (can be partial)
+const settingsInputSchema = settingsSchema.partial();
+
+// Create the API
+const userSettingsApi = createSingleRecordApi(
+  'users/:userId/settings',
+  settingsSchema,
+  settingsInputSchema,
+  {
+    cacheTime: 5 * 60 * 1000,     // 5 minutes cache
+    refetchInterval: 30000,       // Auto-refresh every 30 seconds
+    allowReset: true,             // Enable reset to defaults
+    queryParams: {
+      static: { include: 'defaults' },
+      dynamic: ['section'],
+    },
+  }
+);
+
+// Usage in component
+function SettingsPage({ userId }: { userId: string }) {
+  const api = userSettingsApi.withParams({ userId });
+  
+  const { data: settings, loading, error, refetch } = api.useRecord();
+  const { mutate: updateSettings, loading: updating } = api.useUpdate();
+  const { mutate: patchSettings } = api.usePatch();
+  const { mutate: resetSettings, loading: resetting } = api.useReset();
+
+  if (loading) return <SettingsSkeleton />;
+  if (error) return <ErrorDisplay error={error} onRetry={refetch} />;
+
+  // Full update (PUT)
+  const handleSave = async (newSettings: typeof settings) => {
+    await updateSettings(newSettings);
+  };
+
+  // Partial update (PATCH)
+  const handleThemeChange = async (theme: string) => {
+    await patchSettings({ theme });
+  };
+
+  // Reset to defaults (DELETE)
+  const handleReset = async () => {
+    if (confirm('Reset all settings to defaults?')) {
+      await resetSettings();
+    }
+  };
+
+  return (
+    <div>
+      <h1>Settings</h1>
+      
+      <section>
+        <h2>Theme</h2>
+        <select 
+          value={settings?.theme} 
+          onChange={(e) => handleThemeChange(e.target.value)}
+        >
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="system">System</option>
+        </select>
+      </section>
+
+      <section>
+        <h2>Notifications</h2>
+        <label>
+          <input
+            type="checkbox"
+            checked={settings?.notifications.email}
+            onChange={() => patchSettings({ 
+              notifications: { ...settings?.notifications, email: !settings?.notifications.email }
+            })}
+          />
+          Email notifications
+        </label>
+      </section>
+
+      <button onClick={handleReset} disabled={resetting}>
+        {resetting ? 'Resetting...' : 'Reset to Defaults'}
+      </button>
+    </div>
+  );
+}
+```
+
+### Read-Only Single Record (Stats/Analytics)
+
+```tsx
+import { createSingleRecordReadOnlyApi } from '@skylabs-digital/react-proto-kit';
+
+const dashboardStatsSchema = z.object({
+  totalUsers: z.number(),
+  activeToday: z.number(),
+  newSignups: z.number(),
+  revenue: z.number(),
+  conversionRate: z.number(),
+  topProducts: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    sales: z.number(),
+  })),
+});
+
+const dashboardStatsApi = createSingleRecordReadOnlyApi(
+  'dashboard/stats',
+  dashboardStatsSchema,
+  {
+    cacheTime: 60000,           // 1 minute cache
+    refetchInterval: 30000,     // Auto-refresh every 30 seconds
+    queryParams: {
+      dynamic: ['dateRange', 'teamId'],
+    },
+  }
+);
+
+function DashboardStats() {
+  const [dateRange, setDateRange] = useState('week');
+  
+  const { data: stats, loading, refetch } = dashboardStatsApi
+    .withQuery({ dateRange })
+    .useRecord();
+
+  if (loading) return <StatsSkeleton />;
+
+  return (
+    <div>
+      <div className="filters">
+        <select value={dateRange} onChange={(e) => setDateRange(e.target.value)}>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
+        <button onClick={refetch}>Refresh</button>
+      </div>
+
+      <div className="stats-grid">
+        <StatCard title="Total Users" value={stats?.totalUsers} />
+        <StatCard title="Active Today" value={stats?.activeToday} />
+        <StatCard title="New Signups" value={stats?.newSignups} />
+        <StatCard title="Revenue" value={`$${stats?.revenue.toFixed(2)}`} />
+        <StatCard title="Conversion" value={`${stats?.conversionRate}%`} />
+      </div>
+
+      <div className="top-products">
+        <h3>Top Products</h3>
+        {stats?.topProducts.map(product => (
+          <div key={product.id}>
+            {product.name}: {product.sales} sales
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### Combining with Path Parameters
+
+```tsx
+// Organization-specific config
+const orgConfigApi = createSingleRecordApi(
+  'organizations/:orgId/config',
+  orgConfigSchema,
+  orgConfigInputSchema
+);
+
+// Team-specific analytics
+const teamAnalyticsApi = createSingleRecordReadOnlyApi(
+  'organizations/:orgId/teams/:teamId/analytics',
+  teamAnalyticsSchema,
+  { refetchInterval: 60000 }
+);
+
+function TeamDashboard({ orgId, teamId }: { orgId: string; teamId: string }) {
+  // Chain path params
+  const analytics = teamAnalyticsApi
+    .withParams({ orgId, teamId })
+    .useRecord();
+
+  const config = orgConfigApi
+    .withParams({ orgId })
+    .useRecord();
+
+  return (
+    <div>
+      <h1>{config.data?.teamName} Analytics</h1>
+      <AnalyticsDisplay data={analytics.data} />
+    </div>
+  );
+}
+```
+
+### Integration with Data Orchestrator
+
+```tsx
+import { withDataOrchestrator } from '@skylabs-digital/react-proto-kit';
+
+interface DashboardData {
+  stats: DashboardStats;
+  config: AppConfig;
+  user: UserProfile;
+}
+
+function DashboardContent({ stats, config, user }: DashboardData) {
+  return (
+    <div>
+      <Header user={user} />
+      <StatsGrid stats={stats} />
+      <ConfigPanel config={config} />
+    </div>
+  );
+}
+
+const Dashboard = withDataOrchestrator<DashboardData>(DashboardContent, {
+  hooks: {
+    stats: dashboardStatsApi.useRecord,
+    config: () => appConfigApi.useRecord(),
+    user: () => userProfileApi.withParams({ userId: getCurrentUserId() }).useRecord(),
+  },
+  options: {
+    refetchBehavior: 'stale-while-revalidate',
+  },
+});
+```
+
+### HTTP Behavior
+
+| Factory | Method | HTTP Verb | Endpoint |
+|---------|--------|-----------|----------|
+| `createSingleRecordApi` | `useRecord()` | GET | `/path` |
+| `createSingleRecordApi` | `useUpdate()` | PUT | `/path` |
+| `createSingleRecordApi` | `usePatch()` | PATCH | `/path` |
+| `createSingleRecordApi` | `useReset()` | DELETE | `/path` |
+| `createSingleRecordReadOnlyApi` | `useRecord()` | GET | `/path` |
+
+Note: Unlike `createDomainApi`, single record APIs **do not append an ID** to the endpoint. The path itself identifies the resource.
 
 ## State Management Strategies
 

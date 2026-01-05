@@ -349,6 +349,99 @@ function TodoItem({ todo }: { todo: Todo }) {
 }
 ```
 
+### Single Record APIs ⭐ NEW
+
+For endpoints that return a single record instead of a list (settings, config, stats):
+
+```tsx
+import { createSingleRecordApi, createSingleRecordReadOnlyApi } from '@skylabs-digital/react-proto-kit';
+
+// Full CRUD for single record (settings, profile, etc.)
+const settingsApi = createSingleRecordApi(
+  'users/:userId/settings',
+  settingsSchema,
+  settingsInputSchema,
+  { 
+    allowReset: true,           // Enable useReset() for reset to defaults
+    refetchInterval: 30000      // Auto-refresh every 30 seconds
+  }
+);
+
+// Read-only for computed/aggregate data (stats, analytics)
+const statsApi = createSingleRecordReadOnlyApi(
+  'dashboard/stats',
+  statsSchema,
+  { refetchInterval: 60000 }
+);
+```
+
+**Usage in components:**
+
+```tsx
+function UserSettings({ userId }: { userId: string }) {
+  const api = settingsApi.withParams({ userId });
+  
+  // Fetch single record (not a list)
+  const { data: settings, loading, refetch } = api.useRecord();
+  
+  // Update entire record (PUT - no ID needed)
+  const { mutate: updateSettings, loading: updating } = api.useUpdate();
+  
+  // Partial update (PATCH - no ID needed)
+  const { mutate: patchSettings } = api.usePatch();
+  
+  // Reset to defaults (DELETE - optional, requires allowReset: true)
+  const { mutate: resetSettings } = api.useReset();
+  
+  const handleSave = async (newSettings: SettingsInput) => {
+    await updateSettings(newSettings);
+  };
+  
+  const toggleDarkMode = async () => {
+    await patchSettings({ darkMode: !settings?.darkMode });
+  };
+
+  if (loading) return <Spinner />;
+  
+  return (
+    <SettingsForm 
+      settings={settings} 
+      onSave={handleSave}
+      onToggleDarkMode={toggleDarkMode}
+      onReset={resetSettings}
+    />
+  );
+}
+
+// Read-only dashboard stats
+function DashboardStats() {
+  const { data: stats, loading } = statsApi.useRecord();
+  
+  if (loading) return <StatsSkeleton />;
+  
+  return (
+    <div>
+      <StatCard title="Total Users" value={stats?.totalUsers} />
+      <StatCard title="Active Today" value={stats?.activeToday} />
+    </div>
+  );
+}
+```
+
+**Key differences from `createDomainApi`:**
+
+| Feature | `createDomainApi` | `createSingleRecordApi` | `createSingleRecordReadOnlyApi` |
+|---------|-------------------|-------------------------|--------------------------------|
+| `useList` | ✅ | ❌ | ❌ |
+| `useById` | ✅ | ❌ | ❌ |
+| `useRecord` | ❌ | ✅ | ✅ |
+| `useCreate` | ✅ | ❌ | ❌ |
+| `useUpdate` | ✅ (with ID) | ✅ (no ID) | ❌ |
+| `usePatch` | ✅ (with ID) | ✅ (no ID) | ❌ |
+| `useDelete` | ✅ | ❌ | ❌ |
+| `useReset` | ❌ | ✅ (optional) | ❌ |
+| `refetchInterval` | ❌ | ✅ | ✅ |
+
 ### Data Orchestrator
 
 Manage multiple API calls in a single component with smart loading states. Choose between **Hook** (flexible) or **HOC** (declarative) patterns:
@@ -539,6 +632,51 @@ Creates a complete CRUD API for a resource.
 - `useDelete()` - Delete entity
 - `withParams(params)` - Inject path parameters (builder pattern)
 - `withQuery(params)` - Inject query parameters (builder pattern)
+
+### `createSingleRecordApi(path, entitySchema, upsertSchema, config?)`
+
+Creates an API for single-record endpoints (settings, config, profile).
+
+**Parameters:**
+- `path: string` - Resource path (e.g., 'settings', 'users/:userId/profile')
+- `entitySchema: ZodSchema` - Schema for entity responses
+- `upsertSchema: ZodSchema` - Schema for update operations
+- `config?: object` - Optional configuration
+
+**Config Options:**
+```tsx
+{
+  cacheTime?: number;           // Cache duration in milliseconds
+  refetchInterval?: number;     // Auto-refetch interval (for real-time data)
+  allowReset?: boolean;         // Enable useReset() method
+  queryParams?: {
+    static?: Record<string, any>;
+    dynamic?: string[];
+  };
+}
+```
+
+**Returns:** API object with methods:
+- `useRecord()` - Fetch single record
+- `useUpdate()` - Update entire record (PUT)
+- `usePatch()` - Partial update (PATCH)
+- `useReset()` - Reset to defaults (DELETE) - only if `allowReset: true`
+- `withParams(params)` - Inject path parameters
+- `withQuery(params)` - Inject query parameters
+
+### `createSingleRecordReadOnlyApi(path, entitySchema, config?)`
+
+Creates a read-only API for computed/aggregate endpoints (stats, analytics).
+
+**Parameters:**
+- `path: string` - Resource path (e.g., 'dashboard/stats')
+- `entitySchema: ZodSchema` - Schema for entity responses
+- `config?: object` - Optional configuration (same as above, minus `allowReset`)
+
+**Returns:** API object with methods:
+- `useRecord()` - Fetch single record
+- `withParams(params)` - Inject path parameters
+- `withQuery(params)` - Inject query parameters
 
 ### Hooks
 

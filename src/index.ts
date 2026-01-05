@@ -19,6 +19,7 @@ export * from './context/RefetchBehaviorContext';
 
 // Export utility types
 export * from './factory/createDomainApi';
+export * from './factory/createSingleRecordApi';
 
 // Export debug utilities
 export { configureDebugLogging } from './utils/debug';
