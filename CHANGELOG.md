@@ -1,3 +1,10 @@
+# [1.35.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.34.0...v1.35.0) (2026-01-09)
+
+
+### Features
+
+* add explicit return type interfaces for API factories to improve type inference ([3ba720c](https://github.com/skylabs-digital/react-proto-kit/commit/3ba720cb18357522d1dcf5cdbf0f5b8cdd918a97))
+
 # [1.34.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.33.0...v1.34.0) (2026-01-09)
 
 
