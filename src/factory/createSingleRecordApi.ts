@@ -60,6 +60,23 @@ export interface UseResetResult {
   error: any;
 }
 
+// SingleRecordApi interface for proper type inference with ExtractEntityType
+export interface SingleRecordApi<TEntity, TUpsert> {
+  withParams: (params: Record<string, string>) => SingleRecordApi<TEntity, TUpsert>;
+  withQuery: (queryParams: Record<string, any>) => SingleRecordApi<TEntity, TUpsert>;
+  useRecord: () => UseRecordResult<TEntity>;
+  useUpdate: () => UseSingleRecordMutationResult<TUpsert>;
+  usePatch: () => UseSingleRecordMutationResult<Partial<TUpsert>>;
+  useReset: () => UseResetResult;
+}
+
+// SingleRecordReadOnlyApi interface for proper type inference
+export interface SingleRecordReadOnlyApi<TEntity> {
+  withParams: (params: Record<string, string>) => SingleRecordReadOnlyApi<TEntity>;
+  withQuery: (queryParams: Record<string, any>) => SingleRecordReadOnlyApi<TEntity>;
+  useRecord: () => UseRecordResult<TEntity>;
+}
+
 /**
  * Creates an API for single-record endpoints (not lists).
  *
@@ -90,7 +107,7 @@ export function createSingleRecordApi<TEntity extends z.ZodSchema, TUpsert exten
   _entitySchema: TEntity,
   upsertSchema: TUpsert,
   config?: SingleRecordConfig
-) {
+): SingleRecordApi<z.infer<TEntity>, z.infer<TUpsert>> {
   type EntityType = z.infer<TEntity>;
   type UpsertType = z.infer<TUpsert>;
 
@@ -228,7 +245,7 @@ export function createSingleRecordReadOnlyApi<TEntity extends z.ZodSchema>(
   pathTemplate: string,
   _entitySchema: TEntity,
   config?: Omit<SingleRecordConfig, 'allowReset'>
-) {
+): SingleRecordReadOnlyApi<z.infer<TEntity>> {
   type EntityType = z.infer<TEntity>;
 
   let currentPath = pathTemplate;

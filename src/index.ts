@@ -42,6 +42,7 @@ export {
   createCreateSchema,
   createUpdateSchema,
 } from './helpers/schemas';
+export type { ReadOnlyApi } from './helpers/schemas';
 
 // Seed helpers
 export {

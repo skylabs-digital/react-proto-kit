@@ -55,12 +55,14 @@ export interface DomainApi<TEntity, TUpsert> {
   };
 }
 
-// Type extraction utilities - extract from the return type of createDomainApi
+// Type extraction utilities - extract from the return type of createDomainApi or createSingleRecordApi
 export type ExtractEntityType<T> = T extends {
   useById: (id: any) => { data: infer U };
 }
   ? NonNullable<U>
-  : never;
+  : T extends { useRecord: () => { data: infer U } }
+    ? NonNullable<U>
+    : never;
 
 export type ExtractInputType<T> = T extends {
   useCreate: () => { mutate: (input: infer U) => any };

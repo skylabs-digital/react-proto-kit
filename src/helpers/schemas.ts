@@ -1,5 +1,25 @@
 import { z } from 'zod';
-import { createDomainApi } from '../factory/createDomainApi';
+import { createDomainApi, CompleteEntity } from '../factory/createDomainApi';
+import { ListParams } from '../types';
+
+// ReadOnlyApi interface for proper type inference
+export interface ReadOnlyApi<TEntity> {
+  useList: (params?: ListParams) => {
+    data: CompleteEntity<TEntity>[] | null;
+    loading: boolean;
+    error: any;
+    meta?: any;
+    refetch: () => Promise<void>;
+  };
+  useById: (id: string | undefined | null) => {
+    data: CompleteEntity<TEntity> | null;
+    loading: boolean;
+    error: any;
+    refetch: () => Promise<void>;
+  };
+  withParams: (params: Record<string, string>) => ReadOnlyApi<TEntity>;
+  withQuery: (queryParams: Record<string, any>) => ReadOnlyApi<TEntity>;
+}
 
 // Schema helpers for common patterns
 export function createEntitySchema<T extends z.ZodRawShape>(properties: T) {
@@ -41,7 +61,10 @@ export function createTimestampedSchema<T extends z.ZodRawShape>(properties: T) 
 
 // Specialized API factories
 // Read-only API factory - useful for analytics, logs, etc.
-export function createReadOnlyApi<T extends z.ZodSchema>(entity: string, entitySchema: T) {
+export function createReadOnlyApi<T extends z.ZodSchema>(
+  entity: string,
+  entitySchema: T
+): ReadOnlyApi<z.infer<T>> {
   // For read-only, we use the same schema for both entity and upsert (even though upsert won't be used)
   const api = createDomainApi(entity, entitySchema, entitySchema);
 
@@ -49,8 +72,8 @@ export function createReadOnlyApi<T extends z.ZodSchema>(entity: string, entityS
   return {
     useList: api.useList,
     useById: api.useById,
-    withParams: api.withParams,
-    withQuery: api.withQuery,
+    withParams: params => createReadOnlyApi(entity, entitySchema).withParams(params) as any,
+    withQuery: queryParams => api.withQuery(queryParams) as ReadOnlyApi<z.infer<T>>,
   };
 }
 
