@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.33.0...v1.34.0) (2026-01-09)
+
+
+### Features
+
+* add overloaded createDomainApi with separate entity and upsert schemas ([c76033f](https://github.com/skylabs-digital/react-proto-kit/commit/c76033fd42f7e93ef9710226b1938701f27cf2d8))
+
 # [1.33.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.32.2...v1.33.0) (2026-01-05)
 
 
