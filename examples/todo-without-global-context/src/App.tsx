@@ -19,7 +19,7 @@ const todoSchema = z.object({
 });
 
 // Create API without Global Context
-const todosApi = createDomainApi('todos', todoSchema);
+const todosApi = createDomainApi('todos', todoSchema, todoSchema);
 
 // Extract types from the API - this is what developers can use!
 type Todo = ExtractEntityType<typeof todosApi>;
@@ -143,11 +143,11 @@ function TodoStats({ onRefresh }: { onRefresh: () => void }) {
 }
 
 function TodoItem({ todo, onTodoChanged }: { todo: Todo; onTodoChanged: () => void }) {
-  const { mutate: updateTodo } = todosApi.useUpdate(todo.id);
-  const { mutate: deleteTodo } = todosApi.useDelete(todo.id);
+  const { mutate: updateTodo } = todosApi.useUpdate();
+  const { mutate: deleteTodo } = todosApi.useDelete();
 
   const handleToggle = async () => {
-    await updateTodo({
+    await updateTodo(todo.id, {
       text: todo.text,
       completed: !todo.completed,
     });
@@ -156,7 +156,7 @@ function TodoItem({ todo, onTodoChanged }: { todo: Todo; onTodoChanged: () => vo
   };
 
   const handleDelete = async () => {
-    await deleteTodo();
+    await deleteTodo(todo.id);
     // Manual callback to notify parent
     onTodoChanged();
   };

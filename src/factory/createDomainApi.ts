@@ -7,14 +7,64 @@ import { usePatchMutation } from '../hooks/usePatchMutation';
 import { useDeleteMutation } from '../hooks/useDeleteMutation';
 import { useUpdateMutation } from '../hooks/useUpdateMutation';
 
+// Query parameters configuration
+export interface QueryParamsConfig {
+  static?: Record<string, any>; // Always included in requests
+  dynamic?: string[]; // Runtime configurable parameters
+}
+
+// Complete entity type with auto-generated fields
+export type CompleteEntity<T> = T & { id: string; createdAt: string; updatedAt: string };
+
+// Return type interface for proper type inference
+export interface DomainApi<TEntity, TUpsert> {
+  withParams: (params: Record<string, string>) => DomainApi<TEntity, TUpsert>;
+  withQuery: (queryParams: Record<string, any>) => DomainApi<TEntity, TUpsert>;
+  useList: (params?: ListParams) => {
+    data: CompleteEntity<TEntity>[] | null;
+    loading: boolean;
+    error: any;
+    meta?: any;
+    refetch: () => Promise<void>;
+  };
+  useById: (id: string | undefined | null) => {
+    data: CompleteEntity<TEntity> | null;
+    loading: boolean;
+    error: any;
+    refetch: () => Promise<void>;
+  };
+  useCreate: () => {
+    mutate: (data: TUpsert) => Promise<CompleteEntity<TEntity>>;
+    loading: boolean;
+    error: any;
+  };
+  useUpdate: () => {
+    mutate: (id: string, data: TUpsert) => Promise<void>;
+    loading: boolean;
+    error: any;
+  };
+  usePatch: () => {
+    mutate: (id: string, data: Partial<TUpsert>) => Promise<void>;
+    loading: boolean;
+    error: any;
+  };
+  useDelete: () => {
+    mutate: (id: string) => Promise<void>;
+    loading: boolean;
+    error: any;
+  };
+}
+
 // Type extraction utilities - extract from the return type of createDomainApi
-export type ExtractEntityType<T> = T extends { useList: () => { data: infer U } }
-  ? U extends (infer Item)[]
-    ? Item
-    : never
+export type ExtractEntityType<T> = T extends {
+  useById: (id: any) => { data: infer U };
+}
+  ? NonNullable<U>
   : never;
 
-export type ExtractInputType<T> = T extends { useCreate: () => { mutate: (input: infer U) => any } }
+export type ExtractInputType<T> = T extends {
+  useCreate: () => { mutate: (input: infer U) => any };
+}
   ? U
   : never;
 
@@ -38,19 +88,41 @@ function extractParamNames(template: string): string[] {
   return matches ? matches.map(match => match.slice(1)) : [];
 }
 
-// Query parameters configuration
-export interface QueryParamsConfig {
-  static?: Record<string, any>; // Always included in requests
-  dynamic?: string[]; // Runtime configurable parameters
-}
+// Overload: 3 arguments (entitySchema is also used as upsertSchema)
+export function createDomainApi<TEntity extends z.ZodSchema>(
+  pathTemplate: string,
+  entitySchema: TEntity,
+  config?: GlobalStateConfig & { queryParams?: QueryParamsConfig }
+): DomainApi<z.infer<TEntity>, z.infer<TEntity>>;
 
+// Overload: 4 arguments (separate entitySchema and upsertSchema)
+export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.ZodSchema>(
+  pathTemplate: string,
+  entitySchema: TEntity,
+  upsertSchema: TUpsert,
+  config?: GlobalStateConfig & { queryParams?: QueryParamsConfig }
+): DomainApi<z.infer<TEntity>, z.infer<TUpsert>>;
+
+// Implementation
 export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.ZodSchema>(
   pathTemplate: string,
   _entitySchema: TEntity,
-  upsertSchema: TUpsert,
-  config?: GlobalStateConfig & { queryParams?: QueryParamsConfig }
-) {
-  type EntityType = z.infer<TEntity> & { id: string; createdAt: string; updatedAt: string };
+  upsertSchemaOrConfig?: TUpsert | (GlobalStateConfig & { queryParams?: QueryParamsConfig }),
+  maybeConfig?: GlobalStateConfig & { queryParams?: QueryParamsConfig }
+): DomainApi<z.infer<TEntity>, z.infer<TUpsert>> {
+  // Determine if 3 or 4 argument form was used
+  const isThreeArgForm =
+    upsertSchemaOrConfig &&
+    typeof upsertSchemaOrConfig === 'object' &&
+    !('_def' in upsertSchemaOrConfig);
+
+  const upsertSchema = isThreeArgForm
+    ? (_entitySchema as unknown as TUpsert)
+    : (upsertSchemaOrConfig as TUpsert);
+  const config = isThreeArgForm
+    ? (upsertSchemaOrConfig as GlobalStateConfig & { queryParams?: QueryParamsConfig })
+    : maybeConfig;
+  type EntityType = CompleteEntity<z.infer<TEntity>>;
 
   // Current resolved path (starts as template)
   let currentPath = pathTemplate;

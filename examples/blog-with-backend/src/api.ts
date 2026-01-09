@@ -38,30 +38,24 @@ export const commentSchema = z.object({
 // Enable debug logging for backend communication
 configureDebugLogging(true, '[BLOG-BACKEND]');
 
-// Create APIs with Global Context, FetchConnector, and intelligent invalidation
+// Create APIs with FetchConnector
 export const usersApi = createDomainApi('users', userSchema, {
-  globalState: true,
   optimistic: true,
   cacheTime: 10 * 60 * 1000, // 10 minutes
 });
 
 export const categoriesApi = createDomainApi('categories', categorySchema, {
-  globalState: true,
   optimistic: true,
   cacheTime: 15 * 60 * 1000, // 15 minutes (categories change less frequently)
 });
 
 export const postsApi = createDomainApi('posts', postSchema, {
-  globalState: true,
   optimistic: true,
-  invalidateRelated: ['comments'], // When posts change, invalidate comments
   cacheTime: 5 * 60 * 1000, // 5 minutes
 });
 
 export const commentsApi = createDomainApi('comments', commentSchema, {
-  globalState: true,
   optimistic: true,
-  invalidateRelated: ['posts'], // When comments change, invalidate posts (for comment counts)
   cacheTime: 3 * 60 * 1000, // 3 minutes (comments are more dynamic)
 });
 
