@@ -15,13 +15,17 @@ export class FetchConnector implements IConnector {
       },
       ...config,
     };
-    // Ensure baseUrl ends with trailing slash for proper URL resolution
-    const rawBaseUrl = config.baseUrl || '';
-    this.baseUrl = rawBaseUrl && !rawBaseUrl.endsWith('/') ? `${rawBaseUrl}/` : rawBaseUrl;
+    // Store baseUrl as-is, normalization happens in buildUrl
+    this.baseUrl = config.baseUrl || '';
   }
 
   private buildUrl(endpoint: string, params?: Record<string, any>): string {
-    const url = new URL(endpoint, this.baseUrl);
+    // Normalize baseUrl and endpoint to handle trailing/leading slashes consistently
+    // Works with: http://localhost:3000/api or http://localhost:3000/api/
+    const normalizedBase = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl;
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const fullUrl = normalizedBase ? `${normalizedBase}/${normalizedEndpoint}` : normalizedEndpoint;
+    const url = new URL(fullUrl);
 
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
