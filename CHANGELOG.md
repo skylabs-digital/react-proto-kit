@@ -1,3 +1,10 @@
+# [1.37.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.36.0...v1.37.0) (2026-03-09)
+
+
+### Features
+
+* add Windsurf workflows, coding rules, CI pipeline, and standardization documentation ([dc4e5cf](https://github.com/skylabs-digital/react-proto-kit/commit/dc4e5cf2fbecf569fda5b63af2321db2e6e46cd0))
+
 # [1.36.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.35.0...v1.36.0) (2026-03-09)
 
 
