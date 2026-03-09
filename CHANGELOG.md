@@ -1,3 +1,10 @@
+# [1.36.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.35.0...v1.36.0) (2026-03-09)
+
+
+### Features
+
+* add data field to ErrorResponse for preserving extra error body fields ([d992703](https://github.com/skylabs-digital/react-proto-kit/commit/d992703f7e9a0398e14434898b91c805469796bf))
+
 # [1.35.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.34.0...v1.35.0) (2026-01-09)
 
 
