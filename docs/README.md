@@ -1,164 +1,124 @@
-# React Proto Kit Documentation
+# 📚 React Proto Kit — Documentation
 
-Welcome to the comprehensive documentation for React Proto Kit - the ultimate React prototyping toolkit for rapid API development.
+> Complete guide to building full-stack React apps at prototype speed.
 
-## 📚 Documentation Index
+---
 
-### Getting Started
-- **[Main README](../README.md)** - Quick start guide and overview
-- **[API Reference](./API_REFERENCE.md)** - Complete API documentation
+## �️ Documentation Index
 
-### Core Guides
-- **[Advanced Usage](./ADVANCED_USAGE.md)** - Complex patterns and best practices
-- **[Forms Guide](./FORMS.md)** - Complete form handling with validation
-- **[Global Context Guide](./GLOBAL_CONTEXT_GUIDE.md)** - State management and real-time sync
+### 📘 Core Guides
 
-### Development
-- **[Architecture](./ARCHITECTURE.md)** - Internal architecture and design decisions
-- **[Contributing](./CONTRIBUTING.md)** - How to contribute to the project
-- **[Migration Guide](./MIGRATION_GUIDE.md)** - Upgrading and migration strategies
+| Guide | Description |
+|-------|-------------|
+| 🏠 [Main README](../README.md) | Quick start, installation, features overview |
+| 📘 [API Reference](./API_REFERENCE.md) | Complete API docs for all hooks, factories, and types |
+| 🛡️ [Error Handling](./ERROR_HANDLING.md) | Structured `ErrorResponse`, custom error codes, `data` field |
+| 📝 [Forms Guide](./FORMS.md) | `useFormData`, `createFormHandler`, validation patterns |
+| ⚡ [Global Context Guide](./GLOBAL_CONTEXT_GUIDE.md) | `GlobalStateProvider`, caching, real-time sync |
+| 🎭 [Data Orchestrator](./DATA_ORCHESTRATOR.md) | Aggregate multiple APIs, `stale-while-revalidate`, auto-refetch |
+| 🎨 [UI Components](./UI_COMPONENTS.md) | Modal, Drawer, Tabs, Stepper, Accordion, Snackbar |
+| 🚀 [Advanced Usage](./ADVANCED_USAGE.md) | Complex patterns, performance, testing strategies |
+
+### 🏗️ Architecture & Design
+
+| Guide | Description |
+|-------|-------------|
+| 🏗️ [Architecture](./ARCHITECTURE.md) | Internal design, data flow, connector pattern |
+| 📡 [RFC: Single Record API](./RFC_SINGLE_RECORD_API.md) | Design spec for `createSingleRecordApi` |
+| 🔄 [RFC: Data Orchestrator Refetch](./RFC_WITH_DATA_ORCHESTRATOR_REFETCH.md) | Design spec for refetch behaviors |
+| 🔗 [RFC: URL Navigation](./RFC_URL_NAVIGATION.md) | Design spec for URL-driven UI components |
+| 📋 [RFC: Page Data Wrapper](./RFC_PAGE_DATA_WRAPPER.md) | Design spec for page-level data orchestration |
+
+### 🛠️ Development
+
+| Guide | Description |
+|-------|-------------|
+| 🤝 [Contributing](./CONTRIBUTING.md) | Setup, PR process, testing guidelines |
+| 📋 [Migration Guide](./MIGRATION_GUIDE.md) | Upgrading between versions |
+
+---
 
 ## 🚀 Quick Navigation
 
-### For New Users
-1. Start with the [Main README](../README.md) for a quick overview
-2. Follow the [Quick Start](../README.md#quick-start) section
-3. Explore the [Examples](../examples/) directory
-4. Read the [API Reference](./API_REFERENCE.md) for detailed usage
+### 🆕 New to React Proto Kit?
 
-### For Advanced Users
-1. Check out [Advanced Usage](./ADVANCED_USAGE.md) for complex patterns
-2. Learn about [Global Context](./GLOBAL_CONTEXT_GUIDE.md) for state management
-3. Master [Forms](./FORMS.md) for comprehensive form handling
-4. Understand the [Architecture](./ARCHITECTURE.md) for deeper insights
+1. Start with the [Main README](../README.md) → Quick Start
+2. Explore the [Examples](../examples/) — 9 working demos
+3. Read the [API Reference](./API_REFERENCE.md) for detailed usage
+4. Check the [Forms Guide](./FORMS.md) for form handling
 
-### For Contributors
-1. Read the [Contributing Guide](./CONTRIBUTING.md)
-2. Understand the [Architecture](./ARCHITECTURE.md)
-3. Check the [Migration Guide](./MIGRATION_GUIDE.md) for breaking changes
+### 🧑‍💻 Building a Production App?
+
+1. [Advanced Usage](./ADVANCED_USAGE.md) — production patterns and optimization
+2. [Error Handling](./ERROR_HANDLING.md) — structured errors for robust UX
+3. [Global Context](./GLOBAL_CONTEXT_GUIDE.md) — centralized state management
+4. [Data Orchestrator](./DATA_ORCHESTRATOR.md) — aggregate multiple API calls
+5. [Architecture](./ARCHITECTURE.md) — understand how it all fits together
+
+### 🤝 Contributing?
+
+1. [Contributing Guide](./CONTRIBUTING.md) — development setup
+2. [Architecture](./ARCHITECTURE.md) — internal design decisions
+3. [Migration Guide](./MIGRATION_GUIDE.md) — breaking change tracking
+
+---
+
+## � Search by Topic
+
+### API Factories
+- [`createDomainApi`](./API_REFERENCE.md#createdomainapi) — Full CRUD API factory
+- [`createSingleRecordApi`](./API_REFERENCE.md#createsinglerecordapi) — Single record endpoints (settings, profile)
+- [`createReadOnlyApi`](../README.md#-read-only-apis) — Read-only list endpoints
+- [`createSingleRecordReadOnlyApi`](./API_REFERENCE.md#createsinglerecordreadonlyapi) — Read-only single record
+
+### Hooks
+- **Query**: `useList`, `useQuery` / `useById`, `useRecord`
+- **Mutations**: `useCreate`, `useUpdate`, `usePatch`, `useDelete`, `useReset`
+- **Forms**: [`useFormData`](./FORMS.md), [`createFormHandler`](./FORMS.md)
+- **URL State**: `useUrlParam`, `useUrlTabs`, `useUrlModal`, `useUrlDrawer`, `useUrlStepper`, `useUrlAccordion`
+- **Orchestration**: [`useDataOrchestrator`](./DATA_ORCHESTRATOR.md), [`withDataOrchestrator`](./DATA_ORCHESTRATOR.md)
+- **Notifications**: [`useSnackbar`](./UI_COMPONENTS.md)
+
+### Error Handling
+- [ErrorResponse interface](./ERROR_HANDLING.md#errorresponse-interface)
+- [Catching errors with try/catch](./ERROR_HANDLING.md#-catching-errors-with-trycatch)
+- [Validation errors](./ERROR_HANDLING.md#-validation-errors)
+- [Backend contract](./ERROR_HANDLING.md#backend-contract)
+
+### Type Safety
+- [`ExtractEntityType<T>`](./API_REFERENCE.md#type-utilities) — complete entity type
+- [`ExtractInputType<T>`](./API_REFERENCE.md#type-utilities) — input type for mutations
+- [Schema patterns](./ADVANCED_USAGE.md#complex-schema-patterns) — complex schemas
+
+### State Management
+- [Global State](./GLOBAL_CONTEXT_GUIDE.md) — centralized state
+- [Caching](./GLOBAL_CONTEXT_GUIDE.md#caching-strategy) — cache management
+- [Optimistic Updates](./GLOBAL_CONTEXT_GUIDE.md#optimistic-updates) — instant feedback
+
+---
 
 ## 📖 Documentation Structure
 
 ```
 docs/
-├── README.md                    # This file - documentation index
-├── API_REFERENCE.md            # Complete API documentation
-├── ADVANCED_USAGE.md           # Complex patterns and strategies
-├── FORMS.md                    # Form handling and validation
-├── GLOBAL_CONTEXT_GUIDE.md     # State management guide
-├── ARCHITECTURE.md             # Internal architecture
-├── CONTRIBUTING.md             # Contribution guidelines
-└── MIGRATION_GUIDE.md          # Migration and upgrade guide
+├── README.md                                # This file — documentation index
+├── API_REFERENCE.md                         # Complete API documentation
+├── ERROR_HANDLING.md                        # 🆕 Error handling guide
+├── FORMS.md                                 # Form handling and validation
+├── GLOBAL_CONTEXT_GUIDE.md                  # State management guide
+├── DATA_ORCHESTRATOR.md                     # Data orchestration guide
+├── UI_COMPONENTS.md                         # UI components guide
+├── ADVANCED_USAGE.md                        # Advanced patterns
+├── ARCHITECTURE.md                          # Internal architecture
+├── CONTRIBUTING.md                          # Contribution guidelines
+├── MIGRATION_GUIDE.md                       # Migration and upgrade guide
+├── RFC_SINGLE_RECORD_API.md                 # RFC: Single record API
+├── RFC_WITH_DATA_ORCHESTRATOR_REFETCH.md    # RFC: Refetch behaviors
+├── RFC_URL_NAVIGATION.md                    # RFC: URL navigation
+└── RFC_PAGE_DATA_WRAPPER.md                 # RFC: Page data wrapper
 ```
 
-## 🎯 Common Use Cases
-
-### Building a CRUD Application
-1. [Quick Start](../README.md#quick-start) - Basic setup
-2. [API Reference](./API_REFERENCE.md#createdomainapi) - Creating APIs
-3. [Forms Guide](./FORMS.md) - Handling forms
-4. [Global Context](./GLOBAL_CONTEXT_GUIDE.md) - State synchronization
-
-### Prototyping with Local Storage
-1. [Basic Usage](../README.md#local-storage-mode) - LocalStorage setup
-2. [Advanced Patterns](./ADVANCED_USAGE.md#performance-optimization) - Optimization
-3. [Testing](./ADVANCED_USAGE.md#testing-strategies) - Testing strategies
-
-### Building Production Applications
-1. [Advanced Usage](./ADVANCED_USAGE.md) - Production patterns
-2. [Performance](./ADVANCED_USAGE.md#performance-optimization) - Optimization
-3. [Architecture](./ARCHITECTURE.md) - Understanding internals
-4. [Migration](./MIGRATION_GUIDE.md) - Upgrading strategies
-
-### Integrating with Existing Projects
-1. [Migration Guide](./MIGRATION_GUIDE.md#adopting-in-existing-projects) - Adoption strategies
-2. [Advanced Patterns](./ADVANCED_USAGE.md#migration-patterns) - Integration patterns
-3. [Custom Connectors](./ADVANCED_USAGE.md#custom-connectors) - Custom backends
-
-## 🔍 Search by Topic
-
-### API Creation
-- [createDomainApi](./API_REFERENCE.md#createdomainapi) - Core API factory
-- [Builder Pattern](./ADVANCED_USAGE.md#advanced-api-patterns) - Dynamic configuration
-- [Nested Resources](./API_REFERENCE.md#nested-resources) - Complex relationships
-
-### Hooks
-- [useList](./API_REFERENCE.md#uselist) - Fetch collections
-- [useQuery](./API_REFERENCE.md#usequery--usebyid) - Fetch single entities
-- [Mutations](./API_REFERENCE.md#mutation-hooks) - Create, update, delete
-- [Forms](./FORMS.md#form-hook-api) - Form state management
-
-### State Management
-- [Global State](./GLOBAL_CONTEXT_GUIDE.md) - Centralized state
-- [Caching](./GLOBAL_CONTEXT_GUIDE.md#caching-strategy) - Cache management
-- [Optimistic Updates](./GLOBAL_CONTEXT_GUIDE.md#optimistic-updates) - Immediate feedback
-- [Real-time Sync](./GLOBAL_CONTEXT_GUIDE.md#real-time-synchronization) - Live updates
-
-### Type Safety
-- [Type Utilities](./API_REFERENCE.md#type-utilities) - Type extraction
-- [Schema Patterns](./ADVANCED_USAGE.md#complex-schema-patterns) - Complex schemas
-- [Type System](./ARCHITECTURE.md#type-system) - Internal types
-
-### Performance
-- [Optimization](./ADVANCED_USAGE.md#performance-optimization) - Performance patterns
-- [Memoization](./GLOBAL_CONTEXT_GUIDE.md#performance-optimization) - Selective updates
-- [Caching](./GLOBAL_CONTEXT_GUIDE.md#caching-strategy) - Cache strategies
-
-### Testing
-- [Testing Strategies](./ADVANCED_USAGE.md#testing-strategies) - Testing patterns
-- [Mock APIs](./ADVANCED_USAGE.md#mock-api-responses) - Testing utilities
-- [Integration Tests](./ADVANCED_USAGE.md#integration-testing) - Full testing
-
-### Forms
-- [Form Validation](./FORMS.md#validation-patterns) - Zod integration
-- [Multi-step Forms](./FORMS.md#multi-step-forms) - Complex forms
-- [Dynamic Fields](./FORMS.md#dynamic-form-fields) - Dynamic forms
-- [API Integration](./FORMS.md#integration-with-apis) - Form + API
-
-## 🛠 Development Resources
-
-### Code Examples
-- [Examples Directory](../examples/) - Working examples
-- [API Reference Examples](./API_REFERENCE.md#examples) - Code snippets
-- [Advanced Patterns](./ADVANCED_USAGE.md) - Complex examples
-
-### Architecture
-- [Design Decisions](./ARCHITECTURE.md#design-decisions) - Why we made certain choices
-- [Data Flow](./ARCHITECTURE.md#data-flow) - How data moves through the system
-- [Performance](./ARCHITECTURE.md#performance-considerations) - Performance design
-
-### Contributing
-- [Development Setup](./CONTRIBUTING.md#development-setup) - Local development
-- [Pull Request Process](./CONTRIBUTING.md#pull-request-process) - Contributing code
-- [Testing Guidelines](./CONTRIBUTING.md#testing) - Testing requirements
-
-## 🆘 Getting Help
-
-### Documentation Issues
-- **Missing Information**: Create an issue on GitHub
-- **Unclear Examples**: Request clarification in discussions
-- **Outdated Content**: Submit a pull request with updates
-
-### Code Issues
-- **Bugs**: Report on GitHub Issues
-- **Feature Requests**: Use GitHub Discussions
-- **Performance Issues**: Include reproduction steps
-
-### Community
-- **GitHub Discussions**: Ask questions and share ideas
-- **Discord**: Real-time community help (if available)
-- **Stack Overflow**: Tag questions with `react-proto-kit`
-
-## 📝 Contributing to Documentation
-
-We welcome contributions to improve the documentation:
-
-1. **Fix Typos**: Submit PRs for small fixes
-2. **Add Examples**: Contribute working code examples
-3. **Improve Clarity**: Suggest better explanations
-4. **Add Guides**: Create guides for specific use cases
-
-See the [Contributing Guide](./CONTRIBUTING.md) for detailed instructions.
+---
 
 ## 📄 License
 
@@ -166,4 +126,4 @@ This documentation is part of React Proto Kit and is licensed under the MIT Lice
 
 ---
 
-**Ready to build amazing applications?** Start with the [Quick Start Guide](../README.md#quick-start) or dive into the [API Reference](./API_REFERENCE.md)!
+**Ready to build?** Start with the [Quick Start Guide](../README.md#-quick-start) or dive into the [API Reference](./API_REFERENCE.md) 🚀

@@ -1,17 +1,26 @@
-# React Proto Kit
+# ⚡ React Proto Kit
 
-> **From idea to working prototype in minutes** ⚡
+<div align="center">
 
-A powerful React prototyping toolkit that eliminates boilerplate and accelerates development. Build full-stack applications with type-safe APIs, real-time state management, and automatic CRUD operations.
+> **From idea to working prototype in minutes**
 
-[![npm version](https://badge.fury.io/js/@skylabs-digital%2Freact-proto-kit.svg)](https://badge.fury.io/js/@skylabs-digital%2Freact-proto-kit)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
-[![Zod](https://img.shields.io/badge/Zod-3E67B1?logo=zod&logoColor=white)](https://zod.dev/)
+[![npm version](https://badge.fury.io/js/@skylabs-digital%2Freact-proto-kit.svg)](https://www.npmjs.com/package/@skylabs-digital/react-proto-kit)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
+[![Zod](https://img.shields.io/badge/Zod-3.x-3E67B1?logo=zod&logoColor=white)](https://zod.dev/)
+[![Tests](https://img.shields.io/badge/tests-273%20passing-brightgreen?logo=vitest&logoColor=white)](#running-tests)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A powerful React toolkit that eliminates boilerplate and accelerates development.  
+Build full-stack apps with **type-safe APIs**, **real-time state**, and **automatic CRUD** — all from a single schema.
+
+[Quick Start](#-quick-start) · [API Reference](#-api-reference) · [Examples](#-examples) · [Full Docs](./docs/)
+
+</div>
+
+---
 
 ## 🚀 Quick Start
-
-**One-liner to get started:**
 
 ```bash
 npm install @skylabs-digital/react-proto-kit zod react react-router-dom
@@ -20,23 +29,23 @@ npm install @skylabs-digital/react-proto-kit zod react react-router-dom
 ```tsx
 import { createDomainApi, z } from '@skylabs-digital/react-proto-kit';
 
-// Define your data schema
+// 1️⃣ Define your schema
 const userSchema = z.object({
   name: z.string(),
   email: z.string().email(),
   age: z.number().min(0),
 });
 
-// Create a fully functional API
+// 2️⃣ Create a fully functional API
 const userApi = createDomainApi('users', userSchema, userSchema);
 
-// Use it in your component
+// 3️⃣ Use it in your component
 function UserList() {
   const { data: users, loading } = userApi.useList();
   const { mutate: createUser } = userApi.useCreate();
-  
+
   if (loading) return <div>Loading...</div>;
-  
+
   return (
     <div>
       <button onClick={() => createUser({ name: 'John', email: 'john@example.com', age: 30 })}>
@@ -50,34 +59,57 @@ function UserList() {
 }
 ```
 
-That's it! You now have a fully functional CRUD API with TypeScript support, optimistic updates, and automatic state management.
+That's it! Full CRUD API with TypeScript inference, cache management, and automatic state sync.
 
-## ✨ Key Features
+---
 
-- **🔥 Zero Boilerplate**: One function call creates a complete CRUD API
-- **🎯 Type-Safe**: Full TypeScript support with automatic type inference
-- **⚡ Real-time**: Automatic state synchronization across components
-- **🔄 Optimistic Updates**: Instant UI feedback with automatic rollback on errors
-- **🌐 Backend Agnostic**: Works with any REST API or local storage
-- **📝 Form Handling**: Built-in form validation and state management
-- **🔗 Nested Resources**: Support for complex resource relationships
-- **🎨 Builder Pattern**: Chainable API for dynamic configurations
-- **📊 Query Parameters**: Static and dynamic query parameter management
-- **🔍 URL State**: Automatic URL synchronization for filters and pagination
-- **🎭 Data Orchestrator**: Aggregate multiple API calls with smart loading states
-- **⚡ Auto-Refetch**: Watch URL params and automatically refetch data on changes
-- **✨ Smooth Transitions**: Stale-while-revalidate for flicker-free UX
-- **🎨 UI Components**: Built-in Modal, Drawer, Tabs, Stepper, Accordion, and Snackbar components with URL state management
+## ✨ Features at a Glance
+
+| Category | Features |
+|----------|----------|
+| 🔥 **Zero Boilerplate** | One function creates a complete CRUD API |
+| 🎯 **Type-Safe** | Full TypeScript inference from Zod schemas — `ExtractEntityType`, `ExtractInputType` |
+| ⚡ **Real-time State** | Automatic synchronization across components via `GlobalStateProvider` |
+| 🔄 **Optimistic Updates** | Instant UI feedback with automatic rollback |
+| 🌐 **Backend Agnostic** | `FetchConnector` for REST APIs, `LocalStorageConnector` for prototyping |
+| 🛡️ **Structured Errors** | Full `ErrorResponse` propagation with custom `data` field for rich error handling |
+| 📝 **Form Handling** | Built-in validation with `useFormData` and `createFormHandler` |
+| 🔗 **Nested Resources** | Path templates like `todos/:todoId/comments` with builder pattern |
+| 📊 **Query Params** | Static and dynamic query parameter management |
+| 🔍 **URL State** | `useUrlTabs`, `useUrlModal`, `useUrlDrawer`, `useUrlStepper`, `useUrlAccordion`, `useUrlParam` |
+| 🎭 **Data Orchestrator** | Aggregate multiple APIs with `isLoading` / `isFetching` / `stale-while-revalidate` |
+| 🍞 **Snackbar** | Built-in toast notifications with queue management |
+| 📡 **Single Record APIs** | `createSingleRecordApi` for settings, profiles, stats endpoints |
+| 📖 **Read-Only APIs** | `createReadOnlyApi` / `createSingleRecordReadOnlyApi` for list or single-record GET-only endpoints |
+| 🐛 **Debug Logging** | Configurable request/response logging via `configureDebugLogging` |
+| 🌱 **Seed Data** | Built-in seed helpers for development and testing |
+
+---
 
 ## 📖 Table of Contents
 
-- [Installation](#installation)
-- [Basic Usage](#basic-usage)
-- [Advanced Features](#advanced-features)
-- [API Reference](#api-reference)
-- [Examples](#examples)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
+- [Installation](#-installation)
+- [Basic Usage](#-basic-usage)
+- [Advanced Features](#-advanced-features)
+  - [Nested Resources & Builder Pattern](#-nested-resources--builder-pattern)
+  - [Separate Schemas](#-separate-schemas-for-entity-vs-input)
+  - [Type Extraction](#-type-extraction)
+  - [Structured Error Handling](#️-structured-error-handling)
+  - [Form Integration](#-form-integration)
+  - [URL State Management](#-url-state-management)
+  - [Partial Updates (PATCH)](#-partial-updates-with-patch)
+  - [Single Record APIs](#-single-record-apis)
+  - [Read-Only APIs](#-read-only-apis)
+  - [Data Orchestrator](#-data-orchestrator)
+  - [Local Storage Mode](#-local-storage-mode)
+  - [Debug Logging](#-debug-logging)
+  - [Seed Data](#-seed-data)
+- [API Reference](#-api-reference)
+- [UI Components](#-ui-components)
+- [Examples](#-examples)
+- [Backend Integration](#-backend-integration)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
 
 ## 📦 Installation
 
@@ -92,17 +124,19 @@ yarn add @skylabs-digital/react-proto-kit zod react react-router-dom
 pnpm add @skylabs-digital/react-proto-kit zod react react-router-dom
 ```
 
-### Peer Dependencies
+**Peer Dependencies:**
 
-- `react` >= 16.8.0
-- `react-router-dom` >= 6.0.0
-- `zod` >= 3.0.0
+| Package | Version |
+|---------|---------|
+| `react` | >= 16.8.0 |
+| `react-router-dom` | >= 6.0.0 |
+| `zod` | >= 3.0.0 |
+
+---
 
 ## 🎯 Basic Usage
 
-### 1. Setup Providers
-
-Wrap your app with the necessary providers:
+### 1️⃣ Setup Providers
 
 ```tsx
 import { BrowserRouter } from 'react-router-dom';
@@ -111,7 +145,10 @@ import { ApiClientProvider, GlobalStateProvider } from '@skylabs-digital/react-p
 function App() {
   return (
     <BrowserRouter>
-      <ApiClientProvider connectorType="fetch" config={{ baseUrl: 'http://localhost:3001' }}>
+      <ApiClientProvider
+        connectorType="fetch"
+        config={{ baseUrl: 'http://localhost:3001/api' }}
+      >
         <GlobalStateProvider>
           {/* Your app components */}
         </GlobalStateProvider>
@@ -121,11 +158,14 @@ function App() {
 }
 ```
 
-### 2. Define Your Schema
+> 💡 The `baseUrl` is slash-agnostic — `http://localhost:3001/api` and `http://localhost:3001/api/` both work identically.
+
+### 2️⃣ Define Your Schema
 
 ```tsx
 import { z } from '@skylabs-digital/react-proto-kit';
 
+// Only define business fields — id, createdAt, updatedAt are auto-generated
 const todoSchema = z.object({
   text: z.string().min(1, 'Todo text is required'),
   completed: z.boolean(),
@@ -133,7 +173,7 @@ const todoSchema = z.object({
 });
 ```
 
-### 3. Create Your API
+### 3️⃣ Create Your API
 
 ```tsx
 import { createDomainApi } from '@skylabs-digital/react-proto-kit';
@@ -144,7 +184,7 @@ const todoApi = createDomainApi('todos', todoSchema, todoSchema, {
 });
 ```
 
-### 4. Use in Components
+### 4️⃣ Use in Components
 
 ```tsx
 function TodoApp() {
@@ -175,11 +215,11 @@ function TodoApp() {
 }
 ```
 
+---
+
 ## 🚀 Advanced Features
 
-### Nested Resources
-
-Handle complex resource relationships with ease:
+### 🔗 Nested Resources & Builder Pattern
 
 ```tsx
 // Comments belong to todos
@@ -218,9 +258,7 @@ function TodoComments({ todoId }: { todoId: string }) {
 }
 ```
 
-### Different Schemas for Operations
-
-Use different schemas for entity responses vs create/update operations:
+### 🔀 Separate Schemas for Entity vs Input
 
 ```tsx
 // Full entity schema (includes server-generated fields)
@@ -240,9 +278,7 @@ const userUpsertSchema = z.object({
 const userApi = createDomainApi('users', userEntitySchema, userUpsertSchema);
 ```
 
-### Type Extraction
-
-Extract TypeScript types from your APIs:
+### 🏷️ Type Extraction
 
 ```tsx
 import { ExtractEntityType, ExtractInputType } from '@skylabs-digital/react-proto-kit';
@@ -254,9 +290,47 @@ type UserInput = ExtractInputType<typeof userApi>;
 // Result: { name: string; email: string; }
 ```
 
-### Form Integration
+### 🛡️ Structured Error Handling
 
-Built-in form handling with validation:
+All mutation hooks propagate structured `ErrorResponse` objects. When the backend returns an error, any **extra fields** in the response body are preserved in the `data` property:
+
+```tsx
+import { ErrorResponse } from '@skylabs-digital/react-proto-kit';
+
+// Backend returns HTTP 409:
+// { message: "Stock exceeded", code: "STOCK_EXCEEDED", items: [...], orderId: "order-123" }
+
+try {
+  await createMutation.mutate(checkoutData);
+} catch (err) {
+  const error = err as ErrorResponse;
+
+  if (error.error?.code === 'STOCK_EXCEEDED') {
+    // Extra fields from the response body are in error.data
+    const items = error.data?.items as StockExceededItem[];
+    showStockExceededDialog(items);
+  }
+}
+```
+
+**`ErrorResponse` interface:**
+
+```tsx
+interface ErrorResponse {
+  success: false;
+  message?: string;                       // Error message
+  error?: { code: string };               // Error code (e.g., 'STOCK_EXCEEDED')
+  type?: 'AUTH' | 'VALIDATION' | 'TRANSACTION' | 'NAVIGATION';
+  validation?: Record<string, string>;    // Field-level validation errors
+  data?: Record<string, unknown>;         // 🆕 Any extra fields from the response body
+}
+```
+
+> 💡 The `data` field is automatically populated from any response body fields that aren't `message`, `code`, `type`, or `validation`. If the error body only has known fields, `data` is `undefined`.
+
+See the full [Error Handling Guide](./docs/ERROR_HANDLING.md) for patterns and examples.
+
+### 📝 Form Integration
 
 ```tsx
 import { useFormData } from '@skylabs-digital/react-proto-kit';
@@ -297,9 +371,7 @@ function UserForm() {
 }
 ```
 
-### URL State Management
-
-Synchronize component state with URL parameters:
+### 🔍 URL State Management
 
 ```tsx
 import { useUrlSelector } from '@skylabs-digital/react-proto-kit';
@@ -325,9 +397,7 @@ function TodoList() {
 }
 ```
 
-### Partial Updates with PATCH
-
-Use PATCH for efficient partial updates:
+### ✏️ Partial Updates with PATCH
 
 ```tsx
 function TodoItem({ todo }: { todo: Todo }) {
@@ -349,9 +419,7 @@ function TodoItem({ todo }: { todo: Todo }) {
 }
 ```
 
-### Single Record APIs ⭐ NEW
-
-For endpoints that return a single record instead of a list (settings, config, stats):
+### 📡 Single Record APIs
 
 ```tsx
 import { createSingleRecordApi, createSingleRecordReadOnlyApi } from '@skylabs-digital/react-proto-kit';
@@ -442,7 +510,26 @@ function DashboardStats() {
 | `useReset` | ❌ | ✅ (optional) | ❌ |
 | `refetchInterval` | ❌ | ✅ | ✅ |
 
-### Data Orchestrator
+### 📖 Read-Only APIs
+
+For endpoints where you only need to fetch data (no create/update/delete):
+
+```tsx
+import { createReadOnlyApi } from '@skylabs-digital/react-proto-kit';
+
+// Read-only list endpoint (e.g., public catalog, reference data)
+const combosApi = createReadOnlyApi('/combos/active', comboSchema);
+
+function ComboList() {
+  const { data: combos, loading } = combosApi.useList();
+  if (loading) return <div>Loading...</div>;
+  return <ul>{combos?.map(c => <li key={c.id}>{c.name}</li>)}</ul>;
+}
+```
+
+> 💡 Also available: `createSingleRecordReadOnlyApi` for single-record GET-only endpoints (stats, analytics).
+
+### 🎭 Data Orchestrator
 
 Manage multiple API calls in a single component with smart loading states. Choose between **Hook** (flexible) or **HOC** (declarative) patterns:
 
@@ -512,9 +599,7 @@ export const Dashboard = withDataOrchestrator<DashboardData>(DashboardContent, {
 });
 ```
 
-#### URL-Driven Data with Auto-Refetch ⭐ NEW
-
-Perfect for tabs, filters, and pagination driven by URL parameters:
+#### URL-Driven Data with Auto-Refetch
 
 ```tsx
 import { withDataOrchestrator, useUrlTabs, useUrlParam } from '@skylabs-digital/react-proto-kit';
@@ -568,8 +653,8 @@ const TodoListWithData = withDataOrchestrator<TodoListData>(TodoListContent, {
 **Key Features:**
 - **`isLoading`**: Blocks rendering during first load of required resources
 - **`isFetching`**: Shows non-blocking indicator for refetches
-- **`watchSearchParams`**: Auto-refetch when specified URL params change ⭐ NEW
-- **`refetchBehavior`**: `'stale-while-revalidate'` (smooth) or `'blocking'` (explicit) ⭐ NEW
+- **`watchSearchParams`**: Auto-refetch when specified URL params change
+- **`refetchBehavior`**: `'stale-while-revalidate'` (smooth) or `'blocking'` (explicit)
 - **Required vs Optional**: Control which resources block rendering
 - **Granular Retry**: Retry individual resources or all at once
 - **Orchestrator Prop**: HOC injects refetch capabilities automatically
@@ -581,9 +666,9 @@ const TodoListWithData = withDataOrchestrator<TodoListData>(TodoListContent, {
 
 See [Data Orchestrator Documentation](./docs/DATA_ORCHESTRATOR.md) for complete examples.
 
-### Local Storage Mode
+### 💾 Local Storage Mode
 
-Perfect for prototyping without a backend:
+Perfect for prototyping without a backend — your API calls work exactly the same:
 
 ```tsx
 function App() {
@@ -598,6 +683,43 @@ function App() {
   );
 }
 ```
+
+### 🐛 Debug Logging
+
+Enable detailed request/response logging during development:
+
+```tsx
+import { configureDebugLogging } from '@skylabs-digital/react-proto-kit';
+
+// Enable all debug logs
+configureDebugLogging({ enabled: true });
+
+// Disable in production
+configureDebugLogging({ enabled: false });
+```
+
+### 🌱 Seed Data
+
+Pre-populate your app with seed data for development and demos:
+
+```tsx
+import { createDevSeedConfig, createFallbackSeedConfig } from '@skylabs-digital/react-proto-kit';
+
+// Seed data only in development
+const seedConfig = createDevSeedConfig([
+  { text: 'Learn React Proto Kit', completed: false, priority: 'high' },
+  { text: 'Build something awesome', completed: false, priority: 'medium' },
+]);
+
+// Or use fallback seed (only if collection is empty)
+const fallbackSeed = createFallbackSeedConfig([
+  { text: 'Default item', completed: false },
+]);
+```
+
+> 💡 Also available: `createInitSeedConfig`, `createEnvironmentSeedConfig`, and `generateMockData` for advanced seeding scenarios.
+
+---
 
 ## 📚 API Reference
 
@@ -678,45 +800,66 @@ Creates a read-only API for computed/aggregate endpoints (stats, analytics).
 - `withParams(params)` - Inject path parameters
 - `withQuery(params)` - Inject query parameters
 
+### `createReadOnlyApi(path, entitySchema)`
+
+Creates a read-only list API (no create/update/delete).
+
+**Returns:** `{ useList, useById, withParams, withQuery }`
+
 ### Hooks
 
 All hooks return objects with consistent interfaces:
 
-**Query Hooks (`useList`, `useQuery`, `useById`):**
+**Query Hooks** (`useList`, `useQuery`, `useById`, `useRecord`):
+
 ```tsx
 {
   data: T | T[] | null;
   loading: boolean;
-  error: Error | null;
+  error: ErrorResponse | null;
   refetch: () => Promise<void>;
 }
 ```
 
-**Mutation Hooks (`useCreate`, `useUpdate`, `usePatch`, `useDelete`):**
+**Mutation Hooks** (`useCreate`, `useUpdate`, `usePatch`, `useDelete`):
+
 ```tsx
 {
   mutate: (data: T, id?: string) => Promise<T>;
   loading: boolean;
-  error: Error | null;
+  error: ErrorResponse | null;  // 🛡️ Structured error with code, type, validation, data
 }
 ```
 
+> 💡 `useCreate` throws the full `ErrorResponse` object on failure (not a plain `Error`). This lets you `catch` and inspect `error.code`, `error.data`, etc.
+
 ### Type Utilities
 
-- `ExtractEntityType<T>` - Extract complete entity type with auto-generated fields
-- `ExtractInputType<T>` - Extract input type for create/update operations
+| Utility | Description |
+|---------|-------------|
+| `ExtractEntityType<T>` | Complete entity type with auto-generated fields (`id`, `createdAt`, `updatedAt`) |
+| `ExtractInputType<T>` | Input type for create/update operations (excludes auto-generated fields) |
+| `InferType<T>` | Infer entity type from a Zod schema |
+| `InferCreateType<T>` | Infer create input type |
+| `InferUpdateType<T>` | Infer update input type |
 
 ## 📁 Examples
 
-The repository includes comprehensive examples:
+The repository includes **9 working examples** covering different use cases:
 
-- **[Basic Todo](./examples/todo-without-global-context/)** - Simple CRUD operations
-- **[Todo with Global State](./examples/todo-with-global-context/)** - Real-time state sync
-- **[Todo with Backend](./examples/todo-with-backend/)** - Full-stack integration
-- **[Blog Example](./examples/blog-with-backend/)** - Complex nested resources
-- **[Advanced Patterns](./examples/)** - Advanced usage patterns
+| Example | Description |
+|---------|-------------|
+| 📝 [Todo (Basic)](./examples/todo-without-global-context/) | Simple CRUD operations with local state |
+| 📝 [Todo (Global State)](./examples/todo-with-global-context/) | Real-time state sync across components |
+| 📝 [Todo (Backend)](./examples/todo-with-backend/) | Full-stack integration with Express.js |
+| 📝 [Todo (Tabs)](./examples/todo-with-tabs-example/) | URL-driven tabs with auto-refetch |
+| 📰 [Blog (Backend)](./examples/blog-with-backend/) | Nested resources (posts → comments) |
+| 📰 [Blog (Global State)](./examples/blog-with-global-context/) | Blog with centralized state |
+| 📰 [Blog (Basic)](./examples/blog-without-global-context/) | Blog without global state |
+| 🔍 [URL Navigation Demo](./examples/url-navigation-demo/) | Modal, Drawer, Tabs, Stepper, Accordion |
+| 🐛 [Debug Renders](./examples/debug-renders/) | Performance debugging and render tracking |
 
-Run examples locally:
+**Run any example locally:**
 
 ```bash
 git clone https://github.com/skylabs-digital/react-proto-kit.git
@@ -818,15 +961,21 @@ const createMutation = todosApi.useCreate({
 
 Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
-- **[API Reference](./docs/API_REFERENCE.md)** - Complete API documentation with all hooks and components
-- **[UI Components Guide](./docs/UI_COMPONENTS.md)** - Complete guide with examples for Modal, Drawer, Tabs, Stepper, Accordion, and Snackbar
-- **[UI Components RFC](./docs/RFC_URL_NAVIGATION.md)** - Technical design and architecture decisions
-- **[Advanced Usage](./docs/ADVANCED_USAGE.md)** - Complex patterns and best practices
-- **[Forms Guide](./docs/FORMS.md)** - Form handling and validation
-- **[Global Context Guide](./docs/GLOBAL_CONTEXT_GUIDE.md)** - State management
-- **[Data Orchestrator](./docs/DATA_ORCHESTRATOR.md)** - Aggregate multiple API calls
-- **[Architecture](./docs/ARCHITECTURE.md)** - Internal architecture and design decisions
-- **[Migration Guide](./docs/MIGRATION_GUIDE.md)** - Upgrading between versions
+| Guide | Description |
+|-------|-------------|
+| 📘 [API Reference](./docs/API_REFERENCE.md) | Complete API documentation with all hooks and components |
+| 🛡️ [Error Handling](./docs/ERROR_HANDLING.md) | Structured `ErrorResponse`, custom error codes, `data` field |
+| 🎨 [UI Components](./docs/UI_COMPONENTS.md) | Modal, Drawer, Tabs, Stepper, Accordion, Snackbar |
+| 🎭 [Data Orchestrator](./docs/DATA_ORCHESTRATOR.md) | Aggregate multiple APIs, stale-while-revalidate |
+| 📝 [Forms Guide](./docs/FORMS.md) | Form handling, validation, `useFormData`, `createFormHandler` |
+| ⚡ [Global Context](./docs/GLOBAL_CONTEXT_GUIDE.md) | State management and real-time sync |
+| 🚀 [Advanced Usage](./docs/ADVANCED_USAGE.md) | Complex patterns and best practices |
+| 🏗️ [Architecture](./docs/ARCHITECTURE.md) | Internal design decisions and data flow |
+| 📡 [Single Record API (RFC)](./docs/RFC_SINGLE_RECORD_API.md) | Design spec for single-record endpoints |
+| 🔄 [Data Orchestrator Refetch (RFC)](./docs/RFC_WITH_DATA_ORCHESTRATOR_REFETCH.md) | Design spec for refetch behaviors |
+| 🔗 [URL Navigation (RFC)](./docs/RFC_URL_NAVIGATION.md) | Design spec for URL-driven UI components |
+| 📋 [Migration Guide](./docs/MIGRATION_GUIDE.md) | Upgrading between versions |
+| 🤝 [Contributing](./docs/CONTRIBUTING.md) | How to contribute to the project |
 
 ## 🛠 Backend Integration
 
@@ -916,23 +1065,27 @@ npm run dev
 ### Running Tests
 
 ```bash
-npm test              # Run tests once
-npm run test:watch    # Run tests in watch mode
-npm run test:coverage # Run tests with coverage
+yarn test              # Run tests once
+yarn test --watch      # Run tests in watch mode
+yarn ci                # Lint + type-check + test + build
 ```
+
+---
 
 ## 📄 License
 
 MIT © [Skylabs Digital](https://github.com/skylabs-digital)
 
-## 🙏 Acknowledgments
-
-Built with ❤️ by the Skylabs Digital team. Special thanks to:
-
-- [Zod](https://zod.dev/) for amazing schema validation
-- [React](https://reactjs.org/) for the incredible ecosystem
-- The open-source community for inspiration and feedback
-
 ---
 
-**Ready to prototype at lightning speed?** ⚡ [Get started now](#quick-start) or [explore the examples](./examples/)!
+<div align="center">
+
+Built with ❤️ by the **Skylabs Digital** team
+
+[Zod](https://zod.dev/) · [React](https://reactjs.org/) · [Vitest](https://vitest.dev/) · [Vite](https://vitejs.dev/)
+
+**Ready to prototype at lightning speed?** ⚡
+
+[Get Started](#-quick-start) · [Explore Examples](#-examples) · [Read the Docs](./docs/)
+
+</div>

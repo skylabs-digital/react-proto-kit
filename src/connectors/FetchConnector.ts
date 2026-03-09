@@ -150,12 +150,14 @@ export class FetchConnector implements IConnector {
         const responseData = await processedResponse.json();
 
         if (!processedResponse.ok) {
+          const { message, code, type, validation, ...rest } = responseData;
           return {
             success: false,
-            message: responseData.message || `HTTP ${processedResponse.status}`,
-            error: { code: responseData.code || 'HTTP_ERROR' },
-            type: responseData.type,
-            validation: responseData.validation,
+            message: message || `HTTP ${processedResponse.status}`,
+            error: { code: code || 'HTTP_ERROR' },
+            type,
+            validation,
+            data: Object.keys(rest).length > 0 ? rest : undefined,
           };
         }
 

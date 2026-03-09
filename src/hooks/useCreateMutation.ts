@@ -161,12 +161,18 @@ export function useCreateMutation<TInput, TOutput>(
           }
 
           setError(errorResponse);
-          throw new Error(errorResponse.message || 'Create mutation failed');
+          throw errorResponse;
         }
       } catch (err) {
         // Rollback optimistic update on error
         if (optimistic && globalState && entityState && tempId) {
           entityState.actions.rollbackOptimistic(tempId);
+        }
+
+        // If err is already an ErrorResponse (thrown from the else branch above), preserve it as-is
+        if (err && typeof err === 'object' && 'success' in err && (err as any).success === false) {
+          setError(err as ErrorResponse);
+          throw err;
         }
 
         const errorResponse: ErrorResponse = {

@@ -16,6 +16,7 @@ export interface ErrorResponse {
   error?: { code: string };
   type?: 'AUTH' | 'VALIDATION' | 'TRANSACTION' | 'NAVIGATION';
   validation?: Record<string, string>;
+  data?: Record<string, unknown>;
 }
 
 export interface PaginationMeta {

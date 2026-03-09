@@ -211,6 +211,82 @@ describe('FetchConnector', () => {
     );
   });
 
+  describe('error response data propagation', () => {
+    it('should preserve extra body fields in ErrorResponse.data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        json: () =>
+          Promise.resolve({
+            message: 'Stock exceeded',
+            code: 'STOCK_EXCEEDED',
+            type: 'TRANSACTION',
+            items: [
+              { productId: 'p1', requested: 5, available: 2 },
+              { productId: 'p2', requested: 3, available: 0 },
+            ],
+            orderId: 'order-123',
+          }),
+      });
+
+      const result = await connector.get('checkout');
+
+      expect(result.success).toBe(false);
+      const err = result as ErrorResponse;
+      expect(err.message).toBe('Stock exceeded');
+      expect(err.error?.code).toBe('STOCK_EXCEEDED');
+      expect(err.type).toBe('TRANSACTION');
+      expect(err.data).toBeDefined();
+      expect(err.data?.items).toEqual([
+        { productId: 'p1', requested: 5, available: 2 },
+        { productId: 'p2', requested: 3, available: 0 },
+      ]);
+      expect(err.data?.orderId).toBe('order-123');
+    });
+
+    it('should not include known fields in ErrorResponse.data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () =>
+          Promise.resolve({
+            message: 'Bad request',
+            code: 'BAD_REQUEST',
+            type: 'VALIDATION',
+            validation: { email: 'Invalid email' },
+          }),
+      });
+
+      const result = await connector.get('users');
+
+      expect(result.success).toBe(false);
+      const err = result as ErrorResponse;
+      expect(err.message).toBe('Bad request');
+      expect(err.error?.code).toBe('BAD_REQUEST');
+      expect(err.type).toBe('VALIDATION');
+      expect(err.validation).toEqual({ email: 'Invalid email' });
+      // No extra fields → data should be undefined
+      expect(err.data).toBeUndefined();
+    });
+
+    it('should set data to undefined when error body has only known fields', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () =>
+          Promise.resolve({
+            message: 'Internal error',
+          }),
+      });
+
+      const result = await connector.get('items');
+
+      expect(result.success).toBe(false);
+      const err = result as ErrorResponse;
+      expect(err.data).toBeUndefined();
+    });
+  });
+
   describe('baseUrl trailing slash normalization', () => {
     it('should correctly resolve URLs when baseUrl has no trailing slash', async () => {
       const connectorWithoutSlash = new FetchConnector({
@@ -284,6 +360,172 @@ describe('FetchConnector', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3000/api/users/123/posts',
+        expect.any(Object)
+      );
+    });
+
+    it('should handle endpoint with leading slash (baseUrl without trailing)', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('/todos');
+
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/todos', expect.any(Object));
+    });
+
+    it('should handle endpoint with leading slash (baseUrl with trailing)', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api/',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('/todos');
+
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/todos', expect.any(Object));
+    });
+
+    it('should handle simple endpoint without slashes', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('todos');
+
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/todos', expect.any(Object));
+    });
+
+    it('should handle endpoint with id', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+
+      await connector.get('todos/abc123');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/api/todos/abc123',
+        expect.any(Object)
+      );
+    });
+
+    it('should handle POST to baseUrl with path', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: '1' }),
+      });
+
+      await connector.post('todos', { text: 'test' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/api/todos',
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
+
+    // Exact user scenario: http://localhost:3000/api
+    it('should preserve /api path with http://localhost:3000/api baseUrl', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('todos');
+
+      // Should be http://localhost:3000/api/todos, NOT http://localhost:3000/todos
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/todos', expect.any(Object));
+    });
+
+    it('should preserve /api path with http://localhost:3000/api/ baseUrl (trailing slash)', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api/',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('todos');
+
+      // Should be http://localhost:3000/api/todos, NOT http://localhost:3000/todos
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/todos', expect.any(Object));
+    });
+
+    // EXACT USER SCENARIO: baseUrl with /api/ and endpoint starting with /
+    it('should handle /combos/active endpoint with http://localhost:3000/api/ baseUrl', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api/',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      // User's exact endpoint: /combos/active
+      await connector.get('/combos/active');
+
+      // Should be http://localhost:3000/api/combos/active
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/api/combos/active',
+        expect.any(Object)
+      );
+    });
+
+    it('should handle /combos/active endpoint with http://localhost:3000/api baseUrl (no trailing)', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://localhost:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      // User's exact endpoint: /combos/active
+      await connector.get('/combos/active');
+
+      // Should be http://localhost:3000/api/combos/active
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/api/combos/active',
         expect.any(Object)
       );
     });
