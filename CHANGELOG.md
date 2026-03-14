@@ -1,3 +1,10 @@
+## [1.37.1](https://github.com/skylabs-digital/react-proto-kit/compare/v1.37.0...v1.37.1) (2026-03-14)
+
+
+### Bug Fixes
+
+* replace URL constructor with string concatenation in FetchConnector.buildUrl to support IP addresses ([4accc2a](https://github.com/skylabs-digital/react-proto-kit/commit/4accc2abed8b4d6842b9ed231cfbd617894267a3))
+
 # [1.37.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.36.0...v1.37.0) (2026-03-09)
 
 
