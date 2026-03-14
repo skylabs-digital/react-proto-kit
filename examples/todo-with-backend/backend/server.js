@@ -330,9 +330,9 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   // Morgan will handle request logging
-  process.stdout.write(`[BACKEND] Todo API server running on http://localhost:${PORT}\n`);
+  process.stdout.write(`[BACKEND] Todo API server running on http://0.0.0.0:${PORT}\n`);
   process.stdout.write(`[BACKEND] Health check: http://localhost:${PORT}/health\n`);
   process.stdout.write(`[BACKEND] Todos endpoint: http://localhost:${PORT}/todos\n`);
 });

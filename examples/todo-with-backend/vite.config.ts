@@ -6,5 +6,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5174, // Different port to avoid conflicts
+    host: '0.0.0.0', // Bind to all interfaces for IP access testing
   },
 })

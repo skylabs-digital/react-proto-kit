@@ -530,4 +530,154 @@ describe('FetchConnector', () => {
       );
     });
   });
+
+  describe('IP address as baseUrl', () => {
+    it('should work with IP address and port', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://192.168.4.22:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('todos');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://192.168.4.22:3000/api/todos',
+        expect.any(Object)
+      );
+    });
+
+    it('should work with IP address, port, and trailing slash', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://192.168.4.22:3000/api/',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('todos');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://192.168.4.22:3000/api/todos',
+        expect.any(Object)
+      );
+    });
+
+    it('should work with IP address and leading slash on endpoint', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://192.168.4.22:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('/combos/active');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://192.168.4.22:3000/api/combos/active',
+        expect.any(Object)
+      );
+    });
+
+    it('should work with IP address and nested path with ID', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://192.168.4.22:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+
+      await connector.get('users/123/posts');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://192.168.4.22:3000/api/users/123/posts',
+        expect.any(Object)
+      );
+    });
+
+    it('should work with IP address and query params', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://192.168.4.22:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('todos', { status: 'active', page: 1 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://192.168.4.22:3000/api/todos?status=active&page=1',
+        expect.any(Object)
+      );
+    });
+
+    it('should work with IP address from window.location.origin pattern', async () => {
+      // Simulates: baseUrl = `${window.location.origin}/api`
+      // where window.location.origin = 'http://192.168.4.22:3000'
+      const connector = new FetchConnector({
+        baseUrl: 'http://192.168.4.22:3000/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: '1', text: 'test' }),
+      });
+
+      await connector.post('todos', { text: 'test' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://192.168.4.22:3000/api/todos',
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+
+    it('should work with 10.x.x.x IP address', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://10.0.0.1:8080/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('items');
+
+      expect(mockFetch).toHaveBeenCalledWith('http://10.0.0.1:8080/api/items', expect.any(Object));
+    });
+
+    it('should work with IP address without port', async () => {
+      const connector = new FetchConnector({
+        baseUrl: 'http://192.168.1.100/api',
+        retries: 1,
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('todos');
+
+      expect(mockFetch).toHaveBeenCalledWith('http://192.168.1.100/api/todos', expect.any(Object));
+    });
+  });
 });

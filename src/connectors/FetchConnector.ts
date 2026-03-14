@@ -21,21 +21,23 @@ export class FetchConnector implements IConnector {
 
   private buildUrl(endpoint: string, params?: Record<string, any>): string {
     // Normalize baseUrl and endpoint to handle trailing/leading slashes consistently
-    // Works with: http://localhost:3000/api or http://localhost:3000/api/
+    // Works with any host: localhost, domains, and IP addresses (e.g. http://192.168.4.22:3000/api)
     const normalizedBase = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl;
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
     const fullUrl = normalizedBase ? `${normalizedBase}/${normalizedEndpoint}` : normalizedEndpoint;
-    const url = new URL(fullUrl);
 
     if (params) {
+      const searchParams = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          url.searchParams.append(key, String(value));
+          searchParams.append(key, String(value));
         }
       });
+      const qs = searchParams.toString();
+      return qs ? `${fullUrl}?${qs}` : fullUrl;
     }
 
-    return url.toString();
+    return fullUrl;
   }
 
   private getSeedDataForEndpoint(endpoint: string): any {

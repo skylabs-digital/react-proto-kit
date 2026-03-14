@@ -471,7 +471,7 @@ function TodoList() {
 function App() {
   return (
     <BrowserRouter>
-      <ApiClientProvider connectorType="fetch" config={{ baseUrl: 'http://localhost:3001' }}>
+      <ApiClientProvider connectorType="fetch" config={{ baseUrl: `${window.location.protocol}//${window.location.hostname}:3001` }}>
         <GlobalStateProvider>
           <div className="app">
             <header className="header">
