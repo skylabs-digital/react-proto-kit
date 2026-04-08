@@ -1,3 +1,10 @@
+# [1.38.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.37.1...v1.38.0) (2026-04-08)
+
+
+### Features
+
+* add dual publish to GitHub Packages for internal package resolution ([0ab25e1](https://github.com/skylabs-digital/react-proto-kit/commit/0ab25e1c3872d6dc73d2fea40ba81274a90dce3f))
+
 ## [1.37.1](https://github.com/skylabs-digital/react-proto-kit/compare/v1.37.0...v1.37.1) (2026-03-14)
 
 
