@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
+import { globalInvalidationManager } from '../context/InvalidationManager';
 import { toUnknownErrorResponse, toValidationErrorResponse } from '../utils/mutationHelpers';
 import { ApiResponse, ErrorResponse } from '../types';
+import { recordCacheKey } from '../utils/cacheKey';
 import { z } from 'zod';
 
 export interface UseSingleRecordUpdateResult<TInput, TEntity = unknown> {
@@ -52,9 +54,10 @@ export function useSingleRecordUpdate<TInput, TEntity>(
 
         if (response.success) {
           if (globalState && entityState) {
-            // Update cache using endpoint as cache key
-            entityState.actions.setData(endpoint, response.data);
+            // Fast path: update the cache using the same key format as useRecord.
+            entityState.actions.setData(recordCacheKey(endpoint), response.data);
           }
+          globalInvalidationManager.invalidate(entity);
           return response;
         } else {
           const errorResponse = response as ErrorResponse;
@@ -69,7 +72,7 @@ export function useSingleRecordUpdate<TInput, TEntity>(
         setLoading(false);
       }
     },
-    [connector, endpoint, schema, globalState, entityState]
+    [connector, entity, endpoint, schema, globalState, entityState]
   );
 
   return { mutate, loading, error };
@@ -101,11 +104,13 @@ export function useSingleRecordPatch<TInput, TEntity>(
 
         if (response.success) {
           if (globalState && entityState) {
-            // Update cache - merge with existing data
-            const existingData = entityState.data?.[endpoint];
+            // Fast path: merge into the cache using the same key as useRecord.
+            const cacheKey = recordCacheKey(endpoint);
+            const existingData = entityState.data?.[cacheKey];
             const mergedData = existingData ? { ...existingData, ...response.data } : response.data;
-            entityState.actions.setData(endpoint, mergedData);
+            entityState.actions.setData(cacheKey, mergedData);
           }
+          globalInvalidationManager.invalidate(entity);
           return response;
         } else {
           const errorResponse = response as ErrorResponse;
@@ -120,7 +125,7 @@ export function useSingleRecordPatch<TInput, TEntity>(
         setLoading(false);
       }
     },
-    [connector, endpoint, globalState, entityState]
+    [connector, entity, endpoint, globalState, entityState]
   );
 
   return { mutate, loading, error };
@@ -151,9 +156,10 @@ export function useSingleRecordReset<TEntity>(
 
       if (response.success) {
         if (globalState && entityState) {
-          // Clear cache for this endpoint
-          entityState.actions.setData(endpoint, undefined as any);
+          // Clear cache for this endpoint using the same key as useRecord.
+          entityState.actions.setData(recordCacheKey(endpoint), undefined as any);
         }
+        globalInvalidationManager.invalidate(entity);
         return response;
       } else {
         const errorResponse = response as ErrorResponse;
@@ -167,7 +173,7 @@ export function useSingleRecordReset<TEntity>(
     } finally {
       setLoading(false);
     }
-  }, [connector, endpoint, globalState, entityState]);
+  }, [connector, entity, endpoint, globalState, entityState]);
 
   return { mutate, loading, error };
 }

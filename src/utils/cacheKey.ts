@@ -6,8 +6,6 @@
  * property ordering or undefined values in params.
  */
 
-type ParamsLike = Record<string, unknown> | undefined | null;
-
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -40,12 +38,11 @@ function stableStringify(value: unknown): string {
 /**
  * Cache key for a list query. Encodes the endpoint plus list params
  * (pagination/filters) and any query params attached via `withQuery`.
+ *
+ * Params are typed as `unknown` so consumers can pass through concrete
+ * interfaces (e.g. `ListParams`) without having to cast to a record type.
  */
-export function listCacheKey(
-  endpoint: string,
-  params?: ParamsLike,
-  queryParams?: ParamsLike
-): string {
+export function listCacheKey(endpoint: string, params?: unknown, queryParams?: unknown): string {
   const parts: string[] = [`list:${endpoint}`];
   const paramsStr = stableStringify(params);
   const queryStr = stableStringify(queryParams);
@@ -67,7 +64,7 @@ export function byIdCacheKey(endpoint: string): string {
  * Cache key for a single-record endpoint (no id suffix), optionally including
  * query params so that `withQuery` variants don't collide with the base.
  */
-export function recordCacheKey(endpoint: string, queryParams?: ParamsLike): string {
+export function recordCacheKey(endpoint: string, queryParams?: unknown): string {
   const queryStr = stableStringify(queryParams);
   return queryStr ? `${endpoint}:${queryStr}` : endpoint;
 }

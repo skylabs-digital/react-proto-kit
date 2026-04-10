@@ -2,8 +2,10 @@ import { useState, useCallback } from 'react';
 import { z } from 'zod';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
+import { globalInvalidationManager } from '../context/InvalidationManager';
 import { ApiResponse, ErrorResponse, UseCreateMutationResult } from '../types';
 import { toUnknownErrorResponse, toValidationErrorResponse } from '../utils/mutationHelpers';
+import { byIdCacheKey, listCacheKey } from '../utils/cacheKey';
 
 // Helper function to extract default values from Zod schema
 function extractDefaultValues(schema: z.ZodSchema<any>): Record<string, any> {
@@ -83,26 +85,38 @@ export function useCreateMutation<TInput, TOutput>(
 
         if (response.success) {
           if (globalState && entityState) {
-            // Store individual entity data for useById compatibility
+            // Fast path: update the cache directly so the UI reflects the new
+            // item without waiting for a network round-trip.
+            // Store individual entity data using the same key format as useById.
             if (response.data && (response.data as any).id) {
-              const individualCacheKey = `${requestEndpoint}/${(response.data as any).id}`;
+              const individualCacheKey = byIdCacheKey(
+                `${requestEndpoint}/${(response.data as any).id}`
+              );
               entityState.actions.setData(individualCacheKey, response.data);
             }
 
-            // Add to the specific list for this endpoint (prepend to show newest first)
-            const specificCacheKey = `list:${requestEndpoint}`;
-
+            // Prepend the new item to every list cached under this endpoint.
+            // We match both the exact no-params key and any variant that
+            // extends it with `:` (params/queryParams).
+            const baseListKey = listCacheKey(requestEndpoint);
             if (entityState.lists && typeof entityState.lists === 'object') {
-              Object.keys(entityState.lists).forEach(listKey => {
-                if (listKey.startsWith(specificCacheKey)) {
-                  const currentList = entityState.lists[listKey];
+              Object.keys(entityState.lists).forEach(key => {
+                if (key === baseListKey || key.startsWith(`${baseListKey}:`)) {
+                  const currentList = entityState.lists[key];
                   if (Array.isArray(currentList)) {
-                    entityState.actions.setList(listKey, [response.data, ...currentList]);
+                    entityState.actions.setList(key, [response.data, ...currentList]);
                   }
                 }
               });
             }
           }
+
+          // Notify cache subscribers (useList / useById / useRecord) so they
+          // can refetch in the background via stale-while-revalidate. The
+          // fast-path update above keeps the UI responsive; this ensures the
+          // backend remains the source of truth and corrects any drift in
+          // filtered/sorted lists.
+          globalInvalidationManager.invalidate(entity);
 
           return response;
         } else {

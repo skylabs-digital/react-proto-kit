@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
+import { globalInvalidationManager } from '../context/InvalidationManager';
 import { toUnknownErrorResponse } from '../utils/mutationHelpers';
 import { ApiResponse, ErrorResponse } from '../types';
+import { byIdCacheKey, listCacheKey } from '../utils/cacheKey';
 
 export interface UsePatchMutationResult<TInput, TEntity = unknown> {
   mutate: (id: string, data: TInput) => Promise<ApiResponse<TEntity>>;
@@ -35,36 +37,33 @@ export function usePatchMutation<TInput, TEntity>(
         const response = await connector.patch<TEntity>(patchEndpoint, data);
 
         if (response.success) {
-          // Handle global state if available
           if (globalState && entityState) {
-            // Update individual entity data using the same cache key format as useById
-            const baseEndpoint = endpoint || entity;
-            const individualCacheKey = `${baseEndpoint}/${id}`;
-            entityState.actions.setData(individualCacheKey, response.data);
+            // Fast path: update individual record cache so the UI reflects
+            // the change without waiting for the background refetch.
+            const individualCacheKey = byIdCacheKey(`${baseEndpoint}/${id}`);
+            const existingData = entityState.data?.[individualCacheKey];
+            const mergedData = existingData ? { ...existingData, ...response.data } : response.data;
+            entityState.actions.setData(individualCacheKey, mergedData);
 
-            // Update item in specific lists for this endpoint
-            const baseEndpointForCache = endpoint || entity;
-            const specificCacheKey = `list:${baseEndpointForCache}`;
-
-            // Safe check before accessing entityState.lists
+            // Update the item in every list cached under this endpoint.
+            const baseListKey = listCacheKey(baseEndpoint);
             if (entityState.lists && typeof entityState.lists === 'object') {
-              Object.keys(entityState.lists).forEach(listKey => {
-                // Only update lists that match this endpoint pattern
-                if (listKey.startsWith(specificCacheKey)) {
-                  const currentList = entityState.lists[listKey];
+              Object.keys(entityState.lists).forEach(key => {
+                if (key === baseListKey || key.startsWith(`${baseListKey}:`)) {
+                  const currentList = entityState.lists[key];
                   if (Array.isArray(currentList)) {
                     const updatedList = currentList.map((item: any) =>
                       item.id === id ? { ...item, ...response.data } : item
                     );
-                    entityState.actions.setList(listKey, updatedList);
+                    entityState.actions.setList(key, updatedList);
                   }
                 }
               });
             }
-
-            // No invalidation - we've updated the state directly
-            // This prevents the flash from refetching
           }
+
+          // Background refetch via stale-while-revalidate.
+          globalInvalidationManager.invalidate(entity);
 
           return response;
         } else {
