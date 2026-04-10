@@ -91,6 +91,9 @@ jspm_packages/
 tmp/
 temp/
 
+# Playwright MCP session logs
+.playwright-mcp/
+
 # Editor directories and files
 .vscode/
 .idea/
