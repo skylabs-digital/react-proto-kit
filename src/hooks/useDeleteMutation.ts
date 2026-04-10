@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
-import { ErrorResponse } from '../types';
+import { toUnknownErrorResponse } from '../utils/mutationHelpers';
+import { ApiResponse, ErrorResponse } from '../types';
 
 export interface UseDeleteMutationResult {
-  mutate: (id: string) => Promise<void>;
+  mutate: (id: string) => Promise<ApiResponse<void>>;
   loading: boolean;
   error: ErrorResponse | null;
 }
@@ -23,7 +24,7 @@ export function useDeleteMutation<TEntity>(
   const globalState = !!entityState;
 
   const mutate = useCallback(
-    async (id: string) => {
+    async (id: string): Promise<ApiResponse<void>> => {
       setLoading(true);
       setError(null);
 
@@ -31,7 +32,7 @@ export function useDeleteMutation<TEntity>(
         const baseEndpoint = endpoint || entity;
         const deleteEndpoint = `${baseEndpoint}/${id}`;
 
-        const response = await connector.delete(deleteEndpoint);
+        const response = await connector.delete<void>(deleteEndpoint);
 
         if (response.success) {
           // Handle global state if enabled and available
@@ -62,21 +63,22 @@ export function useDeleteMutation<TEntity>(
             // No invalidation - we've updated the state directly
             // This prevents the flash from refetching
           }
+
+          return response;
         } else {
-          setError(response as ErrorResponse);
+          const errorResponse = response as ErrorResponse;
+          setError(errorResponse);
+          return errorResponse;
         }
       } catch (err) {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          error: { code: 'UNKNOWN_ERROR' },
-        };
+        const errorResponse = toUnknownErrorResponse(err);
         setError(errorResponse);
+        return errorResponse;
       } finally {
         setLoading(false);
       }
     },
-    [connector, entity, globalState, entityState]
+    [connector, entity, endpoint, globalState, entityState]
   );
 
   return {

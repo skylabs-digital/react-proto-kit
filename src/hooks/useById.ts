@@ -4,6 +4,7 @@ import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
 import { globalInvalidationManager } from '../context/InvalidationManager';
 import { useRefetchBehavior } from '../context/RefetchBehaviorContext';
+import { toUnknownErrorResponse } from '../utils/mutationHelpers';
 
 interface UseByIdOptions {
   enabled?: boolean;
@@ -163,11 +164,7 @@ export function useById<T>(
           }
         }
       } catch (err) {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          error: { code: 'UNKNOWN_ERROR' },
-        };
+        const errorResponse = toUnknownErrorResponse(err);
 
         if (currentEntityState) {
           currentEntityState.actions.setError(cacheKey, errorResponse);

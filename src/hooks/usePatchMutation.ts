@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
-import { ErrorResponse } from '../types';
+import { toUnknownErrorResponse } from '../utils/mutationHelpers';
+import { ApiResponse, ErrorResponse } from '../types';
 
-export interface UsePatchMutationResult<TInput> {
-  mutate: (id: string, data: TInput) => Promise<void>;
+export interface UsePatchMutationResult<TInput, TEntity = unknown> {
+  mutate: (id: string, data: TInput) => Promise<ApiResponse<TEntity>>;
   loading: boolean;
   error: ErrorResponse | null;
 }
@@ -13,7 +14,7 @@ export interface UsePatchMutationResult<TInput> {
 export function usePatchMutation<TInput, TEntity>(
   entity: string,
   endpoint?: string
-): UsePatchMutationResult<TInput> {
+): UsePatchMutationResult<TInput, TEntity> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
@@ -23,7 +24,7 @@ export function usePatchMutation<TInput, TEntity>(
   const globalState = !!entityState;
 
   const mutate = useCallback(
-    async (id: string, data: TInput) => {
+    async (id: string, data: TInput): Promise<ApiResponse<TEntity>> => {
       setLoading(true);
       setError(null);
 
@@ -64,21 +65,22 @@ export function usePatchMutation<TInput, TEntity>(
             // No invalidation - we've updated the state directly
             // This prevents the flash from refetching
           }
+
+          return response;
         } else {
-          setError(response as ErrorResponse);
+          const errorResponse = response as ErrorResponse;
+          setError(errorResponse);
+          return errorResponse;
         }
       } catch (err) {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          error: { code: 'UNKNOWN_ERROR' },
-        };
+        const errorResponse = toUnknownErrorResponse(err);
         setError(errorResponse);
+        return errorResponse;
       } finally {
         setLoading(false);
       }
     },
-    [connector, entity, globalState, entityState]
+    [connector, entity, endpoint, globalState, entityState]
   );
 
   return {

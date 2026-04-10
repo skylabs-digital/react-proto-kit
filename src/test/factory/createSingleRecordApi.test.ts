@@ -17,17 +17,17 @@ vi.mock('../../hooks/useRecord', () => ({
 
 vi.mock('../../hooks/useSingleRecordMutation', () => ({
   useSingleRecordUpdate: vi.fn(() => ({
-    mutate: vi.fn(),
+    mutate: vi.fn().mockResolvedValue({ success: true, data: null }),
     loading: false,
     error: null,
   })),
   useSingleRecordPatch: vi.fn(() => ({
-    mutate: vi.fn(),
+    mutate: vi.fn().mockResolvedValue({ success: true, data: null }),
     loading: false,
     error: null,
   })),
   useSingleRecordReset: vi.fn(() => ({
-    mutate: vi.fn(),
+    mutate: vi.fn().mockResolvedValue({ success: true, data: undefined }),
     loading: false,
     error: null,
   })),

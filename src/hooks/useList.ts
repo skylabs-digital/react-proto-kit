@@ -9,6 +9,7 @@ import {
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
 import { useRefetchBehavior } from '../context/RefetchBehaviorContext';
+import { toUnknownErrorResponse } from '../utils/mutationHelpers';
 
 interface UseListOptions {
   enabled?: boolean;
@@ -178,11 +179,7 @@ export function useList<T>(
           }
         }
       } catch (err) {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          error: { code: 'UNKNOWN_ERROR' },
-        };
+        const errorResponse = toUnknownErrorResponse(err);
 
         if (currentEntityState) {
           currentEntityState.actions.setError(cacheKey, errorResponse);

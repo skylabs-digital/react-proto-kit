@@ -1,17 +1,18 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
-import { ErrorResponse } from '../types';
+import { toUnknownErrorResponse, toValidationErrorResponse } from '../utils/mutationHelpers';
+import { ApiResponse, ErrorResponse } from '../types';
 import { z } from 'zod';
 
-export interface UseSingleRecordUpdateResult<TInput> {
-  mutate: (data: TInput) => Promise<void>;
+export interface UseSingleRecordUpdateResult<TInput, TEntity = unknown> {
+  mutate: (data: TInput) => Promise<ApiResponse<TEntity>>;
   loading: boolean;
   error: ErrorResponse | null;
 }
 
 export interface UseSingleRecordResetResult {
-  mutate: () => Promise<void>;
+  mutate: () => Promise<ApiResponse<void>>;
   loading: boolean;
   error: ErrorResponse | null;
 }
@@ -24,7 +25,7 @@ export function useSingleRecordUpdate<TInput, TEntity>(
   entity: string,
   endpoint: string,
   schema?: z.ZodSchema<TInput>
-): UseSingleRecordUpdateResult<TInput> {
+): UseSingleRecordUpdateResult<TInput, TEntity> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
@@ -33,27 +34,20 @@ export function useSingleRecordUpdate<TInput, TEntity>(
   const globalState = !!entityState;
 
   const mutate = useCallback(
-    async (data: TInput) => {
+    async (data: TInput): Promise<ApiResponse<TEntity>> => {
       setLoading(true);
       setError(null);
 
       try {
-        // Validate input data if schema is provided
         if (schema) {
           const validationResult = schema.safeParse(data);
           if (!validationResult.success) {
-            const errorResponse: ErrorResponse = {
-              success: false,
-              message: 'Validation failed',
-              error: { code: 'VALIDATION_ERROR' },
-              type: 'VALIDATION',
-            };
+            const errorResponse = toValidationErrorResponse(validationResult.error, data);
             setError(errorResponse);
-            return;
+            return errorResponse;
           }
         }
 
-        // Use endpoint directly - no ID appending
         const response = await connector.put<TEntity>(endpoint, data);
 
         if (response.success) {
@@ -61,16 +55,16 @@ export function useSingleRecordUpdate<TInput, TEntity>(
             // Update cache using endpoint as cache key
             entityState.actions.setData(endpoint, response.data);
           }
+          return response;
         } else {
-          setError(response as ErrorResponse);
+          const errorResponse = response as ErrorResponse;
+          setError(errorResponse);
+          return errorResponse;
         }
       } catch (err) {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          error: { code: 'UNKNOWN_ERROR' },
-        };
+        const errorResponse = toUnknownErrorResponse(err);
         setError(errorResponse);
+        return errorResponse;
       } finally {
         setLoading(false);
       }
@@ -88,7 +82,7 @@ export function useSingleRecordUpdate<TInput, TEntity>(
 export function useSingleRecordPatch<TInput, TEntity>(
   entity: string,
   endpoint: string
-): UseSingleRecordUpdateResult<TInput> {
+): UseSingleRecordUpdateResult<TInput, TEntity> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
@@ -97,7 +91,7 @@ export function useSingleRecordPatch<TInput, TEntity>(
   const globalState = !!entityState;
 
   const mutate = useCallback(
-    async (data: TInput) => {
+    async (data: TInput): Promise<ApiResponse<TEntity>> => {
       setLoading(true);
       setError(null);
 
@@ -112,16 +106,16 @@ export function useSingleRecordPatch<TInput, TEntity>(
             const mergedData = existingData ? { ...existingData, ...response.data } : response.data;
             entityState.actions.setData(endpoint, mergedData);
           }
+          return response;
         } else {
-          setError(response as ErrorResponse);
+          const errorResponse = response as ErrorResponse;
+          setError(errorResponse);
+          return errorResponse;
         }
       } catch (err) {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          error: { code: 'UNKNOWN_ERROR' },
-        };
+        const errorResponse = toUnknownErrorResponse(err);
         setError(errorResponse);
+        return errorResponse;
       } finally {
         setLoading(false);
       }
@@ -147,29 +141,29 @@ export function useSingleRecordReset<TEntity>(
   const entityState = useEntityState<TEntity>(entity);
   const globalState = !!entityState;
 
-  const mutate = useCallback(async () => {
+  const mutate = useCallback(async (): Promise<ApiResponse<void>> => {
     setLoading(true);
     setError(null);
 
     try {
       // Use endpoint directly - no ID appending
-      const response = await connector.delete(endpoint);
+      const response = await connector.delete<void>(endpoint);
 
       if (response.success) {
         if (globalState && entityState) {
           // Clear cache for this endpoint
           entityState.actions.setData(endpoint, undefined as any);
         }
+        return response;
       } else {
-        setError(response as ErrorResponse);
+        const errorResponse = response as ErrorResponse;
+        setError(errorResponse);
+        return errorResponse;
       }
     } catch (err) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: err instanceof Error ? err.message : 'Unknown error',
-        error: { code: 'UNKNOWN_ERROR' },
-      };
+      const errorResponse = toUnknownErrorResponse(err);
       setError(errorResponse);
+      return errorResponse;
     } finally {
       setLoading(false);
     }

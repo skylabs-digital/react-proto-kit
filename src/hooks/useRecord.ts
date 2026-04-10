@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { UseQueryResult, ErrorResponse } from '../types';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
+import { toUnknownErrorResponse } from '../utils/mutationHelpers';
 
 interface UseRecordOptions {
   enabled?: boolean;
@@ -117,11 +118,7 @@ export function useRecord<T>(
           }
         }
       } catch (err) {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          error: { code: 'UNKNOWN_ERROR' },
-        };
+        const errorResponse = toUnknownErrorResponse(err);
 
         if (currentEntityState) {
           currentEntityState.actions.setError(cacheKey, errorResponse);

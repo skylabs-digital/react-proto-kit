@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { z } from 'zod';
+import { zodIssuesToFieldMap } from '../utils/mutationHelpers';
 
 function setDeepValue<TObj extends Record<string, any>>(obj: TObj, path: string, value: any): TObj {
   const parts = path.split('.').filter(Boolean);
@@ -149,23 +150,15 @@ export function useFormData<T extends Record<string, any>>(
   );
 
   const validateAll = useCallback(() => {
-    try {
-      schema.parse(values);
+    const result = schema.safeParse(values);
+    if (result.success) {
       setErrors({});
       setGeneralError(null);
       return true;
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const fieldErrors: FormErrors = {};
-        error.issues.forEach((err: z.ZodIssue) => {
-          const fieldName = err.path.join('.');
-          fieldErrors[fieldName] = err.message;
-        });
-        setErrors(fieldErrors);
-        setGeneralError('Please fix the errors below');
-      }
-      return false;
     }
+    setErrors(zodIssuesToFieldMap(result.error.issues));
+    setGeneralError('Please fix the errors below');
+    return false;
   }, [schema, values]);
 
   const handleChange = useCallback(

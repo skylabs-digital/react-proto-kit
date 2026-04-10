@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ApiResponse, ErrorResponse } from '../types';
 import { useRecord } from '../hooks/useRecord';
 import {
   useSingleRecordUpdate,
@@ -42,22 +43,22 @@ export interface SingleRecordConfig {
 export interface UseRecordResult<T> {
   data: T | null;
   loading: boolean;
-  error: any;
+  error: ErrorResponse | null;
   refetch: () => Promise<void>;
 }
 
 // Type for mutation result (simplified)
-export interface UseSingleRecordMutationResult<TInput> {
-  mutate: (data: TInput) => Promise<void>;
+export interface UseSingleRecordMutationResult<TInput, TEntity = unknown> {
+  mutate: (data: TInput) => Promise<ApiResponse<TEntity>>;
   loading: boolean;
-  error: any;
+  error: ErrorResponse | null;
 }
 
 // Type for reset mutation result
 export interface UseResetResult {
-  mutate: () => Promise<void>;
+  mutate: () => Promise<ApiResponse<void>>;
   loading: boolean;
-  error: any;
+  error: ErrorResponse | null;
 }
 
 // SingleRecordApi interface for proper type inference with ExtractEntityType
@@ -65,8 +66,8 @@ export interface SingleRecordApi<TEntity, TUpsert> {
   withParams: (params: Record<string, string>) => SingleRecordApi<TEntity, TUpsert>;
   withQuery: (queryParams: Record<string, any>) => SingleRecordApi<TEntity, TUpsert>;
   useRecord: () => UseRecordResult<TEntity>;
-  useUpdate: () => UseSingleRecordMutationResult<TUpsert>;
-  usePatch: () => UseSingleRecordMutationResult<Partial<TUpsert>>;
+  useUpdate: () => UseSingleRecordMutationResult<TUpsert, TEntity>;
+  usePatch: () => UseSingleRecordMutationResult<Partial<TUpsert>, TEntity>;
   useReset: () => UseResetResult;
 }
 
@@ -170,7 +171,7 @@ export function createSingleRecordApi<TEntity extends z.ZodSchema, TUpsert exten
       });
     },
 
-    useUpdate: (): UseSingleRecordMutationResult<UpsertType> => {
+    useUpdate: (): UseSingleRecordMutationResult<UpsertType, EntityType> => {
       if (hasUnresolvedParams(path)) {
         const paramNames = extractParamNames(path);
         throw new Error(
@@ -187,7 +188,7 @@ export function createSingleRecordApi<TEntity extends z.ZodSchema, TUpsert exten
       );
     },
 
-    usePatch: (): UseSingleRecordMutationResult<Partial<UpsertType>> => {
+    usePatch: (): UseSingleRecordMutationResult<Partial<UpsertType>, EntityType> => {
       if (hasUnresolvedParams(path)) {
         const paramNames = extractParamNames(path);
         throw new Error(

@@ -1,59 +1,42 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
-import { debugLogger } from '../utils/debug';
-import { ErrorResponse } from '../types';
+import { toUnknownErrorResponse, toValidationErrorResponse } from '../utils/mutationHelpers';
+import { ApiResponse, ErrorResponse } from '../types';
 import { z } from 'zod';
 
-export interface UseUpdateMutationResult<TInput> {
-  mutate: (id: string, data: TInput) => Promise<void>;
+export interface UseUpdateMutationResult<TInput, TEntity = unknown> {
+  mutate: (id: string, data: TInput) => Promise<ApiResponse<TEntity>>;
   loading: boolean;
   error: ErrorResponse | null;
-}
-
-interface UseUpdateMutationOptions {
-  optimistic?: boolean;
 }
 
 // Unified hook that automatically detects global state availability
 export function useUpdateMutation<TInput, TEntity>(
   entity: string,
   endpoint?: string, // Optional endpoint, defaults to entity
-  schema?: z.ZodSchema<TInput>,
-  options: UseUpdateMutationOptions = {}
-): UseUpdateMutationResult<TInput> {
+  schema?: z.ZodSchema<TInput>
+): UseUpdateMutationResult<TInput, TEntity> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
-
-  // Extract options to avoid recreating callback dependencies
-  const { optimistic: _optimistic } = options;
 
   // Only get entity state if global state is available
   const entityState = useEntityState<TEntity>(entity);
   const globalState = !!entityState;
 
   const mutate = useCallback(
-    async (id: string, data: TInput) => {
+    async (id: string, data: TInput): Promise<ApiResponse<TEntity>> => {
       setLoading(true);
       setError(null);
 
       try {
-        // Validate input data if schema is provided
         if (schema) {
           const validationResult = schema.safeParse(data);
           if (!validationResult.success) {
-            const errorResponse: ErrorResponse = {
-              success: false,
-              message: 'Validation failed',
-              error: {
-                code: 'VALIDATION_ERROR',
-              },
-              type: 'VALIDATION',
-            };
+            const errorResponse = toValidationErrorResponse(validationResult.error, data);
             setError(errorResponse);
-            debugLogger.logValidationError(data, validationResult.error, errorResponse.validation);
-            return;
+            return errorResponse;
           }
         }
 
@@ -97,21 +80,22 @@ export function useUpdateMutation<TInput, TEntity>(
             // No invalidation - we've updated the state directly
             // This prevents the flash from refetching
           }
+
+          return response;
         } else {
-          setError(response as ErrorResponse);
+          const errorResponse = response as ErrorResponse;
+          setError(errorResponse);
+          return errorResponse;
         }
       } catch (err) {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          error: { code: 'UNKNOWN_ERROR' },
-        };
+        const errorResponse = toUnknownErrorResponse(err);
         setError(errorResponse);
+        return errorResponse;
       } finally {
         setLoading(false);
       }
     },
-    [connector, entity, schema, globalState, entityState]
+    [connector, entity, endpoint, schema, globalState, entityState]
   );
 
   return {

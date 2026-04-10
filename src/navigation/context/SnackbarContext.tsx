@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useMemo, useState, useCallback, useRef } from 'react';
 
 export type SnackbarVariant = 'success' | 'error' | 'warning' | 'info';
 
@@ -115,13 +115,16 @@ export function SnackbarProvider({
     timersRef.current.clear();
   }, [snackbars]);
 
-  const value: SnackbarContextValue = {
-    snackbars,
-    showSnackbar,
-    hideSnackbar,
-    hideAll,
-    defaultDuration,
-  };
+  const value = useMemo<SnackbarContextValue>(
+    () => ({
+      snackbars,
+      showSnackbar,
+      hideSnackbar,
+      hideAll,
+      defaultDuration,
+    }),
+    [snackbars, showSnackbar, hideSnackbar, hideAll, defaultDuration]
+  );
 
   return <SnackbarContext.Provider value={value}>{children}</SnackbarContext.Provider>;
 }

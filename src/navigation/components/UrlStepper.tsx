@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUrlStepper, StepperHelpers } from '../useUrlStepper';
 
@@ -34,6 +34,8 @@ export interface UrlStepperProps<T extends string> {
  * </UrlStepper>
  * ```
  */
+const EMPTY_STEPS: readonly string[] = [];
+
 export function UrlStepper<T extends string>({
   param,
   value,
@@ -45,12 +47,13 @@ export function UrlStepper<T extends string>({
 }: UrlStepperProps<T>) {
   const [searchParams] = useSearchParams();
 
-  // If steps provided, use the hook
-  const [currentStep, helpers] = steps
-    ? useUrlStepper(param, steps, defaultStep)
-    : [undefined, {} as StepperHelpers<T>];
+  // Always call useUrlStepper unconditionally to satisfy Rules of Hooks. When
+  // the caller doesn't pass `steps`, fall back to an empty list — the hook
+  // still runs but returns an undefined `currentStep` and inert helpers.
+  const stepperResult = useUrlStepper(param, (steps ?? EMPTY_STEPS) as readonly T[], defaultStep);
+  const currentStep = steps ? stepperResult[0] : undefined;
+  const helpers = steps ? stepperResult[1] : ({} as StepperHelpers<T>);
 
-  // Render function mode
   if (typeof children === 'function') {
     if (!currentStep) {
       console.warn('[UrlStepper] Render function mode requires steps prop');
@@ -59,17 +62,14 @@ export function UrlStepper<T extends string>({
     return <div className={className}>{children(currentStep, helpers)}</div>;
   }
 
-  // Value-based rendering mode
   if (value !== undefined) {
-    // Determine if this step is active
-    const isActive = useMemo(() => {
-      if (currentStep !== undefined) {
-        return currentStep === value;
-      }
-      // Fallback: read from URL params directly when steps not provided
-      const urlValue = searchParams.get(param);
-      return urlValue ? urlValue === value : value === defaultStep;
-    }, [currentStep, searchParams, param, value, defaultStep]);
+    const urlValue = searchParams.get(param);
+    const isActive =
+      currentStep !== undefined
+        ? currentStep === value
+        : urlValue
+          ? urlValue === value
+          : value === defaultStep;
 
     if (!isActive && unmountOnHide) {
       return null;
@@ -82,6 +82,5 @@ export function UrlStepper<T extends string>({
     );
   }
 
-  // No value or steps - just render children
   return <div className={className}>{children}</div>;
 }

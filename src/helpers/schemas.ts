@@ -1,20 +1,20 @@
 import { z } from 'zod';
 import { createDomainApi, CompleteEntity } from '../factory/createDomainApi';
-import { ListParams } from '../types';
+import { ErrorResponse, ListParams, PaginationMeta } from '../types';
 
 // ReadOnlyApi interface for proper type inference
 export interface ReadOnlyApi<TEntity> {
   useList: (params?: ListParams) => {
     data: CompleteEntity<TEntity>[] | null;
     loading: boolean;
-    error: any;
-    meta?: any;
+    error: ErrorResponse | null;
+    meta?: PaginationMeta;
     refetch: () => Promise<void>;
   };
   useById: (id: string | undefined | null) => {
     data: CompleteEntity<TEntity> | null;
     loading: boolean;
-    error: any;
+    error: ErrorResponse | null;
     refetch: () => Promise<void>;
   };
   withParams: (params: Record<string, string>) => ReadOnlyApi<TEntity>;
@@ -53,13 +53,6 @@ export function createTimestampedSchema<T extends z.ZodRawShape>(properties: T) 
   });
 }
 
-// CRUD API factory - the main helper for maximum agility
-// TODO: Update this helper to work with new createDomainApi signature
-// export function createCrudApi<T extends z.ZodSchema>(
-//   entity: string,
-//   schema: T,
-
-// Specialized API factories
 // Read-only API factory - useful for analytics, logs, etc.
 export function createReadOnlyApi<T extends z.ZodSchema>(
   entity: string,
@@ -76,36 +69,6 @@ export function createReadOnlyApi<T extends z.ZodSchema>(
     withQuery: queryParams => api.withQuery(queryParams) as ReadOnlyApi<z.infer<T>>,
   };
 }
-
-// // Write-only API (for data ingestion scenarios)
-// export function createWriteOnlyApi<T extends z.ZodSchema>(
-//   entity: string,
-//   schema: T
-// ): Pick<GeneratedCrudApi<InferType<T>>, 'useCreate' | 'useUpdate' | 'useDelete'> {
-//   const api = createCrudApi(entity, schema);
-//   return {
-//     useCreate: api.useCreate,
-//     useUpdate: api.useUpdate,
-//     useDelete: api.useDelete,
-//   };
-// }
-
-// export function createCustomApi<T extends z.ZodSchema>(
-//   entity: string,
-//   schema: T,
-//   operations: ('list' | 'byId' | 'create' | 'update' | 'delete')[]
-// ): Partial<GeneratedCrudApi<InferType<T>>> {
-//   const api = createCrudApi(entity, schema);
-//   const customApi: Partial<GeneratedCrudApi<InferType<T>>> = {};
-
-//   if (operations.includes('list')) customApi.useList = api.useList;
-//   if (operations.includes('byId')) customApi.useById = api.useById;
-//   if (operations.includes('create')) customApi.useCreate = api.useCreate;
-//   if (operations.includes('update')) customApi.useUpdate = api.useUpdate;
-//   if (operations.includes('delete')) customApi.useDelete = api.useDelete;
-
-//   return customApi;
-// }
 
 // Schema generation helpers
 export function createCreateSchema<T extends z.ZodObject<any>>(entitySchema: T) {

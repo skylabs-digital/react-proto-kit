@@ -5,6 +5,7 @@ import {
   UseDataOrchestratorOptions,
   UseDataOrchestratorResult,
   UseDataOrchestratorResultWithOptional,
+  UseQueryResult,
   ErrorResponse,
 } from '../types';
 
@@ -84,46 +85,37 @@ export function useDataOrchestrator<T extends DataOrchestratorConfig | RequiredO
     return new Set(Object.keys(flatConfig));
   }, [config, isRequiredOptional, flatConfig]);
 
-  // Invoke all hooks and collect their states
-  // IMPORTANT: Hooks must be called at the top level, not inside useMemo or other callbacks
+  // Invoke all hooks and collect their states. Hook factories must follow the
+  // Rules of Hooks: any render-phase exception will propagate to the consumer's
+  // error boundary, same as a direct hook call. Do not wrap in try/catch —
+  // catching a hook exception leaves React's internal hook list in a truncated
+  // state and crashes the next render with an unrelated "Rendered more hooks"
+  // error.
   const resourceStates: Record<string, ResourceState> = {};
 
   Object.keys(flatConfig).forEach(key => {
     const hookFactory = (flatConfig as Record<string, any>)[key];
-    if (typeof hookFactory === 'function') {
-      try {
-        // Call hook directly at top level
-        const result = hookFactory();
-        const hasSettled = hasSettledRef.current[key] || false;
+    if (typeof hookFactory !== 'function') return;
 
-        resourceStates[key] = {
-          data: result.data ?? null,
-          loading: result.loading || false,
-          error: result.error || null,
-          refetch: result.refetch,
-          hasSettled,
-        };
+    const result = (hookFactory() ?? {}) as Partial<UseQueryResult<any>>;
+    resourceStates[key] = {
+      data: result.data ?? null,
+      loading: result.loading ?? false,
+      error: result.error ?? null,
+      refetch: result.refetch,
+      hasSettled: hasSettledRef.current[key] || false,
+    };
+  });
 
-        // Update settled status after this render if not loading
-        if (!result.loading && !hasSettled) {
-          // Mark as settled in next tick to avoid state mutation during render
-          Promise.resolve().then(() => {
-            hasSettledRef.current[key] = true;
-          });
-        }
-      } catch (error) {
-        console.error(`[useDataOrchestrator] Error invoking hook for "${key}":`, error);
-        resourceStates[key] = {
-          data: null,
-          loading: false,
-          error: {
-            success: false,
-            message: error instanceof Error ? error.message : String(error),
-          },
-          hasSettled: true,
-        };
+  // Flip hasSettled after render for resources that finished loading. Running
+  // this as an effect instead of a Promise.resolve().then during render keeps
+  // ref writes out of the render phase.
+  useEffect(() => {
+    Object.entries(resourceStates).forEach(([key, state]) => {
+      if (!state.loading && !hasSettledRef.current[key]) {
+        hasSettledRef.current[key] = true;
       }
-    }
+    });
   });
 
   // Compute aggregated states

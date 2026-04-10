@@ -143,31 +143,31 @@ export interface UseQueryResult<T> {
 }
 
 export interface UseMutationResult<TInput, TOutput = void> {
-  mutate: (id: string, input?: TInput, field?: string) => Promise<TOutput>;
+  mutate: (id: string, input?: TInput, field?: string) => Promise<ApiResponse<TOutput>>;
   loading: boolean;
   error: ErrorResponse | null;
 }
 
-export interface UseCreateMutationResult<TInput, _TOutput = void> {
-  mutate: (input: TInput) => Promise<_TOutput>;
+export interface UseCreateMutationResult<TInput, TOutput = unknown> {
+  mutate: (input: TInput) => Promise<ApiResponse<TOutput>>;
   loading: boolean;
   error: ErrorResponse | null;
 }
 
-export interface UseUpdateMutationResult<TInput, _TOutput = void> {
-  mutate: (id: string, data: TInput) => Promise<void>;
+export interface UseUpdateMutationResult<TInput, TOutput = unknown> {
+  mutate: (id: string, data: TInput) => Promise<ApiResponse<TOutput>>;
   loading: boolean;
   error: ErrorResponse | null;
 }
 
-export interface UsePatchMutationResult<TInput> {
-  mutate: (id: string, data: TInput) => Promise<void>;
+export interface UsePatchMutationResult<TInput, TOutput = unknown> {
+  mutate: (id: string, data: TInput) => Promise<ApiResponse<TOutput>>;
   loading: boolean;
   error: ErrorResponse | null;
 }
 
 export interface UseDeleteMutationResult {
-  mutate: (id: string) => Promise<void>;
+  mutate: (id: string) => Promise<ApiResponse<void>>;
   loading: boolean;
   error: ErrorResponse | null;
 }
@@ -191,7 +191,10 @@ export interface GeneratedCrudApi<T> {
     Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
     CompleteEntityType<T>
   >;
-  usePatch: () => UsePatchMutationResult<Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>>;
+  usePatch: () => UsePatchMutationResult<
+    Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>,
+    CompleteEntityType<T>
+  >;
   useDelete: () => UseDeleteMutationResult;
 }
 

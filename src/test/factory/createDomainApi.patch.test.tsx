@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
 import { z } from 'zod';
 import { createDomainApi } from '../../factory/createDomainApi';
 import { ApiClientProvider } from '../../provider/ApiClientProvider';
 import { GlobalStateProvider } from '../../context/GlobalStateProvider';
+import { ApiResponse } from '../../types';
+import { installInMemoryLocalStorage } from '../utils/localStoragePolyfill';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 
@@ -21,11 +23,19 @@ const upsertSchema = z.object({
 
 describe('createDomainApi - usePatch functionality', () => {
   let todosApi: any;
+  let uninstallLocalStorage: () => void;
+
+  beforeAll(() => {
+    uninstallLocalStorage = installInMemoryLocalStorage();
+  });
+
+  afterAll(() => {
+    uninstallLocalStorage();
+  });
 
   beforeEach(() => {
-    // Clear localStorage before each test
-    localStorage.clear();
-
+    vi.clearAllMocks();
+    window.localStorage.clear();
     todosApi = createDomainApi('todos', todoSchema, todoSchema);
   });
 
@@ -45,36 +55,49 @@ describe('createDomainApi - usePatch functionality', () => {
   });
 
   it('should patch a todo item completely', async () => {
-    // Create a todo first
+    // Create a todo first and capture its id from the returned response
     const { result: createResult } = renderHook(() => todosApi.useCreate(), { wrapper });
 
+    let createResponse: ApiResponse<any> | undefined;
     await act(async () => {
-      await createResult.current.mutate({
+      createResponse = await createResult.current.mutate({
         title: 'Original Title',
         completed: false,
         description: 'Original description',
       });
     });
 
-    // Verify create was successful
+    // Verify create returned a SuccessResponse
     expect(createResult.current.error).toBeNull();
+    expect(createResponse).toBeDefined();
+    expect(createResponse!.success).toBe(true);
+    if (!createResponse!.success) throw new Error('expected success');
+    expect(createResponse!.data).toMatchObject({
+      title: 'Original Title',
+      completed: false,
+    });
+    const createdId = (createResponse!.data as { id: string }).id;
 
-    // Use a known ID for patching (localStorage will generate predictable IDs)
-    const testId = 'test-id-123';
-
-    // Now test the patch functionality
+    // Now test the patch functionality using the real created id
     const { result: patchResult } = renderHook(() => todosApi.usePatch(), { wrapper });
 
+    let patchResponse: ApiResponse<any> | undefined;
     await act(async () => {
-      await patchResult.current.mutate(testId, {
+      patchResponse = await patchResult.current.mutate(createdId, {
         title: 'Updated Title',
         completed: true,
       });
     });
 
-    // Verify the patch hook works (even if the ID doesn't exist, the hook should handle it gracefully)
-    expect(typeof patchResult.current.mutate).toBe('function');
-    expect(typeof patchResult.current.loading).toBe('boolean');
+    // Verify patch returned a SuccessResponse with the updated data
+    expect(patchResponse).toBeDefined();
+    expect(patchResponse!.success).toBe(true);
+    if (!patchResponse!.success) throw new Error('expected success');
+    expect(patchResponse!.data).toMatchObject({
+      title: 'Updated Title',
+      completed: true,
+    });
+    expect(patchResult.current.loading).toBe(false);
   });
 
   it('should patch a specific field when field parameter is provided', async () => {
@@ -116,19 +139,27 @@ describe('createDomainApi - usePatch functionality', () => {
     expect(typeof result.current.mutate).toBe('function');
   });
 
-  it('should handle validation errors', async () => {
+  it('should return an ErrorResponse when patch target does not exist and never throw', async () => {
     const { result: patchResult } = renderHook(() => todosApi.usePatch(), { wrapper });
 
+    let didThrow = false;
+    let response: ApiResponse<any> | undefined;
     await act(async () => {
       try {
-        // Try to patch with invalid data (missing required fields)
-        await patchResult.current.mutate('non-existent-id', {} as any);
+        // localStorage connector responds with success: false for unknown IDs
+        response = await patchResult.current.mutate('non-existent-id', {
+          title: 'whatever',
+        } as any);
       } catch {
-        // Expected to throw due to validation or non-existent ID
+        didThrow = true;
       }
     });
 
-    // The hook should handle the error gracefully
+    // The hook must never throw — callers rely on the returned ApiResponse instead
+    expect(didThrow).toBe(false);
+    expect(response).toBeDefined();
+    expect(response!.success).toBe(false);
     expect(patchResult.current.loading).toBe(false);
+    expect(patchResult.current.error).not.toBeNull();
   });
 });

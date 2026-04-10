@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react';
 import { z } from 'zod';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
-import { ErrorResponse, UseCreateMutationResult } from '../types';
-import { debugLogger } from '../utils/debug';
+import { ApiResponse, ErrorResponse, UseCreateMutationResult } from '../types';
+import { toUnknownErrorResponse, toValidationErrorResponse } from '../utils/mutationHelpers';
 
 // Helper function to extract default values from Zod schema
 function extractDefaultValues(schema: z.ZodSchema<any>): Record<string, any> {
@@ -58,7 +58,7 @@ export function useCreateMutation<TInput, TOutput>(
   const globalState = !!entityState;
 
   const mutate = useCallback(
-    async (input: TInput): Promise<TOutput> => {
+    async (input: TInput): Promise<ApiResponse<TOutput>> => {
       setLoading(true);
       setError(null);
 
@@ -66,31 +66,12 @@ export function useCreateMutation<TInput, TOutput>(
       const tempId = optimistic ? `temp_${Date.now()}_${Math.random()}` : null;
 
       try {
-        // Validate input with Zod schema if provided
         if (schema) {
-          try {
-            schema.parse(input);
-          } catch (validationError) {
-            if (validationError instanceof z.ZodError) {
-              const errorResponse: ErrorResponse = {
-                success: false,
-                message: 'Validation failed',
-                error: { code: 'VALIDATION_ERROR' },
-                type: 'VALIDATION',
-                validation: validationError.issues.reduce((acc: Record<string, string>, err) => {
-                  const path = err.path.join('.');
-                  acc[path] = err.message;
-                  return acc;
-                }, {}),
-              };
-
-              debugLogger.logValidationError(input, validationError, errorResponse.validation);
-
-              setError(errorResponse);
-              setLoading(false);
-              return Promise.reject(errorResponse);
-            }
-            throw validationError;
+          const validationResult = schema.safeParse(input);
+          if (!validationResult.success) {
+            const errorResponse = toValidationErrorResponse(validationResult.error, input);
+            setError(errorResponse);
+            return errorResponse;
           }
         }
 
@@ -151,7 +132,7 @@ export function useCreateMutation<TInput, TOutput>(
             // This prevents the flash from refetching
           }
 
-          return response.data;
+          return response;
         } else {
           const errorResponse = response as ErrorResponse;
 
@@ -161,32 +142,21 @@ export function useCreateMutation<TInput, TOutput>(
           }
 
           setError(errorResponse);
-          throw errorResponse;
+          return errorResponse;
         }
       } catch (err) {
-        // Rollback optimistic update on error
         if (optimistic && globalState && entityState && tempId) {
           entityState.actions.rollbackOptimistic(tempId);
         }
 
-        // If err is already an ErrorResponse (thrown from the else branch above), preserve it as-is
-        if (err && typeof err === 'object' && 'success' in err && (err as any).success === false) {
-          setError(err as ErrorResponse);
-          throw err;
-        }
-
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          error: { code: 'CREATE_MUTATION_ERROR' },
-        };
+        const errorResponse = toUnknownErrorResponse(err);
         setError(errorResponse);
-        throw err;
+        return errorResponse;
       } finally {
         setLoading(false);
       }
     },
-    [connector, entity, schema, globalState, optimistic, entityState]
+    [connector, entity, endpoint, schema, globalState, optimistic, entityState, entitySchema]
   );
 
   return {

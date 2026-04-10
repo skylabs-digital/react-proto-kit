@@ -292,7 +292,7 @@ type UserInput = ExtractInputType<typeof userApi>;
 
 ### 🛡️ Structured Error Handling
 
-All mutation hooks propagate structured `ErrorResponse` objects. When the backend returns an error, any **extra fields** in the response body are preserved in the `data` property:
+Every mutation hook resolves to a discriminated `ApiResponse<T>`. When the backend returns an error, any **extra fields** in the response body are preserved in the `data` property of the `ErrorResponse` branch:
 
 ```tsx
 import { ErrorResponse } from '@skylabs-digital/react-proto-kit';
@@ -300,17 +300,16 @@ import { ErrorResponse } from '@skylabs-digital/react-proto-kit';
 // Backend returns HTTP 409:
 // { message: "Stock exceeded", code: "STOCK_EXCEEDED", items: [...], orderId: "order-123" }
 
-try {
-  await createMutation.mutate(checkoutData);
-} catch (err) {
-  const error = err as ErrorResponse;
-
-  if (error.error?.code === 'STOCK_EXCEEDED') {
-    // Extra fields from the response body are in error.data
-    const items = error.data?.items as StockExceededItem[];
+const res = await createMutation.mutate(checkoutData);
+if (!res.success) {
+  if (res.error?.code === 'STOCK_EXCEEDED') {
+    // Extra fields from the response body are in res.data
+    const items = res.data?.items as StockExceededItem[];
     showStockExceededDialog(items);
   }
+  return;
 }
+// res.data is the created entity on success
 ```
 
 **`ErrorResponse` interface:**
@@ -343,7 +342,8 @@ function UserForm() {
   );
 
   const onSubmit = handleSubmit(async (data) => {
-    await createUser(data);
+    const res = await createUser(data);
+    if (!res.success) return; // Bail out; createUser.error exposes the ErrorResponse for rendering
     reset();
   });
 
@@ -462,11 +462,16 @@ function UserSettings({ userId }: { userId: string }) {
   const { mutate: resetSettings } = api.useReset();
   
   const handleSave = async (newSettings: SettingsInput) => {
-    await updateSettings(newSettings);
+    const res = await updateSettings(newSettings);
+    if (!res.success) {
+      // Show toast, keep the form open, etc.
+      return;
+    }
   };
-  
+
   const toggleDarkMode = async () => {
     await patchSettings({ darkMode: !settings?.darkMode });
+    // Fire-and-forget: the hook's `error` state will surface any failure
   };
 
   if (loading) return <Spinner />;
@@ -825,13 +830,24 @@ All hooks return objects with consistent interfaces:
 
 ```tsx
 {
-  mutate: (data: T, id?: string) => Promise<T>;
+  mutate: (...args) => Promise<ApiResponse<T>>;
   loading: boolean;
-  error: ErrorResponse | null;  // 🛡️ Structured error with code, type, validation, data
+  error: ErrorResponse | null;  // 🛡️ Mirrors the last ErrorResponse, useful for persistent banners
 }
 ```
 
-> 💡 `useCreate` throws the full `ErrorResponse` object on failure (not a plain `Error`). This lets you `catch` and inspect `error.code`, `error.data`, etc.
+> 💡 **Mutations always resolve to an `ApiResponse<T>` and never throw.** Check `res.success` before reading `res.data`. The `error` state on the hook is kept in sync for rendering persistent banners, but inline reactions belong to the awaited return value:
+>
+> ```tsx
+> const res = await updateTodo.mutate(id, data);
+> if (!res.success) {
+>   showSnackbar({ message: res.message, variant: 'error' });
+>   return;
+> }
+> // res.data is the updated entity
+> ```
+>
+> This replaces the previous `try/catch` pattern — reading `mutation.error` immediately after `await mutate(...)` would return the stale value from the previous render, so returning the response from `mutate` is the only reliable way to react inline.
 
 ### Type Utilities
 

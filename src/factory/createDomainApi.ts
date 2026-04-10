@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { ListParams, GlobalStateConfig } from '../types';
+import {
+  ApiResponse,
+  ErrorResponse,
+  ListParams,
+  GlobalStateConfig,
+  PaginationMeta,
+} from '../types';
 import { useById } from '../hooks/useById';
 import { useList } from '../hooks/useList';
 import { useCreateMutation } from '../hooks/useCreateMutation';
@@ -23,35 +29,35 @@ export interface DomainApi<TEntity, TUpsert> {
   useList: (params?: ListParams) => {
     data: CompleteEntity<TEntity>[] | null;
     loading: boolean;
-    error: any;
-    meta?: any;
+    error: ErrorResponse | null;
+    meta?: PaginationMeta;
     refetch: () => Promise<void>;
   };
   useById: (id: string | undefined | null) => {
     data: CompleteEntity<TEntity> | null;
     loading: boolean;
-    error: any;
+    error: ErrorResponse | null;
     refetch: () => Promise<void>;
   };
   useCreate: () => {
-    mutate: (data: TUpsert) => Promise<CompleteEntity<TEntity>>;
+    mutate: (data: TUpsert) => Promise<ApiResponse<CompleteEntity<TEntity>>>;
     loading: boolean;
-    error: any;
+    error: ErrorResponse | null;
   };
   useUpdate: () => {
-    mutate: (id: string, data: TUpsert) => Promise<void>;
+    mutate: (id: string, data: TUpsert) => Promise<ApiResponse<CompleteEntity<TEntity>>>;
     loading: boolean;
-    error: any;
+    error: ErrorResponse | null;
   };
   usePatch: () => {
-    mutate: (id: string, data: Partial<TUpsert>) => Promise<void>;
+    mutate: (id: string, data: Partial<TUpsert>) => Promise<ApiResponse<CompleteEntity<TEntity>>>;
     loading: boolean;
-    error: any;
+    error: ErrorResponse | null;
   };
   useDelete: () => {
-    mutate: (id: string) => Promise<void>;
+    mutate: (id: string) => Promise<ApiResponse<void>>;
     loading: boolean;
-    error: any;
+    error: ErrorResponse | null;
   };
 }
 
