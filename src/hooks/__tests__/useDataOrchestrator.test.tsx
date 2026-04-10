@@ -1,7 +1,15 @@
+import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { useDataOrchestrator } from '../useDataOrchestrator';
 import { UseQueryResult, ErrorResponse } from '../../types';
+
+// useDataOrchestrator reads useSearchParams / useLocation internally to
+// support `watchSearchParams`, so every test has to render inside a Router.
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <MemoryRouter>{children}</MemoryRouter>
+);
 
 // Mock hook factory
 const createMockHook = (
@@ -19,11 +27,13 @@ const createMockHook = (
 
 describe('useDataOrchestrator', () => {
   it('should aggregate loading states correctly', () => {
-    const { result } = renderHook(() =>
-      useDataOrchestrator({
-        users: createMockHook(null, true, null),
-        profile: createMockHook(null, false, null),
-      })
+    const { result } = renderHook(
+      () =>
+        useDataOrchestrator({
+          users: createMockHook(null, true, null),
+          profile: createMockHook(null, false, null),
+        }),
+      { wrapper }
     );
 
     expect(result.current.isLoading).toBe(true);
@@ -34,11 +44,13 @@ describe('useDataOrchestrator', () => {
   it('should aggregate error states correctly', () => {
     const error: ErrorResponse = { success: false, message: 'Failed to load' };
 
-    const { result } = renderHook(() =>
-      useDataOrchestrator({
-        users: createMockHook(null, false, error),
-        profile: createMockHook({ name: 'John' }, false, null),
-      })
+    const { result } = renderHook(
+      () =>
+        useDataOrchestrator({
+          users: createMockHook(null, false, error),
+          profile: createMockHook({ name: 'John' }, false, null),
+        }),
+      { wrapper }
     );
 
     expect(result.current.hasErrors).toBe(true);
@@ -50,11 +62,13 @@ describe('useDataOrchestrator', () => {
     const usersData = [{ id: '1', name: 'Alice' }];
     const profileData = { id: '2', name: 'Bob' };
 
-    const { result } = renderHook(() =>
-      useDataOrchestrator({
-        users: createMockHook(usersData, false, null),
-        profile: createMockHook(profileData, false, null),
-      })
+    const { result } = renderHook(
+      () =>
+        useDataOrchestrator({
+          users: createMockHook(usersData, false, null),
+          profile: createMockHook(profileData, false, null),
+        }),
+      { wrapper }
     );
 
     expect(result.current.data.users).toEqual(usersData);
@@ -64,15 +78,17 @@ describe('useDataOrchestrator', () => {
   it('should handle required/optional distinction', () => {
     const error: ErrorResponse = { success: false, message: 'Stats failed' };
 
-    const { result } = renderHook(() =>
-      useDataOrchestrator({
-        required: {
-          users: createMockHook([{ id: '1' }], false, null),
-        },
-        optional: {
-          stats: createMockHook(null, false, error),
-        },
-      })
+    const { result } = renderHook(
+      () =>
+        useDataOrchestrator({
+          required: {
+            users: createMockHook([{ id: '1' }], false, null),
+          },
+          optional: {
+            stats: createMockHook(null, false, error),
+          },
+        }),
+      { wrapper }
     );
 
     // Optional error should not trigger hasErrors
@@ -93,10 +109,12 @@ describe('useDataOrchestrator', () => {
         refetch: vi.fn(),
       });
 
-      const { result, rerender } = renderHook(() =>
-        useDataOrchestrator({
-          users: mockHook,
-        })
+      const { result, rerender } = renderHook(
+        () =>
+          useDataOrchestrator({
+            users: mockHook,
+          }),
+        { wrapper }
       );
 
       // First render - loading
@@ -135,13 +153,15 @@ describe('useDataOrchestrator', () => {
   it('should reset state when resetKey changes', () => {
     let resetKey = 'key1';
 
-    const { result, rerender } = renderHook(() =>
-      useDataOrchestrator(
-        {
-          users: createMockHook([{ id: '1' }], false, null),
-        },
-        { resetKey }
-      )
+    const { result, rerender } = renderHook(
+      () =>
+        useDataOrchestrator(
+          {
+            users: createMockHook([{ id: '1' }], false, null),
+          },
+          { resetKey }
+        ),
+      { wrapper }
     );
 
     expect(result.current.data.users).toEqual([{ id: '1' }]);
@@ -158,15 +178,17 @@ describe('useDataOrchestrator', () => {
   it('should provide retry and retryAll functions', () => {
     const mockRefetch = vi.fn();
 
-    const { result } = renderHook(() =>
-      useDataOrchestrator({
-        users: () => ({
-          data: [],
-          loading: false,
-          error: null,
-          refetch: mockRefetch,
+    const { result } = renderHook(
+      () =>
+        useDataOrchestrator({
+          users: () => ({
+            data: [],
+            loading: false,
+            error: null,
+            refetch: mockRefetch,
+          }),
         }),
-      })
+      { wrapper }
     );
 
     result.current.retry('users');
@@ -177,7 +199,7 @@ describe('useDataOrchestrator', () => {
   });
 
   it('should handle null config', () => {
-    const { result } = renderHook(() => useDataOrchestrator(null));
+    const { result } = renderHook(() => useDataOrchestrator(null), { wrapper });
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.hasErrors).toBe(false);
@@ -188,13 +210,15 @@ describe('useDataOrchestrator', () => {
     const onError = vi.fn();
     const error: ErrorResponse = { success: false, message: 'Failed' };
 
-    renderHook(() =>
-      useDataOrchestrator(
-        {
-          users: createMockHook(null, false, error),
-        },
-        { onError }
-      )
+    renderHook(
+      () =>
+        useDataOrchestrator(
+          {
+            users: createMockHook(null, false, error),
+          },
+          { onError }
+        ),
+      { wrapper }
     );
 
     expect(onError).toHaveBeenCalledWith(
@@ -202,5 +226,29 @@ describe('useDataOrchestrator', () => {
         users: error,
       })
     );
+  });
+
+  it('accepts watchSearchParams without crashing when used standalone', () => {
+    // Smoke test: the hook should destructure `watchSearchParams` and read
+    // from the Router context without throwing. The dynamic reset behavior
+    // in response to URL changes is covered end-to-end by
+    // src/hoc/__tests__/withDataOrchestrator.watchSearchParams.test.tsx.
+    const routerWrapper = ({ children }: { children: React.ReactNode }) => (
+      <MemoryRouter initialEntries={['/?status=active&tab=todos']}>{children}</MemoryRouter>
+    );
+
+    const { result } = renderHook(
+      () =>
+        useDataOrchestrator(
+          {
+            users: createMockHook([{ id: '1' }], false, null),
+          },
+          { watchSearchParams: ['status', 'tab'] }
+        ),
+      { wrapper: routerWrapper }
+    );
+
+    expect(result.current.data.users).toEqual([{ id: '1' }]);
+    expect(result.current.isLoading).toBe(false);
   });
 });

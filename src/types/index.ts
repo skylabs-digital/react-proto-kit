@@ -482,5 +482,7 @@ export type WithOrchestratorProps<
   TProps extends Record<string, any> = Record<string, never>,
 > = TProps &
   TData & {
-    orchestrator: OrchestratorControls<any>;
+    orchestrator: OrchestratorControls<{
+      [K in keyof TData]: QueryHookFactory<TData[K]>;
+    }>;
   };
