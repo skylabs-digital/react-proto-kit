@@ -1,5 +1,4 @@
-import React, { useMemo } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import React from 'react';
 import { useDataOrchestrator } from '../hooks/useDataOrchestrator';
 import { useDataOrchestratorContext } from '../context/DataOrchestratorContext';
 import { RefetchBehaviorProvider } from '../context/RefetchBehaviorContext';
@@ -9,6 +8,8 @@ import {
   UseDataOrchestratorOptions,
   DataOrchestratorErrorProps,
   ErrorResponse,
+  OrchestratorControls,
+  QueryHookFactory,
 } from '../types';
 
 /**
@@ -185,58 +186,26 @@ export function withDataOrchestrator<
   TProps extends Record<string, any> = Record<string, any>,
   TConfig extends DataOrchestratorConfig | RequiredOptionalConfig = DataOrchestratorConfig,
 >(
-  Component: React.ComponentType<TProps & TData & { orchestrator: any }>,
+  Component: React.ComponentType<
+    TProps &
+      TData & {
+        orchestrator: OrchestratorControls<{
+          [K in keyof TData]: QueryHookFactory<TData[K]>;
+        }>;
+      }
+  >,
   config: WithDataOrchestratorConfig<TConfig>
 ): React.ComponentType<TProps> {
   const { hooks, loader, errorComponent: ErrorComponent, options } = config;
 
   return function WithDataOrchestratorWrapper(props: TProps) {
     const context = useDataOrchestratorContext();
-    const [searchParams] = useSearchParams();
-    const location = useLocation();
 
-    // Extract watch params and resetKey outside useMemo to avoid stale closures
-    const watchSearchParams = options?.watchSearchParams;
-    const userResetKey = options?.resetKey;
-
-    // Use location.search which DOES change when query params change
-    // This is the reactive value we need for detecting URL changes
-    const locationSearch = location.search;
-
-    // Extract only the values of watched params (not the entire searchParams object)
-    // This ensures we only react to changes in the specific params we're watching
-    const watchedParamValues = useMemo(() => {
-      if (!watchSearchParams || watchSearchParams.length === 0) {
-        return null;
-      }
-      // Create stable string from watched param values only
-      const values = watchSearchParams.map(param => `${param}=${searchParams.get(param) || ''}`);
-      return values.join('&');
-      // Using locationSearch to react to actual URL changes
-    }, [locationSearch, searchParams, watchSearchParams]);
-
-    // Build dynamic resetKey based on watched search params
-    const dynamicResetKey = useMemo(() => {
-      if (!watchedParamValues) {
-        return userResetKey;
-      }
-
-      // Combine with user's resetKey if provided
-      return userResetKey !== undefined
-        ? `${userResetKey}:${watchedParamValues}`
-        : watchedParamValues;
-    }, [watchedParamValues, userResetKey]);
-
-    // Merge dynamic resetKey with options
-    const enhancedOptions = useMemo(
-      () => ({
-        ...options,
-        resetKey: dynamicResetKey !== undefined ? dynamicResetKey : userResetKey,
-      }),
-      [options, dynamicResetKey]
-    );
-
-    const result = useDataOrchestrator(hooks as any, enhancedOptions);
+    // watchSearchParams is now handled inside useDataOrchestrator; we just
+    // forward the options through. refetchBehavior is still handled here via
+    // the Context wrapper below because Context must envelop the component
+    // tree, not the hook invocation scope.
+    const result = useDataOrchestrator(hooks as any, options);
 
     const {
       isLoading,
@@ -250,7 +219,11 @@ export function withDataOrchestrator<
       data,
     } = result;
 
-    // Build orchestrator controls object
+    // Build orchestrator controls object. We cast to the derived
+    // OrchestratorControls<TData-derived-config> type because the relationship
+    // between the runtime `hooks` config and the TData type parameter is a
+    // convention honored by the consumer (e.g. withDataOrchestrator<PageData>),
+    // not something TypeScript can infer from the erased runtime structure.
     const orchestrator = {
       retry,
       retryAll,
@@ -259,7 +232,9 @@ export function withDataOrchestrator<
       errors,
       isFetching,
       isLoading,
-    };
+    } as OrchestratorControls<{
+      [K in keyof TData]: QueryHookFactory<TData[K]>;
+    }>;
 
     // Determine which loader to use
     const LoaderComponent =

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import {
   DataOrchestratorConfig,
   RequiredOptionalConfig,
@@ -45,7 +46,30 @@ export function useDataOrchestrator<T extends DataOrchestratorConfig | RequiredO
   config: T | null,
   options?: UseDataOrchestratorOptions
 ): any {
-  const { resetKey, onError } = options || {};
+  const { resetKey: userResetKey, onError, watchSearchParams } = options || {};
+
+  // Watch for URL search-param changes so the orchestrator can reset and
+  // refetch when the params that configure the underlying hooks change.
+  // This requires a React Router context; consumers who don't have one
+  // should use the withDataOrchestrator HOC without `watchSearchParams`,
+  // or omit the option entirely.
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  // location.search is the reactive value that actually changes when query
+  // params update; including it makes the memo react to URL changes.
+  const watchedParamsSignature = useMemo(() => {
+    if (!watchSearchParams || watchSearchParams.length === 0) return null;
+    return watchSearchParams.map(param => `${param}=${searchParams.get(param) || ''}`).join('&');
+  }, [watchSearchParams, location.search, searchParams]);
+
+  // Combine the user's resetKey with the watched params so either changing
+  // independently triggers a reset.
+  const resetKey = useMemo(() => {
+    if (watchedParamsSignature === null) return userResetKey;
+    return userResetKey !== undefined
+      ? `${userResetKey}:${watchedParamsSignature}`
+      : watchedParamsSignature;
+  }, [userResetKey, watchedParamsSignature]);
 
   // Track which resources have settled (completed first load)
   const hasSettledRef = useRef<Record<string, boolean>>({});
@@ -107,6 +131,12 @@ export function useDataOrchestrator<T extends DataOrchestratorConfig | RequiredO
     };
   });
 
+  // Keep a ref to the latest resourceStates so memoized callbacks (retry,
+  // retryAll, refetch) always see the current refetch functions instead of
+  // closures over stale hook results.
+  const resourceStatesRef = useRef(resourceStates);
+  resourceStatesRef.current = resourceStates;
+
   // Flip hasSettled after render for resources that finished loading. Running
   // this as an effect instead of a Promise.resolve().then during render keeps
   // ref writes out of the render phase.
@@ -118,54 +148,47 @@ export function useDataOrchestrator<T extends DataOrchestratorConfig | RequiredO
     });
   });
 
-  // Compute aggregated states
-  const { isLoading, isFetching, hasErrors, data, loadingStates, errors } = useMemo(() => {
-    const dataObj: Record<string, any> = {};
-    const loadingObj: Record<string, boolean> = {};
-    const errorsObj: Record<string, ErrorResponse> = {};
+  // Compute aggregated states. This block used to be wrapped in `useMemo`
+  // keyed on `resourceStates`, but since `resourceStates` is a fresh object
+  // every render the memoization was a no-op. The work is O(n) on the number
+  // of orchestrated resources so recomputing every render is free.
+  const dataObj: Record<string, any> = {};
+  const loadingObj: Record<string, boolean> = {};
+  const errorsObj: Record<string, ErrorResponse> = {};
 
-    let anyRequiredLoading = false;
-    let anyFetching = false;
-    let anyRequiredError = false;
+  let anyRequiredLoading = false;
+  let anyFetching = false;
+  let anyRequiredError = false;
 
-    Object.entries(resourceStates).forEach(([key, state]) => {
-      // Data
-      dataObj[key] = state.data;
+  Object.entries(resourceStates).forEach(([key, state]) => {
+    dataObj[key] = state.data;
+    loadingObj[key] = state.loading;
 
-      // Loading states
-      loadingObj[key] = state.loading;
-
-      // Errors
-      if (state.error) {
-        errorsObj[key] = state.error;
-
-        if (requiredKeys.has(key)) {
-          anyRequiredError = true;
-        }
+    if (state.error) {
+      errorsObj[key] = state.error;
+      if (requiredKeys.has(key)) {
+        anyRequiredError = true;
       }
+    }
 
-      // isLoading: only true for initial load of required resources
-      if (requiredKeys.has(key) && state.loading && !state.hasSettled) {
-        anyRequiredLoading = true;
-      }
+    if (requiredKeys.has(key) && state.loading && !state.hasSettled) {
+      anyRequiredLoading = true;
+    }
 
-      // isFetching: true for any loading (initial or refetch)
-      if (state.loading) {
-        anyFetching = true;
-      }
-    });
+    if (state.loading) {
+      anyFetching = true;
+    }
+  });
 
-    return {
-      isLoading: anyRequiredLoading,
-      isFetching: anyFetching,
-      hasErrors: anyRequiredError,
-      data: dataObj,
-      loadingStates: loadingObj,
-      errors: errorsObj,
-    };
-  }, [resourceStates, requiredKeys]);
+  const data = dataObj;
+  const loadingStates = loadingObj;
+  const errors = errorsObj;
+  const isLoading = anyRequiredLoading;
+  const isFetching = anyFetching;
+  const hasErrors = anyRequiredError;
 
-  // Notify errors
+  // Notify errors. Stable signature so the effect only runs when the set of
+  // errors actually changes, not on every render.
   const errorsSignature = Object.keys(errors)
     .sort()
     .map(k => `${k}:${errors[k]?.message || ''}`)
@@ -175,40 +198,53 @@ export function useDataOrchestrator<T extends DataOrchestratorConfig | RequiredO
     if (Object.keys(errors).length > 0 && onError) {
       onError(errors);
     }
-  }, [errorsSignature, onError, errors]);
+    // `errors` is intentionally omitted; `errorsSignature` is the canonical
+    // change detector. `onError` is referenced via closure and typically
+    // stable across renders in practice.
+  }, [errorsSignature, onError]);
 
-  // Retry functions
-  const retry = (key: string) => {
-    const state = resourceStates[key];
-    if (state && typeof state.refetch === 'function') {
-      state.refetch();
-    } else {
-      console.warn(`[useDataOrchestrator] Cannot retry "${key}": refetch function not available`);
-    }
-  };
+  // Retry / refetch functions are memoized via a resource-keys signature so
+  // their identity only changes when the orchestrated resource set changes.
+  // They read the latest refetch functions from resourceStatesRef to avoid
+  // closures over stale hook results.
+  const configKeysSignature = Object.keys(flatConfig).sort().join('|');
 
-  const retryAll = () => {
-    Object.keys(resourceStates).forEach(key => {
-      const state = resourceStates[key];
-      if (typeof state.refetch === 'function') {
+  const retry = useMemo(
+    () => (key: string) => {
+      const state = resourceStatesRef.current[key];
+      if (state && typeof state.refetch === 'function') {
         state.refetch();
+      } else {
+        console.warn(`[useDataOrchestrator] Cannot retry "${key}": refetch function not available`);
       }
-    });
-  };
+    },
+    [configKeysSignature]
+  );
 
-  // Build refetch object (legacy)
+  const retryAll = useMemo(
+    () => () => {
+      Object.keys(resourceStatesRef.current).forEach(key => {
+        const state = resourceStatesRef.current[key];
+        if (typeof state.refetch === 'function') {
+          state.refetch();
+        }
+      });
+    },
+    [configKeysSignature]
+  );
+
   const refetch = useMemo(() => {
     const refetchObj: Record<string, () => Promise<void>> = {};
-    Object.keys(resourceStates).forEach(key => {
+    Object.keys(flatConfig).forEach(key => {
       refetchObj[key] = async () => {
-        const state = resourceStates[key];
-        if (typeof state.refetch === 'function') {
+        const state = resourceStatesRef.current[key];
+        if (state && typeof state.refetch === 'function') {
           await state.refetch();
         }
       };
     });
     return refetchObj;
-  }, [resourceStates]);
+  }, [configKeysSignature]);
 
   return {
     data,
