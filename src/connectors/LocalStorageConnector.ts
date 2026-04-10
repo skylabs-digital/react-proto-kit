@@ -271,7 +271,11 @@ export class LocalStorageConnector implements IConnector {
     }
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async post<T>(
+    endpoint: string,
+    data?: any,
+    _params?: Record<string, any>
+  ): Promise<ApiResponse<T>> {
     const startTime = Date.now();
     debugLogger.logRequest('POST', endpoint, data);
 
@@ -314,7 +318,11 @@ export class LocalStorageConnector implements IConnector {
     return successResponse;
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async put<T>(
+    endpoint: string,
+    data?: any,
+    _params?: Record<string, any>
+  ): Promise<ApiResponse<T>> {
     const startTime = Date.now();
     debugLogger.logRequest('PUT', endpoint, data);
 
@@ -389,7 +397,11 @@ export class LocalStorageConnector implements IConnector {
     return successResponse;
   }
 
-  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async patch<T>(
+    endpoint: string,
+    data?: any,
+    _params?: Record<string, any>
+  ): Promise<ApiResponse<T>> {
     const startTime = Date.now();
     debugLogger.logRequest('PATCH', endpoint, data);
 
@@ -464,7 +476,11 @@ export class LocalStorageConnector implements IConnector {
     return successResponse;
   }
 
-  async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async delete<T>(
+    endpoint: string,
+    data?: any,
+    _params?: Record<string, any>
+  ): Promise<ApiResponse<T>> {
     const startTime = Date.now();
     debugLogger.logRequest('DELETE', endpoint, data);
 
@@ -521,9 +537,15 @@ export class LocalStorageConnector implements IConnector {
     // Remove item from the filtered collection
     collectionData.splice(itemIndex, 1);
 
-    // Update storage - we need to update the full collection, not just the filtered one
-    const fullCollectionData = [...originalCollectionData]; // Use original data, not mutated
-    const fullItemIndex = fullCollectionData.findIndex((item: any) => item.id === id);
+    // Update storage using the full collection. Match by id AND by every
+    // pathParam so that two items sharing an id under different parents
+    // (e.g. users/1/todos/X vs users/2/todos/X) don't cross-delete.
+    const fullCollectionData = [...originalCollectionData];
+    const fullItemIndex = fullCollectionData.findIndex((item: any) => {
+      if (item.id !== id) return false;
+      if (!pathParams) return true;
+      return Object.entries(pathParams).every(([key, value]) => item[key] === value);
+    });
 
     if (fullItemIndex !== -1) {
       fullCollectionData.splice(fullItemIndex, 1);

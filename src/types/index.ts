@@ -31,10 +31,18 @@ export type ConnectorType = 'localStorage' | 'fetch';
 
 export interface IConnector {
   get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>>;
-  post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
-  put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
-  patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
-  delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>>;
+  /**
+   * Mutation methods accept an optional `params` record that is serialized
+   * into the query string. This lets consumers attach filter/tenant/version
+   * parameters to mutations via `withQuery()` without polluting the body.
+   *
+   * The parameter is optional so existing custom `IConnector` implementations
+   * that only accept `(endpoint, data)` remain source-compatible.
+   */
+  post<T>(endpoint: string, data?: any, params?: Record<string, any>): Promise<ApiResponse<T>>;
+  put<T>(endpoint: string, data?: any, params?: Record<string, any>): Promise<ApiResponse<T>>;
+  patch<T>(endpoint: string, data?: any, params?: Record<string, any>): Promise<ApiResponse<T>>;
+  delete<T>(endpoint: string, data?: any, params?: Record<string, any>): Promise<ApiResponse<T>>;
 }
 
 // Configuration types
