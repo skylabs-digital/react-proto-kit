@@ -1,3 +1,18 @@
+# [2.0.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.38.0...v2.0.0) (2026-04-10)
+
+
+* feat!: unify mutation hooks to return ApiResponse<T> ([b462b4c](https://github.com/skylabs-digital/react-proto-kit/commit/b462b4ce9ca692573115b0d0c8d30aa9af253ef7))
+
+
+### BREAKING CHANGES
+
+* useCreate, useUpdate, usePatch, useDelete, useSingleRecordUpdate,
+useSingleRecordPatch, and useSingleRecordReset now return Promise<ApiResponse<T>>
+and never throw. Migrate consumers from `try { await mutate() } catch` to
+`const res = await mutate(); if (!res.success) { ... }`.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
 # [1.38.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.37.1...v1.38.0) (2026-04-08)
 
 
