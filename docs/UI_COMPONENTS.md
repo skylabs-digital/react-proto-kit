@@ -842,8 +842,8 @@ function UserManagement() {
 ```tsx
 function ProductList() {
   const [isFiltersOpen, setFiltersOpen] = useUrlDrawer('filters');
-  const [category, setCategory] = useUrlSelector('category', String);
-  const [priceRange, setPriceRange] = useUrlSelector('price', String);
+  const [category, setCategory] = useUrlParam('category');
+  const [priceRange, setPriceRange] = useUrlParam('price');
   
   const { data: products } = productsApi.useList({
     queryParams: { category, priceRange }

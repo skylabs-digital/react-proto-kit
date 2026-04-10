@@ -1,38 +1,44 @@
-// Main exports
-export { ApiClientProvider, useApiClient } from './provider/ApiClientProvider';
+// All types, connectors, context, factories, forms, navigation and provider
+// exports are aggregated via `export *` below. The explicit re-exports that
+// used to duplicate these were removed to avoid drift — everything public
+// lives in the respective modules and is re-exported from this barrel.
 
-// Export all types
+// Core types (also covers hook result types, orchestrator types, etc.)
 export * from './types';
 
-// Export connectors
+// Connectors
 export * from './connectors/FetchConnector';
 export * from './connectors/LocalStorageConnector';
 
-// Export provider
+// Provider
 export * from './provider/ApiClientProvider';
 
-// Export context and global state
+// Context and global state
 export * from './context/GlobalStateProvider';
 export * from './context/InvalidationManager';
 export * from './context/DataOrchestratorContext';
 export * from './context/RefetchBehaviorContext';
 
-// Export utility types
+// Factories
 export * from './factory/createDomainApi';
 export * from './factory/createSingleRecordApi';
 
-// Export debug utilities
+// Debug utilities
 export { configureDebugLogging } from './utils/debug';
 
-// Export forms
+// Forms
 export * from './forms';
 
-// Export navigation
+// Navigation
 export * from './navigation';
 
-// Export Data Orchestrator
+// Data Orchestrator
 export { useDataOrchestrator } from './hooks/useDataOrchestrator';
 export { withDataOrchestrator } from './hoc/withDataOrchestrator';
+
+// Cache invalidation
+export { useInvalidation } from './hooks/useInvalidation';
+export type { UseInvalidationResult } from './hooks/useInvalidation';
 
 // Helpers (main agility features)
 export {
@@ -52,57 +58,6 @@ export {
   generateMockData,
   createEnvironmentSeedConfig,
 } from './helpers/seedHelpers';
-
-// Types
-export type {
-  // Core types
-  ApiResponse,
-  SuccessResponse,
-  ErrorResponse,
-  PaginationMeta,
-  RefetchBehavior,
-
-  // Connector types
-  ConnectorType,
-  IConnector,
-  ConnectorConfig,
-  FetchInstance,
-  RequestInterceptor,
-  ResponseInterceptor,
-
-  // Domain API types
-  DomainApiConfig,
-  CustomOperation,
-  DomainInterceptors,
-  CrudOperation,
-
-  // Seed types
-  SeedConfig,
-
-  // Hook types
-  UseQueryResult,
-  UseMutationResult,
-  UseListResult,
-  ListParams,
-
-  // Generated API types
-  GeneratedCrudApi,
-
-  // Type inference helpers
-  InferType,
-  InferCreateType,
-  InferUpdateType,
-  InferListResponse,
-
-  // Data Orchestrator types
-  DataOrchestratorConfig,
-  RequiredOptionalConfig,
-  UseDataOrchestratorOptions,
-  UseDataOrchestratorResult,
-  UseDataOrchestratorResultWithOptional,
-  OrchestratorControls,
-  WithOrchestratorProps,
-} from './types';
 
 // Re-export Zod for convenience
 export { z } from 'zod';

@@ -3,14 +3,8 @@ import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
 import { globalInvalidationManager } from '../context/InvalidationManager';
 import { toUnknownErrorResponse } from '../utils/mutationHelpers';
-import { ApiResponse, ErrorResponse } from '../types';
+import { ApiResponse, ErrorResponse, UsePatchMutationResult } from '../types';
 import { byIdCacheKey, listCacheKey } from '../utils/cacheKey';
-
-export interface UsePatchMutationResult<TInput, TEntity = unknown> {
-  mutate: (id: string, data: TInput) => Promise<ApiResponse<TEntity>>;
-  loading: boolean;
-  error: ErrorResponse | null;
-}
 
 interface UsePatchMutationOptions {
   /**

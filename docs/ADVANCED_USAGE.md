@@ -1102,7 +1102,7 @@ function TodoList() {
 
 ### Feature Flags
 
-Use feature flags for controlled rollouts:
+Use feature flags for controlled rollouts. Keep in mind that `GlobalStateConfig.optimistic` is currently a no-op (see "Optimistic Updates" in the [Global Context Guide](./GLOBAL_CONTEXT_GUIDE.md)); the example below shows the pattern for a feature flag you actually wire to config that matters, like cache time:
 
 ```tsx
 function useFeatureFlag(flag: string): boolean {
@@ -1110,14 +1110,12 @@ function useFeatureFlag(flag: string): boolean {
 }
 
 function TodoApp() {
-  const useOptimisticUpdates = useFeatureFlag('OPTIMISTIC_UPDATES');
-  const useRealTimeSync = useFeatureFlag('REALTIME_SYNC');
-  
+  const longCache = useFeatureFlag('LONG_CACHE');
+
   const todoApi = createDomainApi('todos', todoSchema, todoSchema, {
-    optimistic: useOptimisticUpdates,
-    realTime: useRealTimeSync
+    cacheTime: longCache ? 10 * 60 * 1000 : 60 * 1000,
   });
-  
+
   return <TodoList api={todoApi} />;
 }
 ```

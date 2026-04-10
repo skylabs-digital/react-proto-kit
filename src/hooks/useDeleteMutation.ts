@@ -3,14 +3,8 @@ import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
 import { globalInvalidationManager } from '../context/InvalidationManager';
 import { toUnknownErrorResponse } from '../utils/mutationHelpers';
-import { ApiResponse, ErrorResponse } from '../types';
+import { ApiResponse, ErrorResponse, UseDeleteMutationResult } from '../types';
 import { byIdCacheKey, listCacheKey } from '../utils/cacheKey';
-
-export interface UseDeleteMutationResult {
-  mutate: (id: string) => Promise<ApiResponse<void>>;
-  loading: boolean;
-  error: ErrorResponse | null;
-}
 
 interface UseDeleteMutationOptions {
   /**

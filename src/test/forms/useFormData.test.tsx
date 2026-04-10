@@ -358,6 +358,58 @@ describe('useFormData', () => {
       expect(result.current.isDirty).toBe(false);
     });
 
+    it('should reset to the latest initialValues, not the mount-time ones', () => {
+      // Regression test for a stale-closure bug where `reset()` used to call
+      // the initialValues captured at first mount regardless of what the
+      // parent was currently passing in.
+      let currentInitial = { name: 'First' } as Partial<{
+        name: string;
+        email: string;
+        age: number;
+        isActive: boolean;
+      }>;
+      const { result, rerender } = renderHook(() => useFormData(TestSchema, currentInitial));
+
+      // Parent re-renders with new initial values (e.g. after loading a record
+      // for edit).
+      currentInitial = { name: 'Second' };
+      rerender();
+
+      // User types something, then hits reset without arguments.
+      act(() => {
+        result.current.handleChange('name', 'User typed');
+      });
+      act(() => {
+        result.current.reset();
+      });
+
+      expect(result.current.values.name).toBe('Second');
+    });
+
+    it('tracks touched fields in the `touched` map', () => {
+      const { result } = renderHook(() => useFormData(TestSchema));
+
+      expect(result.current.touched).toEqual({});
+
+      act(() => {
+        result.current.handleChange('name', 'John');
+      });
+
+      expect(result.current.touched).toEqual({ name: true });
+
+      act(() => {
+        result.current.handleChange('email', 'john@example.com');
+      });
+
+      expect(result.current.touched).toEqual({ name: true, email: true });
+
+      // Reset clears touched along with values.
+      act(() => {
+        result.current.reset();
+      });
+      expect(result.current.touched).toEqual({});
+    });
+
     it('should load data without marking as dirty', () => {
       const { result } = renderHook(() => useFormData(TestSchema));
 
