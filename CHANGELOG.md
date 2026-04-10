@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/skylabs-digital/react-proto-kit/compare/v2.1.0...v2.1.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* **ci:** only mark new-release when semantic-release creates a new tag ([46ae3e1](https://github.com/skylabs-digital/react-proto-kit/commit/46ae3e173acd5c0dd3ef5bb00b2676119f991e5b))
+
 # [2.1.0](https://github.com/skylabs-digital/react-proto-kit/compare/v2.0.0...v2.1.0) (2026-04-10)
 
 
