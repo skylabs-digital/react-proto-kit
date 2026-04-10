@@ -19,6 +19,14 @@ export interface UseSingleRecordResetResult {
   error: ErrorResponse | null;
 }
 
+interface UseSingleRecordMutationOptions {
+  /**
+   * Query parameters attached to the mutation request. Used by
+   * createSingleRecordApi.withQuery() to propagate dynamic params.
+   */
+  queryParams?: Record<string, any>;
+}
+
 /**
  * Update mutation for single record endpoints (no ID appending).
  * Uses PUT method on the exact endpoint provided.
@@ -26,11 +34,15 @@ export interface UseSingleRecordResetResult {
 export function useSingleRecordUpdate<TInput, TEntity>(
   entity: string,
   endpoint: string,
-  schema?: z.ZodSchema<TInput>
+  schema?: z.ZodSchema<TInput>,
+  options?: UseSingleRecordMutationOptions
 ): UseSingleRecordUpdateResult<TInput, TEntity> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
+
+  const queryParams = options?.queryParams;
+  const queryParamsKey = queryParams ? JSON.stringify(queryParams) : undefined;
 
   const entityState = useEntityState<TEntity>(entity);
   const globalState = !!entityState;
@@ -50,12 +62,13 @@ export function useSingleRecordUpdate<TInput, TEntity>(
           }
         }
 
-        const response = await connector.put<TEntity>(endpoint, data);
+        const response = await connector.put<TEntity>(endpoint, data, queryParams);
 
         if (response.success) {
           if (globalState && entityState) {
-            // Fast path: update the cache using the same key format as useRecord.
-            entityState.actions.setData(recordCacheKey(endpoint), response.data);
+            // Fast path: use the same cacheKey format that useRecord reads from,
+            // including any query params so `withQuery` variants stay aligned.
+            entityState.actions.setData(recordCacheKey(endpoint, queryParams), response.data);
           }
           globalInvalidationManager.invalidate(entity);
           return response;
@@ -72,7 +85,7 @@ export function useSingleRecordUpdate<TInput, TEntity>(
         setLoading(false);
       }
     },
-    [connector, entity, endpoint, schema, globalState, entityState]
+    [connector, entity, endpoint, schema, globalState, entityState, queryParamsKey]
   );
 
   return { mutate, loading, error };
@@ -84,11 +97,15 @@ export function useSingleRecordUpdate<TInput, TEntity>(
  */
 export function useSingleRecordPatch<TInput, TEntity>(
   entity: string,
-  endpoint: string
+  endpoint: string,
+  options?: UseSingleRecordMutationOptions
 ): UseSingleRecordUpdateResult<TInput, TEntity> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
+
+  const queryParams = options?.queryParams;
+  const queryParamsKey = queryParams ? JSON.stringify(queryParams) : undefined;
 
   const entityState = useEntityState<TEntity>(entity);
   const globalState = !!entityState;
@@ -100,12 +117,13 @@ export function useSingleRecordPatch<TInput, TEntity>(
 
       try {
         // Use endpoint directly - no ID appending
-        const response = await connector.patch<TEntity>(endpoint, data);
+        const response = await connector.patch<TEntity>(endpoint, data, queryParams);
 
         if (response.success) {
           if (globalState && entityState) {
-            // Fast path: merge into the cache using the same key as useRecord.
-            const cacheKey = recordCacheKey(endpoint);
+            // Fast path: merge into the cache using the same key as useRecord,
+            // including query params so `withQuery` variants stay aligned.
+            const cacheKey = recordCacheKey(endpoint, queryParams);
             const existingData = entityState.data?.[cacheKey];
             const mergedData = existingData ? { ...existingData, ...response.data } : response.data;
             entityState.actions.setData(cacheKey, mergedData);
@@ -125,7 +143,7 @@ export function useSingleRecordPatch<TInput, TEntity>(
         setLoading(false);
       }
     },
-    [connector, entity, endpoint, globalState, entityState]
+    [connector, entity, endpoint, globalState, entityState, queryParamsKey]
   );
 
   return { mutate, loading, error };
@@ -137,11 +155,15 @@ export function useSingleRecordPatch<TInput, TEntity>(
  */
 export function useSingleRecordReset<TEntity>(
   entity: string,
-  endpoint: string
+  endpoint: string,
+  options?: UseSingleRecordMutationOptions
 ): UseSingleRecordResetResult {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
+
+  const queryParams = options?.queryParams;
+  const queryParamsKey = queryParams ? JSON.stringify(queryParams) : undefined;
 
   const entityState = useEntityState<TEntity>(entity);
   const globalState = !!entityState;
@@ -152,12 +174,13 @@ export function useSingleRecordReset<TEntity>(
 
     try {
       // Use endpoint directly - no ID appending
-      const response = await connector.delete<void>(endpoint);
+      const response = await connector.delete<void>(endpoint, undefined, queryParams);
 
       if (response.success) {
         if (globalState && entityState) {
-          // Clear cache for this endpoint using the same key as useRecord.
-          entityState.actions.setData(recordCacheKey(endpoint), undefined as any);
+          // Clear cache for this endpoint using the same key as useRecord,
+          // including query params so `withQuery` variants stay aligned.
+          entityState.actions.setData(recordCacheKey(endpoint, queryParams), undefined as any);
         }
         globalInvalidationManager.invalidate(entity);
         return response;
@@ -173,7 +196,7 @@ export function useSingleRecordReset<TEntity>(
     } finally {
       setLoading(false);
     }
-  }, [connector, entity, endpoint, globalState, entityState]);
+  }, [connector, entity, endpoint, globalState, entityState, queryParamsKey]);
 
   return { mutate, loading, error };
 }

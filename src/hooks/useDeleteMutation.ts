@@ -12,14 +12,26 @@ export interface UseDeleteMutationResult {
   error: ErrorResponse | null;
 }
 
+interface UseDeleteMutationOptions {
+  /**
+   * Query parameters to attach to the DELETE request. Used by
+   * createDomainApi.withQuery() to propagate dynamic params to mutations.
+   */
+  queryParams?: Record<string, any>;
+}
+
 // Unified hook that can work with or without global state
 export function useDeleteMutation<TEntity>(
   entity: string,
-  endpoint?: string
+  endpoint?: string,
+  options?: UseDeleteMutationOptions
 ): UseDeleteMutationResult {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
+
+  const queryParams = options?.queryParams;
+  const queryParamsKey = queryParams ? JSON.stringify(queryParams) : undefined;
 
   // Only get entity state if global state is enabled
   const entityState = useEntityState<TEntity>(entity);
@@ -34,7 +46,7 @@ export function useDeleteMutation<TEntity>(
         const baseEndpoint = endpoint || entity;
         const deleteEndpoint = `${baseEndpoint}/${id}`;
 
-        const response = await connector.delete<void>(deleteEndpoint);
+        const response = await connector.delete<void>(deleteEndpoint, undefined, queryParams);
 
         if (response.success) {
           if (globalState && entityState) {
@@ -74,7 +86,7 @@ export function useDeleteMutation<TEntity>(
         setLoading(false);
       }
     },
-    [connector, entity, endpoint, globalState, entityState]
+    [connector, entity, endpoint, globalState, entityState, queryParamsKey]
   );
 
   return {

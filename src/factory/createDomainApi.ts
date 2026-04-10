@@ -132,11 +132,6 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
     : maybeConfig;
   type EntityType = CompleteEntity<z.infer<TEntity>>;
 
-  // Current resolved path (starts as template)
-  let currentPath = pathTemplate;
-  // Current query parameters
-  let currentQueryParams: Record<string, any> = {};
-
   // Extract entity name from path - for nested paths, combine segments
   const segments = pathTemplate.split('/').filter(Boolean);
   const nonParamSegments = segments.filter(segment => !segment.startsWith(':'));
@@ -145,138 +140,110 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
       ? nonParamSegments.join('_') // e.g., 'todos/:todoId/comments' → 'todos_comments'
       : nonParamSegments[nonParamSegments.length - 1]; // Simple case: 'todos' → 'todos'
 
-  const api = {
-    // Optional method to inject path parameters
-    withParams: (params: Record<string, string>) => {
-      currentPath = buildPath(pathTemplate, params);
-      return api; // Return self for chaining
-    },
-
-    // Optional method to inject query parameters
-    withQuery: (queryParams: Record<string, any>) => {
-      // Validate that only allowed dynamic params are used
-      if (config?.queryParams?.dynamic) {
-        const allowedParams = config.queryParams.dynamic;
-        const invalidParams = Object.keys(queryParams).filter(key => !allowedParams.includes(key));
-        if (invalidParams.length > 0) {
-          throw new Error(
-            `Invalid query parameters: ${invalidParams.join(', ')}. ` +
-              `Allowed parameters: ${allowedParams.join(', ')}`
-          );
-        }
-      }
-
-      // Merge static params with dynamic params
-      const staticParams = config?.queryParams?.static || {};
-      const mergedQueryParams = { ...staticParams, ...queryParams };
-
-      // Return a NEW API object with query params baked in
-      // This ensures each call to withQuery creates a fresh builder
-      return {
-        ...api,
-        useList: (params?: ListParams) => {
-          if (hasUnresolvedParams(currentPath)) {
-            const paramNames = extractParamNames(currentPath);
-            throw new Error(
-              `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
-                `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useList().`
-            );
-          }
-
-          return useList<EntityType>(entity, currentPath, params, {
-            cacheTime: config?.cacheTime,
-            queryParams: Object.keys(mergedQueryParams).length > 0 ? mergedQueryParams : undefined,
-          });
-        },
-      };
-    },
-
-    useList: (params?: ListParams) => {
-      if (hasUnresolvedParams(currentPath)) {
-        const paramNames = extractParamNames(currentPath);
-        throw new Error(
-          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
-            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useList().`
-        );
-      }
-      // Merge static params with any existing query params
-      const staticParams = config?.queryParams?.static || {};
-      const finalQueryParams = { ...staticParams, ...currentQueryParams };
-
-      return useList<EntityType>(entity, currentPath, params, {
-        cacheTime: config?.cacheTime,
-        queryParams: Object.keys(finalQueryParams).length > 0 ? finalQueryParams : undefined,
-      });
-    },
-
-    useById: (id: string | undefined | null) => {
-      if (hasUnresolvedParams(currentPath)) {
-        const paramNames = extractParamNames(currentPath);
-        throw new Error(
-          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
-            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useById().`
-        );
-      }
-      return useById<EntityType>(entity, id ? `${currentPath}/${id}` : undefined, undefined, {
-        cacheTime: config?.cacheTime,
-      });
-    },
-
-    useCreate: () => {
-      if (hasUnresolvedParams(currentPath)) {
-        const paramNames = extractParamNames(currentPath);
-        throw new Error(
-          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
-            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useCreate().`
-        );
-      }
-      return useCreateMutation<z.infer<TUpsert>, EntityType>(
-        entity, // Entity name for global state: 'todos_comments'
-        currentPath, // Endpoint for requests: 'todos/123/comments'
-        upsertSchema as z.ZodSchema<z.infer<TUpsert>>,
-        {
-          entitySchema: _entitySchema as z.ZodSchema<any>,
-        }
-      );
-    },
-
-    useUpdate: () => {
-      if (hasUnresolvedParams(currentPath)) {
-        const paramNames = extractParamNames(currentPath);
-        throw new Error(
-          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
-            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useUpdate().`
-        );
-      }
-      return useUpdateMutation<z.infer<TUpsert>, EntityType>(
-        entity, // Entity name for global state: 'todos_comments'
-        currentPath, // Endpoint for requests: 'todos/123/comments'
-        upsertSchema as z.ZodSchema<z.infer<TUpsert>>
-      );
-    },
-
-    usePatch: () => {
-      if (hasUnresolvedParams(currentPath)) {
-        const paramNames = extractParamNames(currentPath);
-        throw new Error(
-          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
-            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling usePatch().`
-        );
-      }
-      return usePatchMutation<Partial<z.infer<TUpsert>>, EntityType>(entity, currentPath);
-    },
-
-    useDelete: () => {
-      if (hasUnresolvedParams(currentPath)) {
-        const paramNames = extractParamNames(currentPath);
-        throw new Error(
-          `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
-            `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling useDelete().`
-        );
-      }
-      return useDeleteMutation<EntityType>(entity, currentPath);
-    },
+  // Throws a helpful error when a hook is invoked before `withParams` has
+  // resolved the dynamic segments of the path.
+  const assertPathResolved = (path: string, hookName: string): void => {
+    if (!hasUnresolvedParams(path)) return;
+    const paramNames = extractParamNames(path);
+    throw new Error(
+      `Path parameters required but not provided. Missing parameters: ${paramNames.join(', ')}. ` +
+        `Use .withParams({ ${paramNames.map(name => `${name}: 'value'`).join(', ')} }) before calling ${hookName}().`
+    );
   };
 
-  return api;
+  // Immutable builder. Each call to `withParams` / `withQuery` returns a fresh
+  // api object bound to the given path and queryParams, so the resolved values
+  // flow to every hook — including mutations — via closure instead of mutable
+  // module state. This mirrors the pattern already used in createSingleRecordApi.
+  const createApi = (
+    path: string,
+    queryParams: Record<string, any>
+  ): DomainApi<z.infer<TEntity>, z.infer<TUpsert>> => {
+    // Materialize queryParams once per builder so the same reference is used
+    // across all hook invocations returned by this api instance.
+    const effectiveQueryParams = Object.keys(queryParams).length > 0 ? queryParams : undefined;
+
+    return {
+      withParams: (params: Record<string, string>) =>
+        createApi(buildPath(pathTemplate, params), queryParams),
+
+      withQuery: (newQueryParams: Record<string, any>) => {
+        // Validate dynamic params against the allowlist, if configured.
+        if (config?.queryParams?.dynamic) {
+          const allowedParams = config.queryParams.dynamic;
+          const invalidParams = Object.keys(newQueryParams).filter(
+            key => !allowedParams.includes(key)
+          );
+          if (invalidParams.length > 0) {
+            throw new Error(
+              `Invalid query parameters: ${invalidParams.join(', ')}. ` +
+                `Allowed parameters: ${allowedParams.join(', ')}`
+            );
+          }
+        }
+
+        // Merge: static < previously-bound dynamic < newly-bound dynamic.
+        const staticParams = config?.queryParams?.static || {};
+        const merged = { ...staticParams, ...queryParams, ...newQueryParams };
+        return createApi(path, merged);
+      },
+
+      useList: (listParams?: ListParams) => {
+        assertPathResolved(path, 'useList');
+        return useList<EntityType>(entity, path, listParams, {
+          cacheTime: config?.cacheTime,
+          queryParams: effectiveQueryParams,
+        });
+      },
+
+      useById: (id: string | undefined | null) => {
+        assertPathResolved(path, 'useById');
+        return useById<EntityType>(entity, id ? `${path}/${id}` : undefined, undefined, {
+          cacheTime: config?.cacheTime,
+        });
+      },
+
+      useCreate: () => {
+        assertPathResolved(path, 'useCreate');
+        return useCreateMutation<z.infer<TUpsert>, EntityType>(
+          entity,
+          path,
+          upsertSchema as z.ZodSchema<z.infer<TUpsert>>,
+          {
+            entitySchema: _entitySchema as z.ZodSchema<any>,
+            queryParams: effectiveQueryParams,
+          }
+        );
+      },
+
+      useUpdate: () => {
+        assertPathResolved(path, 'useUpdate');
+        return useUpdateMutation<z.infer<TUpsert>, EntityType>(
+          entity,
+          path,
+          upsertSchema as z.ZodSchema<z.infer<TUpsert>>,
+          { queryParams: effectiveQueryParams }
+        );
+      },
+
+      usePatch: () => {
+        assertPathResolved(path, 'usePatch');
+        return usePatchMutation<Partial<z.infer<TUpsert>>, EntityType>(entity, path, {
+          queryParams: effectiveQueryParams,
+        });
+      },
+
+      useDelete: () => {
+        assertPathResolved(path, 'useDelete');
+        return useDeleteMutation<EntityType>(entity, path, {
+          queryParams: effectiveQueryParams,
+        });
+      },
+    };
+  };
+
+  // Seed the initial builder with the template path and the static query
+  // params from config (if any). `withQuery` will merge its arguments on top.
+  const initialQueryParams = { ...(config?.queryParams?.static || {}) };
+  return createApi(pathTemplate, initialQueryParams);
 }

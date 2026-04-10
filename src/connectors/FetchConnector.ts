@@ -216,34 +216,50 @@ export class FetchConnector implements IConnector {
     return this.executeRequest<T>('GET', endpoint, undefined, params);
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
-    return this.executeRequest<T>('POST', endpoint, data);
+  async post<T>(
+    endpoint: string,
+    data?: any,
+    params?: Record<string, any>
+  ): Promise<ApiResponse<T>> {
+    return this.executeRequest<T>('POST', endpoint, data, params);
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async put<T>(
+    endpoint: string,
+    data?: any,
+    params?: Record<string, any>
+  ): Promise<ApiResponse<T>> {
     // Support dynamic ID: if endpoint doesn't contain ID but data has ID, append it
     let finalEndpoint = endpoint;
     if (data && data.id && !endpoint.includes('/')) {
       finalEndpoint = `${endpoint}/${data.id}`;
     }
-    return this.executeRequest<T>('PUT', finalEndpoint, data);
+    return this.executeRequest<T>('PUT', finalEndpoint, data, params);
   }
 
-  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async patch<T>(
+    endpoint: string,
+    data?: any,
+    params?: Record<string, any>
+  ): Promise<ApiResponse<T>> {
     // Support dynamic ID: if endpoint doesn't contain ID but data has ID, append it
     let finalEndpoint = endpoint;
     if (data && data.id && !endpoint.includes('/')) {
       finalEndpoint = `${endpoint}/${data.id}`;
     }
-    return this.executeRequest<T>('PATCH', finalEndpoint, data);
+    return this.executeRequest<T>('PATCH', finalEndpoint, data, params);
   }
 
-  async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async delete<T>(
+    endpoint: string,
+    data?: any,
+    params?: Record<string, any>
+  ): Promise<ApiResponse<T>> {
     // Support dynamic ID: if endpoint doesn't contain ID but data has ID, append it
     let finalEndpoint = endpoint;
     if (data && data.id && !endpoint.includes('/')) {
       finalEndpoint = `${endpoint}/${data.id}`;
     }
-    return this.executeRequest<T>('DELETE', finalEndpoint);
+    return this.executeRequest<T>('DELETE', finalEndpoint, undefined, params);
   }
 }

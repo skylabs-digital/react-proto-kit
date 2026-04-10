@@ -180,11 +180,17 @@ export function createSingleRecordApi<TEntity extends z.ZodSchema, TUpsert exten
         );
       }
 
-      // Use single record update hook - no ID appending
+      // Merge static + withQuery params so the mutation request — and the
+      // fast-path cache write — hit the same cacheKey that useRecord reads from.
+      const staticParams = config?.queryParams?.static || {};
+      const merged = { ...staticParams, ...queryParams };
+      const effectiveQueryParams = Object.keys(merged).length > 0 ? merged : undefined;
+
       return useSingleRecordUpdate<UpsertType, EntityType>(
         entity,
         path,
-        upsertSchema as z.ZodSchema<UpsertType>
+        upsertSchema as z.ZodSchema<UpsertType>,
+        { queryParams: effectiveQueryParams }
       );
     },
 
@@ -197,8 +203,13 @@ export function createSingleRecordApi<TEntity extends z.ZodSchema, TUpsert exten
         );
       }
 
-      // Use single record patch hook - no ID appending
-      return useSingleRecordPatch<Partial<UpsertType>, EntityType>(entity, path);
+      const staticParams = config?.queryParams?.static || {};
+      const merged = { ...staticParams, ...queryParams };
+      const effectiveQueryParams = Object.keys(merged).length > 0 ? merged : undefined;
+
+      return useSingleRecordPatch<Partial<UpsertType>, EntityType>(entity, path, {
+        queryParams: effectiveQueryParams,
+      });
     },
 
     useReset: (): UseResetResult => {
@@ -214,8 +225,13 @@ export function createSingleRecordApi<TEntity extends z.ZodSchema, TUpsert exten
         );
       }
 
-      // Use single record reset hook - no ID appending
-      return useSingleRecordReset<EntityType>(entity, path);
+      const staticParams = config?.queryParams?.static || {};
+      const merged = { ...staticParams, ...queryParams };
+      const effectiveQueryParams = Object.keys(merged).length > 0 ? merged : undefined;
+
+      return useSingleRecordReset<EntityType>(entity, path, {
+        queryParams: effectiveQueryParams,
+      });
     },
   });
 

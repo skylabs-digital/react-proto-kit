@@ -13,15 +13,27 @@ export interface UseUpdateMutationResult<TInput, TEntity = unknown> {
   error: ErrorResponse | null;
 }
 
+interface UseUpdateMutationOptions {
+  /**
+   * Query parameters to attach to the PUT request. Used by
+   * createDomainApi.withQuery() to propagate dynamic params to mutations.
+   */
+  queryParams?: Record<string, any>;
+}
+
 // Unified hook that automatically detects global state availability
 export function useUpdateMutation<TInput, TEntity>(
   entity: string,
   endpoint?: string, // Optional endpoint, defaults to entity
-  schema?: z.ZodSchema<TInput>
+  schema?: z.ZodSchema<TInput>,
+  options?: UseUpdateMutationOptions
 ): UseUpdateMutationResult<TInput, TEntity> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
+
+  const queryParams = options?.queryParams;
+  const queryParamsKey = queryParams ? JSON.stringify(queryParams) : undefined;
 
   // Only get entity state if global state is available
   const entityState = useEntityState<TEntity>(entity);
@@ -45,7 +57,7 @@ export function useUpdateMutation<TInput, TEntity>(
         const baseEndpoint = endpoint || entity;
         const updateEndpoint = `${baseEndpoint}/${id}`;
 
-        const response = await connector.put<TEntity>(updateEndpoint, data);
+        const response = await connector.put<TEntity>(updateEndpoint, data, queryParams);
 
         if (response.success) {
           if (globalState && entityState) {
@@ -93,7 +105,7 @@ export function useUpdateMutation<TInput, TEntity>(
         setLoading(false);
       }
     },
-    [connector, entity, endpoint, schema, globalState, entityState]
+    [connector, entity, endpoint, schema, globalState, entityState, queryParamsKey]
   );
 
   return {

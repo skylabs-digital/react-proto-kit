@@ -12,14 +12,26 @@ export interface UsePatchMutationResult<TInput, TEntity = unknown> {
   error: ErrorResponse | null;
 }
 
+interface UsePatchMutationOptions {
+  /**
+   * Query parameters to attach to the PATCH request. Used by
+   * createDomainApi.withQuery() to propagate dynamic params to mutations.
+   */
+  queryParams?: Record<string, any>;
+}
+
 // Unified hook that automatically detects global state availability
 export function usePatchMutation<TInput, TEntity>(
   entity: string,
-  endpoint?: string
+  endpoint?: string,
+  options?: UsePatchMutationOptions
 ): UsePatchMutationResult<TInput, TEntity> {
   const { connector } = useApiClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
+
+  const queryParams = options?.queryParams;
+  const queryParamsKey = queryParams ? JSON.stringify(queryParams) : undefined;
 
   // Only get entity state if global state is available
   const entityState = useEntityState<TEntity>(entity);
@@ -34,7 +46,7 @@ export function usePatchMutation<TInput, TEntity>(
         const baseEndpoint = endpoint || entity;
         const patchEndpoint = `${baseEndpoint}/${id}`;
 
-        const response = await connector.patch<TEntity>(patchEndpoint, data);
+        const response = await connector.patch<TEntity>(patchEndpoint, data, queryParams);
 
         if (response.success) {
           if (globalState && entityState) {
@@ -79,7 +91,7 @@ export function usePatchMutation<TInput, TEntity>(
         setLoading(false);
       }
     },
-    [connector, entity, endpoint, globalState, entityState]
+    [connector, entity, endpoint, globalState, entityState, queryParamsKey]
   );
 
   return {

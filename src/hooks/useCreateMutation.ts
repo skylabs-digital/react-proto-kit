@@ -38,6 +38,12 @@ function extractDefaultValues(schema: z.ZodSchema<any>): Record<string, any> {
 interface UseCreateMutationOptions {
   globalState?: boolean;
   entitySchema?: z.ZodSchema<any>;
+  /**
+   * Query parameters to attach to the POST request (e.g. tenant id, api
+   * version, feature flags). Used by createDomainApi.withQuery() to propagate
+   * dynamic params to mutations.
+   */
+  queryParams?: Record<string, any>;
 }
 
 // Unified hook that can work with or without global state
@@ -51,7 +57,10 @@ export function useCreateMutation<TInput, TOutput>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
 
-  const { entitySchema } = options;
+  const { entitySchema, queryParams } = options;
+  // Stable key for useCallback deps so inline queryParams objects don't
+  // force the mutation callback to be recreated every render.
+  const queryParamsKey = queryParams ? JSON.stringify(queryParams) : undefined;
 
   // Only get entity state if global state is enabled
   const entityState = useEntityState<TOutput>(entity);
@@ -81,7 +90,7 @@ export function useCreateMutation<TInput, TOutput>(
 
         const requestEndpoint = endpoint || entity;
 
-        const response = await connector.post<TOutput>(requestEndpoint, dataToSend);
+        const response = await connector.post<TOutput>(requestEndpoint, dataToSend, queryParams);
 
         if (response.success) {
           if (globalState && entityState) {
@@ -132,7 +141,7 @@ export function useCreateMutation<TInput, TOutput>(
         setLoading(false);
       }
     },
-    [connector, entity, endpoint, schema, globalState, entityState, entitySchema]
+    [connector, entity, endpoint, schema, globalState, entityState, entitySchema, queryParamsKey]
   );
 
   return {
