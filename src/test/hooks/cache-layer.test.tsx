@@ -162,4 +162,142 @@ describe('cache layer', () => {
       expect(mockGet).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('useList reacts to queryParams changes', () => {
+    it('refetches with merged queryParams when they change', async () => {
+      mockGet
+        .mockResolvedValueOnce({ success: true, data: [{ id: '1', status: 'pending' }] })
+        .mockResolvedValueOnce({ success: true, data: [{ id: '2', status: 'done' }] });
+
+      const wrapper = createWrapper();
+
+      const { result, rerender } = renderHook(
+        ({ status }: { status: string }) =>
+          useList<any>('todos', 'todos', undefined, { queryParams: { status } }),
+        { wrapper, initialProps: { status: 'pending' } }
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.data).toEqual([{ id: '1', status: 'pending' }]);
+      expect(mockGet).toHaveBeenCalledTimes(1);
+      expect(mockGet).toHaveBeenLastCalledWith('todos', { filters: { status: 'pending' } });
+
+      rerender({ status: 'done' });
+
+      await waitFor(() => {
+        expect(result.current.data).toEqual([{ id: '2', status: 'done' }]);
+      });
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(mockGet).toHaveBeenLastCalledWith('todos', { filters: { status: 'done' } });
+    });
+
+    it('does not refetch when a different queryParams property order is passed (stable cache key)', async () => {
+      mockGet.mockResolvedValue({ success: true, data: [] });
+      const wrapper = createWrapper();
+
+      const { rerender } = renderHook(
+        ({ qp }: { qp: Record<string, any> }) =>
+          useList<any>('todos', 'todos', undefined, { queryParams: qp }),
+        {
+          wrapper,
+          initialProps: { qp: { a: 1, b: 2 } as Record<string, any> },
+        }
+      );
+
+      await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(1));
+
+      // Re-pass the same params in a different object with reversed order.
+      rerender({ qp: { b: 2, a: 1 } });
+      rerender({ qp: { b: 2, a: 1 } });
+
+      // Give any pending effect a tick
+      await new Promise(r => setTimeout(r, 10));
+
+      // No extra calls — the cache key is stable.
+      expect(mockGet).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('useList refetchBehavior modes', () => {
+    it('stale-while-revalidate serves the new data once it arrives without surfacing an error', async () => {
+      // Two sequential successes; the library's SWR mode is designed to mask
+      // the brief loading window by reusing previously cached data.
+      mockGet
+        .mockResolvedValueOnce({
+          success: true,
+          data: [{ id: '1', status: 'pending' }],
+        })
+        .mockResolvedValueOnce({
+          success: true,
+          data: [{ id: '2', status: 'done' }],
+        });
+
+      const wrapper = createWrapper();
+
+      const { result, rerender } = renderHook(
+        ({ status }: { status: string }) =>
+          useList<any>('todos', 'todos', undefined, {
+            queryParams: { status },
+            refetchBehavior: 'stale-while-revalidate',
+          }),
+        { wrapper, initialProps: { status: 'pending' } }
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.data).toEqual([{ id: '1', status: 'pending' }]);
+
+      rerender({ status: 'done' });
+
+      await waitFor(() => {
+        expect(result.current.data).toEqual([{ id: '2', status: 'done' }]);
+      });
+      expect(result.current.error).toBeNull();
+      expect(mockGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('blocking refetchBehavior clears data on cacheKey change', async () => {
+      let resolveSecond: (value: any) => void = () => {};
+      const secondPending = new Promise(resolve => {
+        resolveSecond = resolve;
+      });
+
+      mockGet
+        .mockResolvedValueOnce({
+          success: true,
+          data: [{ id: '1', status: 'pending' }],
+        })
+        .mockReturnValueOnce(secondPending);
+
+      const wrapper = createWrapper();
+
+      const { result, rerender } = renderHook(
+        ({ status }: { status: string }) =>
+          useList<any>('todos-blocking', 'todos-blocking', undefined, {
+            queryParams: { status },
+            refetchBehavior: 'blocking',
+          }),
+        { wrapper, initialProps: { status: 'pending' } }
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.data).toEqual([{ id: '1', status: 'pending' }]);
+
+      rerender({ status: 'done' });
+
+      // Blocking mode: previous data is not shown while the new request loads.
+      await waitFor(() => {
+        expect(result.current.loading).toBe(true);
+      });
+
+      await act(async () => {
+        resolveSecond({ success: true, data: [{ id: '2', status: 'done' }] });
+        await secondPending;
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+        expect(result.current.data).toEqual([{ id: '2', status: 'done' }]);
+      });
+    });
+  });
 });

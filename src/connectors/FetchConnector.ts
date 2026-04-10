@@ -1,5 +1,6 @@
 import { IConnector, ApiResponse, ConnectorConfig, RequestConfig } from '../types';
 import { debugLogger } from '../utils/debug';
+import { httpErrorFromResponse, makeNetworkError, makeTimeoutError } from '../utils/errorResponse';
 
 export class FetchConnector implements IConnector {
   private config: ConnectorConfig;
@@ -28,11 +29,23 @@ export class FetchConnector implements IConnector {
 
     if (params) {
       const searchParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
+      const append = (key: string, value: unknown) => {
         if (value !== undefined && value !== null) {
           searchParams.append(key, String(value));
         }
-      });
+      };
+      // `filters` is a nested container for equality filters (see ListParams);
+      // flatten it onto the query string so `{ filters: { status: 'done' } }`
+      // serializes as `?status=done`.
+      for (const [key, value] of Object.entries(params)) {
+        if (key === 'filters' && value && typeof value === 'object') {
+          for (const [fk, fv] of Object.entries(value as Record<string, unknown>)) {
+            append(fk, fv);
+          }
+        } else {
+          append(key, value);
+        }
+      }
       const qs = searchParams.toString();
       return qs ? `${fullUrl}?${qs}` : fullUrl;
     }
@@ -152,24 +165,18 @@ export class FetchConnector implements IConnector {
         const responseData = await processedResponse.json();
 
         if (!processedResponse.ok) {
-          const { message, code, type, validation, ...rest } = responseData;
-          return {
-            success: false,
-            message: message || `HTTP ${processedResponse.status}`,
-            error: { code: code || 'HTTP_ERROR' },
-            type,
-            validation,
-            data: Object.keys(rest).length > 0 ? rest : undefined,
-          };
+          return httpErrorFromResponse(processedResponse.status, responseData ?? {});
         }
 
-        // Handle different response formats
         let finalResponse;
         if (responseData.success !== undefined) {
-          // API already returns our format
-          finalResponse = responseData;
+          // Ensure SuccessResponse<T> always has a `data` key, even for
+          // no-body endpoints like DELETE.
+          finalResponse =
+            responseData.success === true && !('data' in responseData)
+              ? { ...responseData, data: undefined }
+              : responseData;
         } else {
-          // Wrap raw data in our format
           finalResponse = {
             success: true,
             data: responseData,
@@ -188,11 +195,7 @@ export class FetchConnector implements IConnector {
         debugLogger.logError(method, endpoint, error);
 
         if (error instanceof Error && error.name === 'AbortError') {
-          return {
-            success: false,
-            message: 'Request timeout',
-            error: { code: 'TIMEOUT' },
-          };
+          return makeTimeoutError();
         }
 
         // If this is the last attempt, don't retry
@@ -205,11 +208,7 @@ export class FetchConnector implements IConnector {
       }
     }
 
-    return {
-      success: false,
-      message: lastError?.message || 'Network error',
-      error: { code: 'NETWORK_ERROR' },
-    };
+    return makeNetworkError(lastError?.message || 'Network error');
   }
 
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {

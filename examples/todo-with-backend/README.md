@@ -17,7 +17,7 @@ This example demonstrates how to use the API Client Service with a real Express.
 Frontend (React + Vite)     Backend (Express.js)
 ├── FetchConnector    ←→    ├── REST API (/todos)
 ├── GlobalStateProvider     ├── In-memory storage
-├── useUrlSelector          ├── CORS enabled
+├── useUrlParam             ├── CORS enabled
 └── useFormData             └── Input validation
 ```
 

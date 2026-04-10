@@ -141,4 +141,96 @@ describe('InvalidationManager', () => {
     expect(invalidated).toEqual(['users']);
     expect(callback).toHaveBeenCalledTimes(1);
   });
+
+  it('returns an empty list when a condition blocks invalidation of related entities', () => {
+    const usersCb = vi.fn();
+    const booksCb = vi.fn();
+
+    manager.subscribe('users', usersCb);
+    manager.subscribe('books', booksCb);
+
+    manager.addRule({
+      entity: 'users',
+      invalidates: ['books'],
+      condition: data => data?.shouldInvalidate === true,
+    });
+
+    const result = manager.invalidate('users', { shouldInvalidate: false });
+
+    expect(result).toEqual([]);
+    expect(usersCb).not.toHaveBeenCalled();
+    expect(booksCb).not.toHaveBeenCalled();
+  });
+
+  it('invalidate with no rule still notifies direct subscribers of the entity', () => {
+    const cb = vi.fn();
+    manager.subscribe('standalone', cb);
+
+    const result = manager.invalidate('standalone');
+
+    expect(result).toEqual(['standalone']);
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  describe('invalidateAll', () => {
+    it('notifies every subscribed entity regardless of rules', () => {
+      const usersCb = vi.fn();
+      const booksCb = vi.fn();
+      const postsCb = vi.fn();
+
+      manager.subscribe('users', usersCb);
+      manager.subscribe('books', booksCb);
+      manager.subscribe('posts', postsCb);
+
+      const result = manager.invalidateAll();
+
+      expect(result).toEqual(expect.arrayContaining(['users', 'books', 'posts']));
+      expect(result).toHaveLength(3);
+      expect(usersCb).toHaveBeenCalledTimes(1);
+      expect(booksCb).toHaveBeenCalledTimes(1);
+      expect(postsCb).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns an empty list when there are no subscribers', () => {
+      const result = manager.invalidateAll();
+      expect(result).toEqual([]);
+    });
+
+    it('skips unsubscribed callbacks', () => {
+      const cb = vi.fn();
+      const unsubscribe = manager.subscribe('users', cb);
+      unsubscribe();
+
+      manager.invalidateAll();
+      expect(cb).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('edge cases', () => {
+    it('allows re-adding a rule for an existing entity (overwrite)', () => {
+      manager.addRule({ entity: 'users', invalidates: ['books'] });
+      manager.addRule({ entity: 'users', invalidates: ['posts'] });
+
+      const targets = manager.getInvalidationTargets('users');
+      expect(targets).toEqual(['users', 'posts']);
+    });
+
+    it('passes the invalidate data through to the rule condition unchanged', () => {
+      const condition = vi.fn((data: any) => data?.flag === true);
+      manager.addRule({
+        entity: 'users',
+        invalidates: [],
+        condition,
+      });
+
+      const payload = { flag: true, extra: 'preserved' };
+      manager.invalidate('users', payload);
+
+      expect(condition).toHaveBeenCalledWith(payload);
+    });
+
+    it('does not throw when invalidating an entity with no subscribers and no rule', () => {
+      expect(() => manager.invalidate('ghost')).not.toThrow();
+    });
+  });
 });

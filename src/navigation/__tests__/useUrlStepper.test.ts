@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useUrlStepper } from '../useUrlStepper';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
@@ -95,5 +95,43 @@ describe('useUrlStepper', () => {
   it('should have correct totalSteps', () => {
     const { result } = renderHook(() => useUrlStepper('step', steps), { wrapper });
     expect(result.current[1].totalSteps).toBe(4);
+  });
+
+  it('rewrites URL to drop invalid step', async () => {
+    window.history.pushState({}, '', '/?step=ghost&other=keep');
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { result } = renderHook(() => useUrlStepper('step', steps), { wrapper });
+
+    expect(result.current[0]).toBe('cart');
+
+    await waitFor(() => {
+      expect(window.location.search).not.toContain('ghost');
+    });
+    expect(window.location.search).not.toContain('step=');
+    expect(window.location.search).toContain('other=keep');
+
+    consoleSpy.mockRestore();
+  });
+
+  it('warns only once per invalid (param, value) pair under StrictMode', () => {
+    window.history.pushState({}, '', '/?step=bogus');
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const strictWrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(
+        React.StrictMode,
+        null,
+        React.createElement(BrowserRouter, null, children)
+      );
+
+    renderHook(() => useUrlStepper('step', steps), { wrapper: strictWrapper });
+
+    const bogusWarns = consoleSpy.mock.calls.filter(call =>
+      String(call[0] ?? '').includes('bogus')
+    );
+    expect(bogusWarns.length).toBe(1);
+
+    consoleSpy.mockRestore();
   });
 });

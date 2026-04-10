@@ -117,8 +117,8 @@ describe('useRecord', () => {
     it('should handle API errors', async () => {
       mockGet.mockResolvedValueOnce({
         success: false,
+        kind: 'notFound',
         message: 'Not found',
-        error: { code: 'NOT_FOUND' },
       });
 
       const { result } = renderHook(() => useRecord('settings', 'settings'), {
@@ -130,10 +130,10 @@ describe('useRecord', () => {
       });
 
       expect(result.current.data).toBe(null);
-      expect(result.current.error).toEqual({
+      expect(result.current.error).toMatchObject({
         success: false,
+        kind: 'notFound',
         message: 'Not found',
-        error: { code: 'NOT_FOUND' },
       });
     });
 
@@ -151,8 +151,8 @@ describe('useRecord', () => {
       expect(result.current.data).toBe(null);
       expect(result.current.error).toMatchObject({
         success: false,
+        kind: 'unknown',
         message: 'Network error',
-        error: { code: 'UNKNOWN_ERROR' },
       });
     });
   });

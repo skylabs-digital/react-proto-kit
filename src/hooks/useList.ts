@@ -153,10 +153,17 @@ export function useList<T>(
       }
 
       try {
-        // Merge ListParams with queryParams
-        const mergedParams = { ...params, ...options?.queryParams };
-        // Dedupe concurrent GETs for the same cacheKey so sibling components
-        // sharing the same list data only hit the backend once.
+        // queryParams from withQuery() are routed through ListParams.filters
+        // so both connectors treat them as equality filters. withQuery values
+        // override params.filters on overlapping keys.
+        const mergedFilters = {
+          ...(params?.filters ?? {}),
+          ...(options?.queryParams ?? {}),
+        };
+        const mergedParams: ListParams = {
+          ...params,
+          ...(Object.keys(mergedFilters).length > 0 ? { filters: mergedFilters } : {}),
+        };
         const response = await dedupeRequest(`get:${cacheKey}`, () =>
           connector.get<T[]>(endpoint, mergedParams)
         );

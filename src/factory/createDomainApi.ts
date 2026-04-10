@@ -231,6 +231,10 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
         );
       },
 
+      /**
+       * Full-replace mutation (HTTP PUT). Validates against the full upsert
+       * schema — use {@link usePatch} for partial updates.
+       */
       useUpdate: () => {
         assertPathResolved(path, 'useUpdate');
         return useUpdateMutation<z.infer<TUpsert>, EntityType>(
@@ -241,6 +245,10 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
         );
       },
 
+      /**
+       * Partial-update mutation (HTTP PATCH). Accepts `Partial<upsert>` — use
+       * {@link useUpdate} for full-replacement semantics.
+       */
       usePatch: () => {
         assertPathResolved(path, 'usePatch');
         return usePatchMutation<Partial<z.infer<TUpsert>>, EntityType>(entity, path, {

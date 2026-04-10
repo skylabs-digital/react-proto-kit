@@ -19,6 +19,7 @@ export default defineConfig({
     hookTimeout: 5000, // 5 second hook timeout
     teardownTimeout: 5000,
     isolate: true, // Enable test isolation to prevent shared state issues
+    exclude: ['**/node_modules/**', '**/dist/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

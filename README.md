@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
 [![Zod](https://img.shields.io/badge/Zod-3.x-3E67B1?logo=zod&logoColor=white)](https://zod.dev/)
-[![Tests](https://img.shields.io/badge/tests-273%20passing-brightgreen?logo=vitest&logoColor=white)](#running-tests)
+[![Tests](https://img.shields.io/badge/tests-380%20passing-brightgreen?logo=vitest&logoColor=white)](#running-tests)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A powerful React toolkit that eliminates boilerplate and accelerates development.  
@@ -17,6 +17,10 @@ Build full-stack apps with **type-safe APIs**, **real-time state**, and **automa
 [Quick Start](#-quick-start) · [API Reference](#-api-reference) · [Examples](#-examples) · [Full Docs](./docs/)
 
 </div>
+
+---
+
+> ⚠️ **v2.0.0 breaking change.** Mutation hooks (`useCreate`, `useUpdate`, `usePatch`, `useDelete`, `useSingleRecord*`) now return `Promise<ApiResponse<T>>` and **never throw**. Migrate from `try { await mutate() } catch` to `const res = await mutate(); if (!res.success) { ... }`. See the [Migration Guide](./MIGRATION.md) and the [Structured Error Handling](#️-structured-error-handling) section below.
 
 ---
 
@@ -70,7 +74,7 @@ That's it! Full CRUD API with TypeScript inference, cache management, and automa
 | 🔥 **Zero Boilerplate** | One function creates a complete CRUD API |
 | 🎯 **Type-Safe** | Full TypeScript inference from Zod schemas — `ExtractEntityType`, `ExtractInputType` |
 | ⚡ **Real-time State** | Automatic synchronization across components via `GlobalStateProvider` |
-| 🔄 **Optimistic Updates** | Instant UI feedback with automatic rollback |
+| 🔄 **Cache Invalidation** | Mutations update the cache directly and trigger background refetches via the invalidation manager; imperative control via `useInvalidation()` |
 | 🌐 **Backend Agnostic** | `FetchConnector` for REST APIs, `LocalStorageConnector` for prototyping |
 | 🛡️ **Structured Errors** | Full `ErrorResponse` propagation with custom `data` field for rich error handling |
 | 📝 **Form Handling** | Built-in validation with `useFormData` and `createFormHandler` |
@@ -179,7 +183,6 @@ const todoSchema = z.object({
 import { createDomainApi } from '@skylabs-digital/react-proto-kit';
 
 const todoApi = createDomainApi('todos', todoSchema, todoSchema, {
-  optimistic: true,
   cacheTime: 5 * 60 * 1000, // 5 minutes
 });
 ```
@@ -228,7 +231,6 @@ const commentApi = createDomainApi(
   commentSchema,
   commentUpsertSchema,
   {
-    optimistic: false,
     queryParams: {
       static: { include: 'author' },
       dynamic: ['status', 'sortBy']
@@ -292,7 +294,7 @@ type UserInput = ExtractInputType<typeof userApi>;
 
 ### 🛡️ Structured Error Handling
 
-Every mutation hook resolves to a discriminated `ApiResponse<T>`. When the backend returns an error, any **extra fields** in the response body are preserved in the `data` property of the `ErrorResponse` branch:
+Every mutation hook resolves to a discriminated `ApiResponse<T>`. `ErrorResponse` is itself a discriminated union keyed by `kind`, so you narrow once and get variant-specific fields back from TypeScript:
 
 ```tsx
 import { ErrorResponse } from '@skylabs-digital/react-proto-kit';
@@ -302,9 +304,9 @@ import { ErrorResponse } from '@skylabs-digital/react-proto-kit';
 
 const res = await createMutation.mutate(checkoutData);
 if (!res.success) {
-  if (res.error?.code === 'STOCK_EXCEEDED') {
-    // Extra fields from the response body are in res.data
-    const items = res.data?.items as StockExceededItem[];
+  if (res.kind === 'http' && res.code === 'STOCK_EXCEEDED') {
+    // Extra non-standard body fields land in `details`
+    const items = (res.details as { items: StockExceededItem[] }).items;
     showStockExceededDialog(items);
   }
   return;
@@ -312,22 +314,22 @@ if (!res.success) {
 // res.data is the created entity on success
 ```
 
-**`ErrorResponse` interface:**
+**`ErrorResponse` shape:**
 
 ```tsx
-interface ErrorResponse {
-  success: false;
-  message?: string;                       // Error message
-  error?: { code: string };               // Error code (e.g., 'STOCK_EXCEEDED')
-  type?: 'AUTH' | 'VALIDATION' | 'TRANSACTION' | 'NAVIGATION';
-  validation?: Record<string, string>;    // Field-level validation errors
-  data?: Record<string, unknown>;         // 🆕 Any extra fields from the response body
-}
+type ErrorResponse =
+  | { success: false; kind: 'validation'; message: string; fields: Record<string, string>; details?: unknown }
+  | { success: false; kind: 'auth';       message: string; details?: unknown }
+  | { success: false; kind: 'notFound';   message: string; details?: unknown }
+  | { success: false; kind: 'timeout';    message: string }
+  | { success: false; kind: 'network';    message: string; details?: unknown }
+  | { success: false; kind: 'http';       message: string; status: number; code?: string; details?: unknown }
+  | { success: false; kind: 'unknown';    message: string; details?: unknown };
 ```
 
-> 💡 The `data` field is automatically populated from any response body fields that aren't `message`, `code`, `type`, or `validation`. If the error body only has known fields, `data` is `undefined`.
+> 💡 Status 401/403 → `auth`, 404 → `notFound`, 422 or `validation` map → `validation`, `AbortError` → `timeout`, other non-OK HTTP → `http` (with `status` + optional `code`). Extras from the backend body are preserved under `details` on `http` errors.
 
-See the full [Error Handling Guide](./docs/ERROR_HANDLING.md) for patterns and examples.
+See the full [Error Handling Guide](./docs/ERROR_HANDLING.md) and the [v2 → v3 Migration Guide](./MIGRATION.md#guía-de-migración-v2--v300-errorresponse-discriminated-union) for patterns and the mechanical field mapping.
 
 ### 📝 Form Integration
 
@@ -374,28 +376,31 @@ function UserForm() {
 ### 🔍 URL State Management
 
 ```tsx
-import { useUrlSelector } from '@skylabs-digital/react-proto-kit';
+import { useUrlParam } from '@skylabs-digital/react-proto-kit';
 
 function TodoList() {
-  const [filter, setFilter] = useUrlSelector('filter', (value: string) => value as FilterType);
-  const [page, setPage] = useUrlSelector('page', (value: string) => parseInt(value) || 1);
-  
+  const [filter, setFilter] = useUrlParam('filter');
+  const [pageParam, setPage] = useUrlParam('page');
+  const page = parseInt(pageParam || '1', 10);
+
   const { data: todos } = todoApi.useList({
     page,
     limit: 10,
-    filter: filter || 'all'
+    filters: { status: filter || 'all' },
   });
 
   return (
     <div>
       <button onClick={() => setFilter('active')}>Show Active</button>
       <button onClick={() => setFilter('completed')}>Show Completed</button>
-      <button onClick={() => setPage(page + 1)}>Next Page</button>
+      <button onClick={() => setPage(String(page + 1))}>Next Page</button>
       {/* Render todos */}
     </div>
   );
 }
 ```
+
+> 💡 For richer URL-driven UI primitives, see `useUrlTabs`, `useUrlModal`, `useUrlDrawer`, `useUrlStepper` and `useUrlAccordion`.
 
 ### ✏️ Partial Updates with PATCH
 
@@ -550,7 +555,7 @@ function Dashboard() {
       products: productApi.useList,
     },
     optional: {
-      stats: statsApi.useQuery,
+      stats: statsApi.useRecord,
     },
   });
 
@@ -741,7 +746,6 @@ Creates a complete CRUD API for a resource.
 **Config Options:**
 ```tsx
 {
-  optimistic?: boolean;        // Enable optimistic updates (default: true)
   cacheTime?: number;         // Cache duration in milliseconds
   queryParams?: {
     static?: Record<string, any>;   // Always included parameters
@@ -752,13 +756,13 @@ Creates a complete CRUD API for a resource.
 
 **Returns:** API object with methods:
 - `useList(params?)` - Fetch list of entities
-- `useQuery(id)` / `useById(id)` - Fetch single entity
+- `useById(id)` - Fetch single entity
 - `useCreate()` - Create new entity
 - `useUpdate()` - Update entire entity (PUT)
 - `usePatch()` - Partial update (PATCH)
 - `useDelete()` - Delete entity
 - `withParams(params)` - Inject path parameters (builder pattern)
-- `withQuery(params)` - Inject query parameters (builder pattern)
+- `withQuery(params)` - Inject query parameters (builder pattern); propagates to mutations too
 
 ### `createSingleRecordApi(path, entitySchema, upsertSchema, config?)`
 
@@ -815,7 +819,7 @@ Creates a read-only list API (no create/update/delete).
 
 All hooks return objects with consistent interfaces:
 
-**Query Hooks** (`useList`, `useQuery`, `useById`, `useRecord`):
+**Query Hooks** (`useList`, `useById`, `useRecord`):
 
 ```tsx
 {
@@ -906,24 +910,25 @@ function App() {
 // Use in any component
 function SaveButton() {
   const { showSnackbar } = useSnackbar();
-  
+  const { mutate: updateTodo } = todoApi.useUpdate();
+
   const handleSave = async () => {
-    try {
-      await saveData();
+    const res = await updateTodo('todo-1', { text: 'Updated', completed: false });
+    if (!res.success) {
       showSnackbar({
-        message: 'Changes saved successfully!',
-        variant: 'success',
-        duration: 3000
-      });
-    } catch (error) {
-      showSnackbar({
-        message: 'Error saving changes',
+        message: res.message ?? 'Error saving changes',
         variant: 'error',
-        duration: 5000
+        duration: 5000,
       });
+      return;
     }
+    showSnackbar({
+      message: 'Changes saved successfully!',
+      variant: 'success',
+      duration: 3000,
+    });
   };
-  
+
   return <button onClick={handleSave}>Save</button>;
 }
 ```
@@ -965,13 +970,25 @@ function CustomSnackbar({ snackbar, onClose, animate }: SnackbarItemProps) {
 **Integration with CRUD APIs:**
 ```tsx
 const todosApi = createDomainApi('todos', todoSchema);
-const { showSnackbar } = useSnackbar();
 
-const createMutation = todosApi.useCreate({
-  onSuccess: () => showSnackbar({ message: 'Todo created!', variant: 'success' }),
-  onError: (e) => showSnackbar({ message: e.message, variant: 'error' })
-});
+function CreateTodoButton() {
+  const { showSnackbar } = useSnackbar();
+  const { mutate: createTodo, loading } = todosApi.useCreate();
+
+  const onClick = async () => {
+    const res = await createTodo({ text: 'New todo', completed: false });
+    if (!res.success) {
+      showSnackbar({ message: res.message ?? 'Create failed', variant: 'error' });
+      return;
+    }
+    showSnackbar({ message: 'Todo created!', variant: 'success' });
+  };
+
+  return <button onClick={onClick} disabled={loading}>Add</button>;
+}
 ```
+
+> Mutations return `Promise<ApiResponse<T>>` and never throw — there are no `onSuccess`/`onError` callback props. Handle outcomes inline after `await mutate(...)`.
 
 ## 📖 Documentation
 

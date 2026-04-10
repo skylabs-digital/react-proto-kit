@@ -22,7 +22,9 @@ export function createDevSeedConfig(
 }
 
 /**
- * Creates a seed configuration that only works with 204 responses (for fetch connector)
+ * Fallback seed for `FetchConnector` only: returns seed data when the backend
+ * answers `204 No Content`. Does NOT initialize storage — use
+ * {@link createDevSeedConfig} or `createInitSeedConfig` for that.
  */
 export function createFallbackSeedConfig(seedData: Record<string, any[]>): SeedConfig {
   return {

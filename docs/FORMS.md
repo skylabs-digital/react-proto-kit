@@ -410,19 +410,19 @@ function DynamicForm() {
 function CreateUserForm() {
   const { mutate: createUser, loading } = userApi.useCreate();
   const form = useFormData(userUpsertSchema, { name: '', email: '' });
-  
+
   const onSubmit = form.handleSubmit(async (data) => {
-    try {
-      await createUser(data);
-      form.reset();
-      // Show success message
-    } catch (error) {
-      // Handle API errors
-      if (error.status === 422) {
-        // Validation errors from server
-        form.setErrors(error.data.errors);
+    const res = await createUser(data);
+    if (!res.success) {
+      // Server validation errors live under `kind: 'validation'` with a
+      // required `fields` map. Extras from the response body land in `details`.
+      if (res.kind === 'validation') {
+        form.setErrors(res.fields);
       }
+      return;
     }
+    form.reset();
+    // Show success message
   });
   
   return (
@@ -455,25 +455,25 @@ function CreateUserForm() {
 
 ```tsx
 function EditUserForm({ userId }: { userId: string }) {
-  const { data: user, loading: userLoading } = userApi.useQuery(userId);
+  const { data: user, loading: userLoading } = userApi.useById(userId);
   const { mutate: updateUser, loading: updateLoading } = userApi.useUpdate();
-  
+
   const form = useFormData(userUpsertSchema, user || { name: '', email: '' });
-  
+
   // Update form when user data loads
   useEffect(() => {
     if (user) {
       form.setValues(user);
     }
   }, [user]);
-  
+
   const onSubmit = form.handleSubmit(async (data) => {
-    try {
-      await updateUser(userId, data);
-      // Show success message
-    } catch (error) {
-      // Handle errors
+    const res = await updateUser(userId, data);
+    if (!res.success) {
+      if (res.kind === 'validation') form.setErrors(res.fields);
+      return;
     }
+    // Show success message
   });
   
   if (userLoading) return <div>Loading user...</div>;
@@ -647,23 +647,19 @@ function FormWithValidation() {
 function FormWithServerValidation() {
   const { mutate: createUser } = userApi.useCreate();
   const form = useFormData(userSchema, { name: '', email: '' });
-  
+
   const onSubmit = form.handleSubmit(async (data) => {
-    try {
-      await createUser(data);
+    const res = await createUser(data);
+    if (res.success) {
       form.reset();
-    } catch (error) {
-      if (error.status === 422 && error.data?.errors) {
-        // Server validation errors
-        const serverErrors = {};
-        error.data.errors.forEach(err => {
-          serverErrors[err.field] = err.message;
-        });
-        form.setErrors(serverErrors);
-      } else {
-        // Generic error
-        form.setErrors({ _form: 'An unexpected error occurred' });
-      }
+      return;
+    }
+    if (res.kind === 'validation') {
+      // Field-level validation errors (client or server) live in res.fields
+      form.setErrors(res.fields);
+    } else {
+      // Generic error — `message` is required on every ErrorResponse variant
+      form.setErrors({ _form: res.message });
     }
   });
   

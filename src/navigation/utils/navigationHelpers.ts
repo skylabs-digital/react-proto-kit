@@ -1,6 +1,53 @@
 /**
  * Navigation helpers for managing URL search params with history
  */
+import { useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+
+/**
+ * Validates a URL search param against an allowed list. Returns the current
+ * value (or `defaultValue` if missing/invalid) and, as a side effect, rewrites
+ * the URL (via `replace`) to drop any invalid value. Warns once per
+ * (param, value) pair in non-production builds.
+ */
+export function useValidatedSearchParam<T extends string>(
+  param: string,
+  allowedValues: readonly T[],
+  defaultValue: T,
+  hookName: string
+): T {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const warnedRef = useRef<string | null>(null);
+
+  const urlValue = searchParams.get(param);
+  const isValid = !!urlValue && allowedValues.includes(urlValue as T);
+  const isInvalid = !!urlValue && !isValid;
+  const current = isValid ? (urlValue as T) : defaultValue;
+
+  useEffect(() => {
+    if (!isInvalid || !urlValue) return;
+
+    const warnKey = `${param}:${urlValue}`;
+    if (process.env.NODE_ENV !== 'production' && warnedRef.current !== warnKey) {
+      warnedRef.current = warnKey;
+      console.warn(
+        `[${hookName}] Invalid value "${urlValue}" for param "${param}". ` +
+          `Allowed values: ${allowedValues.join(', ')}. Using default: ${defaultValue}`
+      );
+    }
+
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev);
+        next.delete(param);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [isInvalid, urlValue, param, allowedValues, defaultValue, hookName, setSearchParams]);
+
+  return current;
+}
 
 /**
  * Adds a param to URL and pushes to navigation stack

@@ -53,6 +53,40 @@ describe('FetchConnector', () => {
       );
     });
 
+    it('flattens nested `filters` onto the query string', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('todos', { filters: { status: 'done', priority: 'high' } });
+
+      const calledUrl = mockFetch.mock.calls[0][0] as string;
+      expect(calledUrl.startsWith('https://api.example.com/todos?')).toBe(true);
+      expect(calledUrl).toContain('status=done');
+      expect(calledUrl).toContain('priority=high');
+    });
+
+    it('merges `filters` with top-level pagination params', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await connector.get('todos', {
+        page: 2,
+        limit: 5,
+        filters: { status: 'done' },
+      });
+
+      const calledUrl = mockFetch.mock.calls[0][0] as string;
+      expect(calledUrl).toContain('page=2');
+      expect(calledUrl).toContain('limit=5');
+      expect(calledUrl).toContain('status=done');
+      // `filters` itself is never serialized as a literal key
+      expect(calledUrl).not.toContain('filters=');
+    });
+
     it('should handle API response format', async () => {
       const mockApiResponse = {
         success: true,
@@ -83,7 +117,7 @@ describe('FetchConnector', () => {
       const result = await connector.get('items/999');
 
       expect(result.success).toBe(false);
-      expect((result as ErrorResponse).error?.code).toBe('NOT_FOUND');
+      expect((result as ErrorResponse).kind).toBe('notFound');
       expect((result as ErrorResponse).message).toBe('Not found');
     });
 
@@ -93,7 +127,7 @@ describe('FetchConnector', () => {
       const result = await connector.get('items');
 
       expect(result.success).toBe(false);
-      expect((result as ErrorResponse).error?.code).toBe('NETWORK_ERROR');
+      expect((result as ErrorResponse).kind).toBe('network');
     });
 
     it(
@@ -114,7 +148,7 @@ describe('FetchConnector', () => {
         const result = await timeoutConnector.get('items');
 
         expect(result.success).toBe(false);
-        expect((result as ErrorResponse).error?.code).toBe('NETWORK_ERROR');
+        expect((result as ErrorResponse).kind).toBe('network');
       },
       { timeout: 15000 }
     );
@@ -186,6 +220,20 @@ describe('FetchConnector', () => {
         })
       );
     });
+
+    it('normalizes success responses without a `data` key to include data: undefined', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, message: 'Item deleted successfully' }),
+      });
+
+      const result = await connector.delete('items/1');
+
+      expect(result.success).toBe(true);
+      expect('data' in result).toBe(true);
+      expect((result as SuccessResponse<void>).data).toBeUndefined();
+      expect((result as SuccessResponse<void>).message).toBe('Item deleted successfully');
+    });
   });
 
   describe('retries', () => {
@@ -211,8 +259,8 @@ describe('FetchConnector', () => {
     );
   });
 
-  describe('error response data propagation', () => {
-    it('should preserve extra body fields in ErrorResponse.data', async () => {
+  describe('error response details propagation', () => {
+    it('should preserve extra body fields in ErrorResponse.details for http errors', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 409,
@@ -233,18 +281,21 @@ describe('FetchConnector', () => {
 
       expect(result.success).toBe(false);
       const err = result as ErrorResponse;
+      if (err.kind !== 'http') throw new Error('expected http kind');
       expect(err.message).toBe('Stock exceeded');
-      expect(err.error?.code).toBe('STOCK_EXCEEDED');
-      expect(err.type).toBe('TRANSACTION');
-      expect(err.data).toBeDefined();
-      expect(err.data?.items).toEqual([
+      expect(err.code).toBe('STOCK_EXCEEDED');
+      expect(err.status).toBe(409);
+      expect(err.details).toBeDefined();
+      const details = err.details as Record<string, unknown>;
+      expect(details.type).toBe('TRANSACTION');
+      expect(details.items).toEqual([
         { productId: 'p1', requested: 5, available: 2 },
         { productId: 'p2', requested: 3, available: 0 },
       ]);
-      expect(err.data?.orderId).toBe('order-123');
+      expect(details.orderId).toBe('order-123');
     });
 
-    it('should not include known fields in ErrorResponse.data', async () => {
+    it('should surface validation errors as kind: validation with fields populated', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
@@ -261,15 +312,17 @@ describe('FetchConnector', () => {
 
       expect(result.success).toBe(false);
       const err = result as ErrorResponse;
+      if (err.kind !== 'validation') throw new Error('expected validation kind');
       expect(err.message).toBe('Bad request');
-      expect(err.error?.code).toBe('BAD_REQUEST');
-      expect(err.type).toBe('VALIDATION');
-      expect(err.validation).toEqual({ email: 'Invalid email' });
-      // No extra fields → data should be undefined
-      expect(err.data).toBeUndefined();
+      expect(err.fields).toEqual({ email: 'Invalid email' });
+      // Unknown extras (like `type`) land in details; known keys (message, code,
+      // validation) are extracted by httpErrorFromResponse and not duplicated.
+      expect(err.details).toBeDefined();
+      const details = err.details as Record<string, unknown>;
+      expect(details.type).toBe('VALIDATION');
     });
 
-    it('should set data to undefined when error body has only known fields', async () => {
+    it('should set details to undefined when error body has only known fields', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
@@ -283,7 +336,8 @@ describe('FetchConnector', () => {
 
       expect(result.success).toBe(false);
       const err = result as ErrorResponse;
-      expect(err.data).toBeUndefined();
+      if (err.kind !== 'http') throw new Error('expected http kind');
+      expect(err.details).toBeUndefined();
     });
   });
 

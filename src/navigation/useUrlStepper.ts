@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { pushToStack } from './utils/navigationHelpers';
-import { useSearchParams } from 'react-router-dom';
+import { pushToStack, useValidatedSearchParam } from './utils/navigationHelpers';
 
 export interface StepperHelpers<T extends string> {
   next: () => void;
@@ -40,31 +39,8 @@ export function useUrlStepper<T extends string = string>(
   steps: readonly T[],
   defaultStep?: T
 ): readonly [T, StepperHelpers<T>] {
-  const [searchParams] = useSearchParams();
-
-  const currentStep = useMemo(() => {
-    const urlValue = searchParams.get(param);
-    const defaultValue = defaultStep || steps[0];
-
-    if (!urlValue) {
-      return defaultValue;
-    }
-
-    // Validate that the value is a valid step
-    if (steps.includes(urlValue as T)) {
-      return urlValue as T;
-    }
-
-    // Invalid value - warn in development and use default
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(
-        `[useUrlStepper] Invalid step "${urlValue}" for param "${param}". ` +
-          `Valid steps: ${steps.join(', ')}. Using default: ${defaultValue}`
-      );
-    }
-
-    return defaultValue;
-  }, [searchParams, param, steps, defaultStep]);
+  const defaultValue = defaultStep || steps[0];
+  const currentStep = useValidatedSearchParam(param, steps, defaultValue, 'useUrlStepper');
 
   const currentIndex = steps.indexOf(currentStep);
   const isFirst = currentIndex === 0;

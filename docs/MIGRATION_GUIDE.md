@@ -2,6 +2,8 @@
 
 This guide helps you migrate between different versions of React Proto Kit and provides strategies for adopting the library in existing projects.
 
+> ⚠️ **v2.0.0 mutation return contract** — all mutation hooks now return `Promise<ApiResponse<T>>` and never throw. This is a separate breaking change from the older signature refactor covered below. For the full diff and call-site migration checklist, see **[MIGRATION.md](../MIGRATION.md)** at the repo root.
+
 ## Table of Contents
 
 - [Version Migration](#version-migration)

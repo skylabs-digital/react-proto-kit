@@ -340,37 +340,42 @@ export function useList<T>(
   params?: ListParams,
   options?: QueryOptions
 ): UseListResult<T> {
-  const connector = useApiClient();
+  const { connector } = useApiClient();
   const [data, setData] = useState<T[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  
+  const [error, setError] = useState<ErrorResponse | null>(null);
+
   const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    // The connector already returns a discriminated ApiResponse and never
+    // throws on HTTP errors. The hook surface preserves this contract — we
+    // only translate a *thrown* connector error into an UNKNOWN_ERROR
+    // ErrorResponse via `toUnknownErrorResponse`.
     try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await connector.get<T>(path, params);
-      
+      const response = await connector.get<T[]>(path, params);
       if (response.success) {
         setData(response.data);
       } else {
-        throw new Error(response.error?.message || 'Failed to fetch data');
+        setError(response);
       }
     } catch (err) {
-      setError(err as Error);
+      setError(toUnknownErrorResponse(err));
     } finally {
       setLoading(false);
     }
   }, [connector, path, params]);
-  
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-  
+
   return { data, loading, error, refetch: fetchData };
 }
 ```
+
+> ℹ️ **Public contract:** query hooks (`useList`, `useById`, `useRecord`) never throw. They always return `{ data, loading, error, refetch }` where `error` is `ErrorResponse | null`. Mutation hooks similarly always resolve to `Promise<ApiResponse<T>>`. The internal `try/catch` above only exists to convert unexpected thrown errors (network failures, bugs in custom connectors) into a structured `ErrorResponse`.
 
 ### Global State Integration
 
@@ -483,32 +488,33 @@ async function fetchWithDeduplication<T>(key: string, fetcher: () => Promise<T>)
 }
 ```
 
-### Optimistic Updates
+### Cache Updates on Mutation
 
-Optimistic updates provide immediate UI feedback:
+> ℹ️ **About "optimistic updates":** the `optimistic` flag on `GlobalStateConfig` is deprecated and a no-op. True pre-request optimistic updates with rollback are **not implemented**. The library instead performs a **post-success fast-path cache update** followed by a background invalidation, which provides the same perceived responsiveness for most workflows.
+
+The current flow for a successful `useCreate`/`useUpdate`/`usePatch` is:
 
 ```tsx
-async function optimisticUpdate<T>(
-  optimisticData: T,
-  actualUpdate: () => Promise<T>,
-  rollback: (error: Error) => void
-): Promise<T> {
-  // Apply optimistic update immediately
-  updateState(optimisticData);
-  
-  try {
-    // Perform actual update
-    const result = await actualUpdate();
-    // Confirm optimistic update
-    updateState(result);
-    return result;
-  } catch (error) {
-    // Rollback on error
-    rollback(error);
-    throw error;
-  }
+// Simplified pseudocode of the mutation post-success path:
+async function mutate(input: TInput): Promise<ApiResponse<TOutput>> {
+  const response = await connector.post<TOutput>(endpoint, input, queryParams);
+  if (!response.success) return response;
+
+  // 1) Fast-path cache update: write the new entity into the by-id cache and
+  //    prepend it to any list cached under this endpoint so the UI reflects
+  //    the change without a network round-trip.
+  writeToCache(response.data);
+
+  // 2) Notify cache subscribers: useList / useById / useRecord hooks
+  //    registered for this entity refetch in the background to reconcile any
+  //    server-side sorting, filtering, or computed fields.
+  globalInvalidationManager.invalidate(entity);
+
+  return response;
 }
 ```
+
+If the connector rejects (network failure), the mutation catches the thrown error, translates it into `{ success: false, kind: 'unknown', message, details }` via `toUnknownErrorResponse` (which in turn calls the `makeUnknownError` factory in `src/utils/errorResponse.ts`), and returns it. **Nothing is written to the cache on failure** — there is no rollback because there was no optimistic write.
 
 ### Memory Management
 

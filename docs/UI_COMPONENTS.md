@@ -37,32 +37,34 @@ function App() {
 // 2. Use in any component
 function TodoForm() {
   const { showSnackbar } = useSnackbar();
-  const createMutation = todosApi.useCreate();
-  
+  const { mutate: createTodo } = todosApi.useCreate();
+
   const handleSubmit = async (data) => {
-    try {
-      await createMutation.mutateAsync(data);
+    const res = await createTodo(data);
+    if (!res.success) {
       showSnackbar({
-        message: 'Todo created successfully!',
-        variant: 'success',
-        duration: 3000
-      });
-    } catch (error) {
-      showSnackbar({
-        message: error.message,
+        message: res.message ?? 'Failed to create todo',
         variant: 'error',
         duration: 5000,
         action: {
           label: 'Retry',
-          onClick: () => handleSubmit(data)
-        }
+          onClick: () => handleSubmit(data),
+        },
       });
+      return;
     }
+    showSnackbar({
+      message: 'Todo created successfully!',
+      variant: 'success',
+      duration: 3000,
+    });
   };
-  
+
   return <form onSubmit={handleSubmit}>...</form>;
 }
 ```
+
+> ⚠️ **v2.0.0**: Mutations return `Promise<ApiResponse<T>>` and never throw. There are no `onSuccess`/`onError` callback options and no `mutateAsync` — call `mutate` and inspect the returned response.
 
 ### Features
 
@@ -77,29 +79,31 @@ function TodoForm() {
 
 ```tsx
 const todosApi = createDomainApi('todos', todoSchema);
-const { showSnackbar } = useSnackbar();
 
-// Create
-const createMutation = todosApi.useCreate({
-  onSuccess: (todo) => {
-    showSnackbar({
-      message: `Created: ${todo.title}`,
-      variant: 'success'
-    });
-  },
-  onError: (e) => {
-    showSnackbar({
-      message: `Failed to create: ${e.message}`,
-      variant: 'error'
-    });
-  }
-});
+function TodoManager({ todo }: { todo: Todo }) {
+  const { showSnackbar } = useSnackbar();
+  const { mutate: createTodo } = todosApi.useCreate();
+  const { mutate: updateTodo } = todosApi.useUpdate();
+  const { mutate: deleteTodo } = todosApi.useDelete();
 
-// Delete with undo
-const deleteMutation = todosApi.useDelete({
-  onSuccess: (_, deletedId) => {
-    const backup = todosCache.get(deletedId);
-    
+  // Create
+  const onCreate = async (input: TodoInput) => {
+    const res = await createTodo(input);
+    if (!res.success) {
+      showSnackbar({ message: `Failed to create: ${res.message}`, variant: 'error' });
+      return;
+    }
+    showSnackbar({ message: `Created: ${res.data.title}`, variant: 'success' });
+  };
+
+  // Delete with undo
+  const onDelete = async () => {
+    const backup = { ...todo };
+    const res = await deleteTodo(todo.id);
+    if (!res.success) {
+      showSnackbar({ message: 'Delete failed', variant: 'error' });
+      return;
+    }
     showSnackbar({
       message: 'Todo deleted',
       variant: 'info',
@@ -107,17 +111,24 @@ const deleteMutation = todosApi.useDelete({
       action: {
         label: 'Undo',
         onClick: () => {
-          createMutation.mutate(backup);
-        }
-      }
+          createTodo(backup);
+        },
+      },
     });
-  }
-});
+  };
 
-// Update
-const updateMutation = todosApi.useUpdate({
-  onSuccess: () => showSnackbar({ message: 'Saved!', variant: 'success', duration: 2000 })
-});
+  // Update
+  const onSave = async (patch: Partial<TodoInput>) => {
+    const res = await updateTodo(todo.id, { ...todo, ...patch });
+    if (!res.success) {
+      showSnackbar({ message: 'Save failed', variant: 'error' });
+      return;
+    }
+    showSnackbar({ message: 'Saved!', variant: 'success', duration: 2000 });
+  };
+
+  return null; // wire these handlers to your UI
+}
 ```
 
 ### Custom Styling
@@ -244,17 +255,17 @@ const [isOpen, setOpen] = useUrlModal('createTodo', {
 ```tsx
 function CreateTodoModal() {
   const [isOpen, setOpen] = useUrlModal('createTodo');
-  const createMutation = todosApi.useCreate();
+  const { mutate: createTodo } = todosApi.useCreate();
   const { showSnackbar } = useSnackbar();
-  
+
   const handleSubmit = async (data) => {
-    try {
-      await createMutation.mutateAsync(data);
-      setOpen(false);  // Close modal on success
-      showSnackbar({ message: 'Todo created!', variant: 'success' });
-    } catch (error) {
-      showSnackbar({ message: error.message, variant: 'error' });
+    const res = await createTodo(data);
+    if (!res.success) {
+      showSnackbar({ message: res.message ?? 'Create failed', variant: 'error' });
+      return;
     }
+    setOpen(false); // Close modal on success
+    showSnackbar({ message: 'Todo created!', variant: 'success' });
   };
   
   return (
@@ -812,18 +823,18 @@ showSnackbar({ message: 'Success', duration: 30000 });  // Annoying
 function UserManagement() {
   const [isCreateOpen, setCreateOpen] = useUrlModal('createUser');
   const { showSnackbar } = useSnackbar();
-  const createMutation = usersApi.useCreate();
-  
+  const { mutate: createUser } = usersApi.useCreate();
+
   const handleCreate = async (data) => {
-    try {
-      await createMutation.mutateAsync(data);
-      setCreateOpen(false);
-      showSnackbar({ message: 'User created!', variant: 'success' });
-    } catch (error) {
-      showSnackbar({ message: error.message, variant: 'error' });
+    const res = await createUser(data);
+    if (!res.success) {
+      showSnackbar({ message: res.message ?? 'Create failed', variant: 'error' });
+      return;
     }
+    setCreateOpen(false);
+    showSnackbar({ message: 'User created!', variant: 'success' });
   };
-  
+
   return (
     <>
       <button onClick={() => setCreateOpen(true)}>Create User</button>

@@ -42,7 +42,7 @@ describe('useDataOrchestrator', () => {
   });
 
   it('should aggregate error states correctly', () => {
-    const error: ErrorResponse = { success: false, message: 'Failed to load' };
+    const error: ErrorResponse = { success: false, kind: 'unknown', message: 'Failed to load' };
 
     const { result } = renderHook(
       () =>
@@ -76,7 +76,7 @@ describe('useDataOrchestrator', () => {
   });
 
   it('should handle required/optional distinction', () => {
-    const error: ErrorResponse = { success: false, message: 'Stats failed' };
+    const error: ErrorResponse = { success: false, kind: 'unknown', message: 'Stats failed' };
 
     const { result } = renderHook(
       () =>
@@ -208,7 +208,7 @@ describe('useDataOrchestrator', () => {
 
   it('should call onError callback when errors occur', () => {
     const onError = vi.fn();
-    const error: ErrorResponse = { success: false, message: 'Failed' };
+    const error: ErrorResponse = { success: false, kind: 'unknown', message: 'Failed' };
 
     renderHook(
       () =>

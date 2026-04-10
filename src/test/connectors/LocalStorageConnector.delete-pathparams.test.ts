@@ -70,7 +70,7 @@ describe('LocalStorageConnector.delete with pathParams', () => {
 
     expect(response.success).toBe(false);
     if (!response.success) {
-      expect(response.error?.code).toBe('NOT_FOUND');
+      expect(response.kind).toBe('notFound');
     }
 
     // Nothing was touched.

@@ -1,6 +1,5 @@
-import { useCallback, useMemo } from 'react';
-import { pushToStack } from './utils/navigationHelpers';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback } from 'react';
+import { pushToStack, useValidatedSearchParam } from './utils/navigationHelpers';
 
 /**
  * Hook for managing tab state via URL params with validation
@@ -27,31 +26,8 @@ export function useUrlTabs<T extends string = string>(
   allowedValues: readonly T[],
   defaultValue?: T
 ): readonly [T, (value: T) => void] {
-  const [searchParams] = useSearchParams();
-
-  const activeTab = useMemo(() => {
-    const urlValue = searchParams.get(param);
-    const defaultTab = defaultValue || allowedValues[0];
-
-    if (!urlValue) {
-      return defaultTab;
-    }
-
-    // Validate that the value is allowed
-    if (allowedValues.includes(urlValue as T)) {
-      return urlValue as T;
-    }
-
-    // Invalid value - warn in development and use default
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(
-        `[useUrlTabs] Invalid value "${urlValue}" for param "${param}". ` +
-          `Allowed values: ${allowedValues.join(', ')}. Using default: ${defaultTab}`
-      );
-    }
-
-    return defaultTab;
-  }, [searchParams, param, allowedValues, defaultValue]);
+  const defaultTab = defaultValue || allowedValues[0];
+  const activeTab = useValidatedSearchParam(param, allowedValues, defaultTab, 'useUrlTabs');
 
   const setTab = useCallback(
     (value: T) => {

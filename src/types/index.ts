@@ -10,14 +10,36 @@ export interface SuccessResponse<T> {
   meta?: PaginationMeta;
 }
 
-export interface ErrorResponse {
-  success: false;
-  message?: string;
-  error?: { code: string };
-  type?: 'AUTH' | 'VALIDATION' | 'TRANSACTION' | 'NAVIGATION';
-  validation?: Record<string, string>;
-  data?: Record<string, unknown>;
-}
+/**
+ * Discriminated union of every error the library can surface. Consumers narrow
+ * via `res.kind` after checking `!res.success`. All variants carry a
+ * human-readable `message`. Extra backend body fields are preserved under
+ * `details` (typed `unknown` on purpose — narrow before reading).
+ */
+export type ErrorResponse =
+  | {
+      success: false;
+      kind: 'validation';
+      message: string;
+      fields: Record<string, string>;
+      details?: unknown;
+    }
+  | { success: false; kind: 'auth'; message: string; details?: unknown }
+  | { success: false; kind: 'notFound'; message: string; details?: unknown }
+  | { success: false; kind: 'timeout'; message: string }
+  | { success: false; kind: 'network'; message: string; details?: unknown }
+  | {
+      success: false;
+      kind: 'http';
+      message: string;
+      status: number;
+      code?: string;
+      details?: unknown;
+    }
+  | { success: false; kind: 'unknown'; message: string; details?: unknown };
+
+/** The set of discriminator values used by {@link ErrorResponse}. */
+export type ApiErrorKind = ErrorResponse['kind'];
 
 export interface PaginationMeta {
   total: number;

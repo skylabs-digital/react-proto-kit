@@ -467,11 +467,14 @@ export const Dashboard = withDataOrchestrator<DashboardData>(
 **After Mutation:**
 
 ```tsx
-const createMutation = todosApi.useCreate({
-  onSuccess: () => {
+const { mutate: createTodo } = todosApi.useCreate();
+
+const handleCreate = async (input: TodoInput) => {
+  const res = await createTodo(input);
+  if (res.success) {
     orchestrator.refetch.todos();
   }
-});
+};
 ```
 
 See [Data Orchestrator Documentation](./DATA_ORCHESTRATOR.md) for detailed patterns and examples.
@@ -653,28 +656,29 @@ function App() {
 // Use in any component
 function SaveButton() {
   const { showSnackbar } = useSnackbar();
-  
+  const { mutate: updateTodo } = todosApi.useUpdate();
+
   const handleSave = async () => {
-    try {
-      await saveData();
+    const res = await updateTodo('todo-1', { text: 'Updated', completed: false });
+    if (!res.success) {
       showSnackbar({
-        message: 'Saved successfully!',
-        variant: 'success',
-        duration: 3000
-      });
-    } catch (error) {
-      showSnackbar({
-        message: 'Error saving data',
+        message: res.message ?? 'Error saving data',
         variant: 'error',
         duration: 5000,
         action: {
           label: 'Retry',
-          onClick: () => handleSave()
-        }
+          onClick: () => handleSave(),
+        },
       });
+      return;
     }
+    showSnackbar({
+      message: 'Saved successfully!',
+      variant: 'success',
+      duration: 3000,
+    });
   };
-  
+
   return <button onClick={handleSave}>Save</button>;
 }
 ```

@@ -7,7 +7,7 @@ import {
   createDomainApi,
   configureDebugLogging,
   useFormData,
-  useUrlSelector,
+  useUrlParam,
   z,
 } from '../../../src';
 
@@ -51,7 +51,6 @@ const commentUpsertSchema = z.object({
 
 // Create API with Global Context and FetchConnector
 const todosApi = createDomainApi('todos', todoEntitySchema, todoUpsertSchema, {
-  optimistic: true,
   cacheTime: 5 * 60 * 1000, // 5 minutes
 });
 
@@ -61,7 +60,6 @@ const commentsApi = createDomainApi(
   commentEntitySchema,
   commentUpsertSchema,
   {
-    optimistic: false, // Disable optimistic updates for comments
     cacheTime: 2 * 60 * 1000, // 2 minutes
     queryParams: {
       static: { author: 'fer' }, // Always included
@@ -394,10 +392,8 @@ function TodoItem({ todo }: { todo: Todo }) {
 
 function TodoList() {
   const { data: todos, loading, error } = todosApi.useList();
-  const [filter, setFilter] = useUrlSelector('filter', (value: string) => value as FilterType, {
-    multiple: false,
-  });
-  const currentFilter = filter || 'all';
+  const [filterRaw, setFilter] = useUrlParam('filter');
+  const currentFilter = (filterRaw as FilterType) || 'all';
 
   // Handle loading state
   if (loading) {

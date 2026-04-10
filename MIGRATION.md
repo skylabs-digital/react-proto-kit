@@ -75,6 +75,8 @@ interface SuccessResponse<T> {
   meta?: PaginationMeta;
 }
 
+// Nota: en v3 ErrorResponse pasó a ser una discriminated union.
+// Ver la sección "v2 → v3" más abajo para el shape actual.
 interface ErrorResponse {
   success: false;
   message?: string;
@@ -414,7 +416,7 @@ Este helper es del consumer, no del library. RPK intencionalmente no lanza — p
 ## Compatibilidad
 
 - **v1.x → v2.0**: breaking. Requiere migración manual de los call sites.
-- **RPK internamente**: el refactor preservó toda la lógica de cache, optimistic updates, y global state. Solo cambia el shape del return de `mutate`.
+- **RPK internamente**: el refactor preservó toda la lógica de cache (fast-path + invalidation) y global state. Solo cambia el shape del return de `mutate`. Nota: el flag `optimistic` de `GlobalStateConfig` es un no-op deprecado; el library nunca implementó true pre-request optimistic updates con rollback.
 - **Consumers externos (npm público)**: el bump mayor es explícito, semantic-release publica 2.0.0 con el `BREAKING CHANGE` footer en el changelog.
 - **Consumers internos (GitHub Packages)**: mismo código, mismo bump.
 
@@ -431,3 +433,222 @@ Este helper es del consumer, no del library. RPK intencionalmente no lanza — p
 | `useSingleRecordReset`   | `Promise<void>`       | `Promise<ApiResponse<void>>` | No            | No          |
 
 El único hook con comportamiento runtime realmente distinto es `useCreate` — antes lanzaba, ahora no. Los otros seis solo cambiaron la firma del return (de `void` a `ApiResponse`), lo cual rompe TypeScript pero no el runtime del código existente si no se usaba el valor. El peligro oculto en esos seis es que el código de los consumers creía que manejaba errores con try/catch pero en realidad nunca los atrapó — v2 es la primera versión donde el manejo de errores post-await realmente funciona.
+
+---
+
+# Guía de migración v2 → v3.0.0: `ErrorResponse` discriminated union
+
+## TL;DR
+
+`ErrorResponse` pasó de ser una interface laxa con campos opcionales a una **discriminated union** keyed por `kind`. Cada variante tiene exactamente los campos que hacen sentido para ese tipo de error, y TypeScript fuerza narrowing antes de leerlos.
+
+```ts
+// v2 (antes)
+if (!res.success) {
+  if (res.error?.code === 'NOT_FOUND') showNotFound();
+  if (res.validation) showFieldErrors(res.validation);
+  if (res.type === 'AUTH') redirectToLogin();
+}
+
+// v3 (después)
+if (!res.success) {
+  switch (res.kind) {
+    case 'notFound':   showNotFound(); break;
+    case 'validation': showFieldErrors(res.fields); break;
+    case 'auth':       redirectToLogin(); break;
+    // ...
+  }
+}
+```
+
+Por qué el cambio: en v2, `error`, `type`, `validation` y `data` eran todos opcionales y no estaban relacionados entre sí. Leer `res.validation` sin chequear `res.type === 'VALIDATION'` compilaba sin errores pero podía devolver `undefined` silenciosamente. La discriminated union hace que TypeScript exija el guard antes de ver los campos.
+
+## El nuevo shape
+
+```ts
+type ErrorResponse =
+  | { success: false; kind: 'validation'; message: string; fields: Record<string, string>; details?: unknown }
+  | { success: false; kind: 'auth';       message: string; details?: unknown }
+  | { success: false; kind: 'notFound';   message: string; details?: unknown }
+  | { success: false; kind: 'timeout';    message: string }
+  | { success: false; kind: 'network';    message: string; details?: unknown }
+  | { success: false; kind: 'http';       message: string; status: number; code?: string; details?: unknown }
+  | { success: false; kind: 'unknown';    message: string; details?: unknown };
+
+type ApiErrorKind = ErrorResponse['kind'];
+```
+
+## Mapeo mecánico de campos
+
+| v2 field | v3 equivalent |
+|----------|---------------|
+| `res.message` | `res.message` (ahora **requerido** en todas las variantes) |
+| `res.error?.code` | Desaparece. Para 401/403 → `res.kind === 'auth'`; para 404 → `res.kind === 'notFound'`; para códigos custom del backend → `res.kind === 'http'` con `res.code` + `res.status` |
+| `res.type === 'VALIDATION'` | `res.kind === 'validation'` |
+| `res.type === 'AUTH'` | `res.kind === 'auth'` |
+| `res.type === 'NAVIGATION'` | `res.kind === 'notFound'` (o `http` si status ≠ 404) |
+| `res.type === 'TRANSACTION'` | `res.kind === 'http'`, chequear `res.status` / `res.code` |
+| `res.validation` | `res.fields` (solo existe bajo `kind: 'validation'`, y es **requerido**, no opcional) |
+| `res.data` (extras del body) | `res.details` (tipo `unknown`, narrow antes de leer) |
+
+## Cómo mapea HTTP status a `kind`
+
+`httpErrorFromResponse` en `src/utils/errorResponse.ts` centraliza la lógica:
+
+| Signal del backend | Resulting `kind` |
+|--------------------|------------------|
+| Status `401` / `403` | `auth` |
+| Status `404` | `notFound` |
+| Status `422`, o body con `validation` map no vacío | `validation` |
+| Cualquier otro status no-ok | `http` (con `status`, `code`, `details`) |
+| `AbortError` (timeout del fetch) | `timeout` |
+| Fetch rejection (sin `AbortError`) | `network` |
+| Excepción en mutation helpers (Zod mappers, etc.) | `unknown` |
+
+## Casos de migración
+
+### Caso 1: narrowing por código HTTP
+
+**Antes (v2):**
+```ts
+if (!res.success) {
+  if (res.error?.code === 'NOT_FOUND') return <NotFoundPage />;
+  if (res.error?.code === 'UNAUTHORIZED') return redirectToLogin();
+  return showGenericError(res.message);
+}
+```
+
+**Después (v3):**
+```ts
+if (!res.success) {
+  switch (res.kind) {
+    case 'notFound': return <NotFoundPage />;
+    case 'auth':     return redirectToLogin();
+    default:         return showGenericError(res.message);
+  }
+}
+```
+
+### Caso 2: errores de validación por campo
+
+**Antes (v2):**
+```ts
+if (!res.success && res.validation) {
+  Object.entries(res.validation).forEach(([field, msg]) => {
+    setError(field, { message: msg });
+  });
+}
+```
+
+**Después (v3):**
+```ts
+if (!res.success && res.kind === 'validation') {
+  Object.entries(res.fields).forEach(([field, msg]) => {
+    setError(field, { message: msg });
+  });
+}
+```
+
+Nota: en v3, `fields` es **requerido** bajo `kind: 'validation'` (no opcional), así que podés acceder directamente sin `?.`.
+
+### Caso 3: extras del body de error
+
+**Antes (v2):**
+```ts
+if (!res.success && res.error?.code === 'STOCK_EXCEEDED') {
+  const items = res.data?.items as OutOfStockItem[];
+  showStockDialog(items);
+}
+```
+
+**Después (v3):**
+```ts
+if (!res.success && res.kind === 'http' && res.code === 'STOCK_EXCEEDED') {
+  const items = (res.details as { items: OutOfStockItem[] }).items;
+  showStockDialog(items);
+}
+```
+
+`details` es `unknown` por diseño — forzás el cast explícitamente en el call site, reconociendo que es contenido backend-specific que el library no puede tipar.
+
+### Caso 4: banner genérico de error
+
+**Antes (v2):**
+```ts
+{error && <Banner type="error">{error.message ?? 'Unknown error'}</Banner>}
+```
+
+**Después (v3):**
+```ts
+{error && <Banner type="error">{error.message}</Banner>}
+```
+
+El `??` ya no hace falta: `message` es requerido en todas las variantes.
+
+### Caso 5: redirect por auth
+
+**Antes (v2):**
+```ts
+useEffect(() => {
+  if (error?.type === 'AUTH') navigate('/login');
+}, [error]);
+```
+
+**Después (v3):**
+```ts
+useEffect(() => {
+  if (error?.kind === 'auth') navigate('/login');
+}, [error]);
+```
+
+### Caso 6: exhaustividad
+
+En v3 podés aprovechar la discriminated union para que TypeScript te avise si dejás un `kind` sin manejar:
+
+```ts
+function formatError(err: ErrorResponse): string {
+  switch (err.kind) {
+    case 'validation': return `Invalid: ${Object.keys(err.fields).join(', ')}`;
+    case 'auth':       return 'Please sign in.';
+    case 'notFound':   return 'Not found.';
+    case 'timeout':    return 'Timed out.';
+    case 'network':    return 'Network error.';
+    case 'http':       return `HTTP ${err.status}`;
+    case 'unknown':    return err.message;
+    default: {
+      const _exhaustive: never = err;
+      return _exhaustive;
+    }
+  }
+}
+```
+
+Si alguna vez agregamos una variante nueva al union, este switch deja de compilar hasta que la manejes.
+
+## Search-and-replace checklist
+
+Para migrar un codebase v2 → v3:
+
+1. **`res.error?.code`** → revisar uno por uno. Si es un status semántico (`NOT_FOUND`, `UNAUTHORIZED`), usar `res.kind`. Si es un code custom del backend, usar `res.kind === 'http'` + `res.code`.
+2. **`res.type === 'VALIDATION'`** → `res.kind === 'validation'`
+3. **`res.type === 'AUTH'`** → `res.kind === 'auth'`
+4. **`res.validation`** → `res.fields` (dentro de un guard `res.kind === 'validation'`)
+5. **`res.data` (en error path)** → `res.details` (dentro del guard apropiado; probablemente `res.kind === 'http'`)
+6. **`res.message ?? 'fallback'`** → `res.message` (ya no es opcional)
+7. **Mocks de tests** que construyen `{ success: false, ... }` literales necesitan agregar `kind` y los campos requeridos de la variante. Ejemplo:
+   ```ts
+   // antes
+   mockResolvedValue({ success: false, error: { code: 'NOT_FOUND' } })
+   // después
+   mockResolvedValue({ success: false, kind: 'notFound', message: 'Not found' })
+   ```
+
+## Por qué no lo hicimos retro-compatible
+
+Las dos shapes son incompatibles. Mantener la vieja como alias forzaría todos los campos viejos a ser opcionales en el union, lo cual rompe el punto del refactor (exhaustividad + acceso seguro a campos por variante). La migración mecánica es clara y TypeScript te guía a cada call site que necesita cambios.
+
+## Compatibilidad
+
+- **v2.x → v3.0**: breaking. Requiere migración de todos los error-handling call sites.
+- **Emisión interna**: todos los connectors, mutation helpers y utilities ahora pasan por las factories de `src/utils/errorResponse.ts`. No hay object literals de `{ success: false, ... }` dispersos en el código.
+- **Bump**: v3.0.0 con `BREAKING CHANGE` footer — semantic-release lo agrega al changelog automáticamente.

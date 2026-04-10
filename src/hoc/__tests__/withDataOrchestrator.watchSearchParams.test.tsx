@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter, useSearchParams } from 'react-router-dom';
 import { withDataOrchestrator } from '../withDataOrchestrator';
 
@@ -71,7 +71,7 @@ describe('withDataOrchestrator - watchSearchParams', () => {
     expect(callCount).toBe(1);
 
     // Change search param
-    screen.getByText('Change Status').click();
+    fireEvent.click(screen.getByText('Change Status'));
 
     await waitFor(() => {
       const statusEl = screen.getByTestId('status');
@@ -177,7 +177,7 @@ describe('withDataOrchestrator - watchSearchParams', () => {
     expect(screen.getByTestId('is-loading').textContent).toBe('not-loading');
 
     // Change non-watched param
-    screen.getByText('Change Other').click();
+    fireEvent.click(screen.getByText('Change Other'));
 
     // Wait a bit
     await new Promise(resolve => setTimeout(resolve, 100));

@@ -1,5 +1,6 @@
 import { IConnector, ApiResponse, ConnectorConfig, SuccessResponse, ErrorResponse } from '../types';
 import { debugLogger } from '../utils/debug';
+import { makeHttpError, makeNotFoundError } from '../utils/errorResponse';
 
 export class LocalStorageConnector implements IConnector {
   private config: ConnectorConfig;
@@ -195,11 +196,11 @@ export class LocalStorageConnector implements IConnector {
     await this.simulateDelay();
 
     if (this.shouldSimulateError()) {
-      const error: ErrorResponse = {
-        success: false,
-        message: 'Simulated localStorage error',
-        error: { code: 'STORAGE_ERROR' },
-      };
+      const error: ErrorResponse = makeHttpError(
+        500,
+        'Simulated localStorage error',
+        'STORAGE_ERROR'
+      );
       debugLogger.logResponse('GET', endpoint, error, Date.now() - startTime);
       return error;
     }
@@ -221,11 +222,7 @@ export class LocalStorageConnector implements IConnector {
       // Get single item
       const item = collectionData.find((item: any) => item.id === id);
       if (!item) {
-        const errorResponse: ErrorResponse = {
-          success: false,
-          message: 'Item not found',
-          error: { code: 'NOT_FOUND' },
-        };
+        const errorResponse: ErrorResponse = makeNotFoundError('Item not found');
         debugLogger.logResponse('GET', endpoint, errorResponse, Date.now() - startTime);
         return errorResponse;
       }
@@ -282,11 +279,11 @@ export class LocalStorageConnector implements IConnector {
     await this.simulateDelay();
 
     if (this.shouldSimulateError()) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'Simulated localStorage error',
-        error: { code: 'STORAGE_ERROR' },
-      };
+      const errorResponse: ErrorResponse = makeHttpError(
+        500,
+        'Simulated localStorage error',
+        'STORAGE_ERROR'
+      );
       debugLogger.logResponse('POST', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }
@@ -329,11 +326,11 @@ export class LocalStorageConnector implements IConnector {
     await this.simulateDelay();
 
     if (this.shouldSimulateError()) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'Simulated localStorage error',
-        error: { code: 'STORAGE_ERROR' },
-      };
+      const errorResponse: ErrorResponse = makeHttpError(
+        500,
+        'Simulated localStorage error',
+        'STORAGE_ERROR'
+      );
       debugLogger.logResponse('PUT', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }
@@ -344,11 +341,11 @@ export class LocalStorageConnector implements IConnector {
     const id = endpointId || (data && data.id);
 
     if (!id) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'ID is required for update operation (either in endpoint or data payload)',
-        error: { code: 'INVALID_REQUEST' },
-      };
+      const errorResponse: ErrorResponse = makeHttpError(
+        400,
+        'ID is required for update operation (either in endpoint or data payload)',
+        'INVALID_REQUEST'
+      );
       debugLogger.logResponse('PUT', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }
@@ -366,11 +363,7 @@ export class LocalStorageConnector implements IConnector {
     const itemIndex = collectionData.findIndex((item: any) => item.id === id);
 
     if (itemIndex === -1) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'Item not found',
-        error: { code: 'NOT_FOUND' },
-      };
+      const errorResponse: ErrorResponse = makeNotFoundError('Item not found');
       debugLogger.logResponse('PUT', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }
@@ -408,11 +401,11 @@ export class LocalStorageConnector implements IConnector {
     await this.simulateDelay();
 
     if (this.shouldSimulateError()) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'Simulated localStorage error',
-        error: { code: 'STORAGE_ERROR' },
-      };
+      const errorResponse: ErrorResponse = makeHttpError(
+        500,
+        'Simulated localStorage error',
+        'STORAGE_ERROR'
+      );
       debugLogger.logResponse('PATCH', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }
@@ -423,11 +416,11 @@ export class LocalStorageConnector implements IConnector {
     const id = endpointId || (data && data.id);
 
     if (!id) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'ID is required for patch operation (either in endpoint or data payload)',
-        error: { code: 'INVALID_REQUEST' },
-      };
+      const errorResponse: ErrorResponse = makeHttpError(
+        400,
+        'ID is required for patch operation (either in endpoint or data payload)',
+        'INVALID_REQUEST'
+      );
       debugLogger.logResponse('PATCH', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }
@@ -445,11 +438,7 @@ export class LocalStorageConnector implements IConnector {
     const itemIndex = collectionData.findIndex((item: any) => item.id === id);
 
     if (itemIndex === -1) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'Item not found',
-        error: { code: 'NOT_FOUND' },
-      };
+      const errorResponse: ErrorResponse = makeNotFoundError('Item not found');
       debugLogger.logResponse('PATCH', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }
@@ -487,11 +476,11 @@ export class LocalStorageConnector implements IConnector {
     await this.simulateDelay();
 
     if (this.shouldSimulateError()) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'Simulated localStorage error',
-        error: { code: 'STORAGE_ERROR' },
-      };
+      const errorResponse: ErrorResponse = makeHttpError(
+        500,
+        'Simulated localStorage error',
+        'STORAGE_ERROR'
+      );
       debugLogger.logResponse('DELETE', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }
@@ -502,11 +491,11 @@ export class LocalStorageConnector implements IConnector {
     const id = endpointId || (data && data.id);
 
     if (!id) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'ID is required for delete operation (either in endpoint or data payload)',
-        error: { code: 'INVALID_REQUEST' },
-      };
+      const errorResponse: ErrorResponse = makeHttpError(
+        400,
+        'ID is required for delete operation (either in endpoint or data payload)',
+        'INVALID_REQUEST'
+      );
       debugLogger.logResponse('DELETE', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }
@@ -525,11 +514,7 @@ export class LocalStorageConnector implements IConnector {
     const itemIndex = collectionData.findIndex((item: any) => item.id === id);
 
     if (itemIndex === -1) {
-      const errorResponse: ErrorResponse = {
-        success: false,
-        message: 'Item not found',
-        error: { code: 'NOT_FOUND' },
-      };
+      const errorResponse: ErrorResponse = makeNotFoundError('Item not found');
       debugLogger.logResponse('DELETE', endpoint, errorResponse, Date.now() - startTime);
       return errorResponse;
     }

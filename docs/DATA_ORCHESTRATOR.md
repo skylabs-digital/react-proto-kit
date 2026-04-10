@@ -609,8 +609,8 @@ function ProductPage({ product, reviews, orchestrator }: PageData & { orchestrat
 
 export const ProductPageWithData = withDataOrchestrator<PageData>(ProductPage, {
   hooks: {
-    product: () => productsApi.useQuery(productId),
-    reviews: () => reviewsApi.useList({ productId }),
+    product: () => productsApi.useById(productId),
+    reviews: () => reviewsApi.useList({ filters: { productId } }),
   }
 });
 ```
@@ -619,23 +619,23 @@ export const ProductPageWithData = withDataOrchestrator<PageData>(ProductPage, {
 
 ```tsx
 function TodoList({ todos, orchestrator }: TodoData & { orchestrator: any }) {
-  const createMutation = todosApi.useCreate({
-    onSuccess: () => {
-      // Refetch todos after creating
-      orchestrator.refetch.todos();
-    }
-  });
-  
-  const deleteMutation = todosApi.useDelete({
-    onSuccess: () => {
-      orchestrator.refetch.todos();
-    }
-  });
-  
+  const { mutate: createTodo } = todosApi.useCreate();
+  const { mutate: deleteTodo } = todosApi.useDelete();
+
+  const handleCreate = async (input: TodoInput) => {
+    const res = await createTodo(input);
+    if (res.success) orchestrator.refetch.todos();
+  };
+
+  const handleDelete = async (id: string) => {
+    const res = await deleteTodo(id);
+    if (res.success) orchestrator.refetch.todos();
+  };
+
   return (
     <div>
-      <TodoForm onSubmit={createMutation.mutate} />
-      <TodoList todos={todos} onDelete={deleteMutation.mutate} />
+      <TodoForm onSubmit={handleCreate} />
+      <TodoList todos={todos} onDelete={handleDelete} />
     </div>
   );
 }

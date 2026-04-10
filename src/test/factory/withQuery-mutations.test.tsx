@@ -114,12 +114,10 @@ describe('createDomainApi withQuery propagation to mutations', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    // useList merges list params with queryParams before calling get; the
-    // important assertion is that `status` reached the connector.
     expect(mockGet).toHaveBeenCalled();
     const callArgs = mockGet.mock.calls[0];
     expect(callArgs[0]).toBe('todos');
-    expect(callArgs[1]).toMatchObject({ status: 'done' });
+    expect(callArgs[1]).toMatchObject({ filters: { status: 'done' } });
   });
 
   it('withParams and withQuery chain and both flow to mutations', async () => {

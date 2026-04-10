@@ -185,25 +185,26 @@ export default function SnackbarDemo() {
   <App />
 </SnackbarProvider>
 
-// Usage in component
+// Usage in component (v2.0.0+)
 const { showSnackbar } = useSnackbar();
+const { mutate: createTodo } = todosApi.useCreate();
 
-const mutation = todosApi.useCreate({
-  onSuccess: () => {
+const handleCreate = async (input) => {
+  const res = await createTodo(input);
+  if (!res.success) {
     showSnackbar({
-      message: 'Todo created!',
-      variant: 'success',
-      duration: 3000
-    });
-  },
-  onError: (e) => {
-    showSnackbar({
-      message: e.message,
+      message: res.message ?? 'Create failed',
       variant: 'error',
-      duration: 5000
+      duration: 5000,
     });
+    return;
   }
-});`}
+  showSnackbar({
+    message: 'Todo created!',
+    variant: 'success',
+    duration: 3000,
+  });
+};`}
         </pre>
       </div>
 

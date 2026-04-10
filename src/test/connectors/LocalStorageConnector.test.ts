@@ -90,7 +90,7 @@ describe('LocalStorageConnector', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error?.code).toBe('NOT_FOUND');
+        expect(result.kind).toBe('notFound');
       }
     });
 
@@ -179,7 +179,7 @@ describe('LocalStorageConnector', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error?.code).toBe('NOT_FOUND');
+        expect(result.kind).toBe('notFound');
       }
     });
 
@@ -188,7 +188,11 @@ describe('LocalStorageConnector', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error?.code).toBe('INVALID_REQUEST');
+        expect(result.kind).toBe('http');
+        if (result.kind === 'http') {
+          expect(result.code).toBe('INVALID_REQUEST');
+          expect(result.status).toBe(400);
+        }
       }
     });
   });
@@ -219,7 +223,7 @@ describe('LocalStorageConnector', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error?.code).toBe('NOT_FOUND');
+        expect(result.kind).toBe('notFound');
       }
     });
 
@@ -228,7 +232,11 @@ describe('LocalStorageConnector', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error?.code).toBe('INVALID_REQUEST');
+        expect(result.kind).toBe('http');
+        if (result.kind === 'http') {
+          expect(result.code).toBe('INVALID_REQUEST');
+          expect(result.status).toBe(400);
+        }
       }
     });
   });
@@ -244,7 +252,11 @@ describe('LocalStorageConnector', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error?.code).toBe('STORAGE_ERROR');
+        expect(result.kind).toBe('http');
+        if (result.kind === 'http') {
+          expect(result.code).toBe('STORAGE_ERROR');
+          expect(result.status).toBe(500);
+        }
       }
     });
   });

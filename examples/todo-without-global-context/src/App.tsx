@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   ApiClientProvider,
-  useUrlSelector,
+  useUrlParam,
   useFormData,
   createDomainApi,
   ExtractEntityType,
@@ -181,10 +181,8 @@ function TodoItem({ todo, onTodoChanged }: { todo: Todo; onTodoChanged: () => vo
 
 function TodoList({ refreshKey }: { refreshKey: number }) {
   const { data: todos, loading, error, refetch } = todosApi.useList();
-  const [filter, setFilter] = useUrlSelector('filter', (value: string) => value as FilterType, {
-    multiple: false,
-  });
-  const currentFilter = filter || 'all';
+  const [filterRaw, setFilter] = useUrlParam('filter');
+  const currentFilter = (filterRaw as FilterType) || 'all';
 
   // Force refetch when refreshKey changes
   React.useEffect(() => {
