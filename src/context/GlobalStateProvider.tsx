@@ -21,10 +21,7 @@ export type GlobalAction =
   | { type: 'SET_ERROR'; entity: string; key: string; error: any }
   | { type: 'SET_META'; entity: string; key: string; meta: any }
   | { type: 'CLEAR_ENTITY_CACHE'; entity: string }
-  | { type: 'INVALIDATE_ENTITY'; entity: string }
-  | { type: 'OPTIMISTIC_UPDATE'; entity: string; id: string; data: any; tempId?: string }
-  | { type: 'ROLLBACK_OPTIMISTIC'; entity: string; tempId: string }
-  | { type: 'CONFIRM_OPTIMISTIC'; entity: string; tempId: string; realData: any };
+  | { type: 'INVALIDATE_ENTITY'; entity: string };
 
 // Global state reducer
 function globalStateReducer(state: GlobalState, action: GlobalAction): GlobalState {
@@ -155,97 +152,6 @@ function globalStateReducer(state: GlobalState, action: GlobalAction): GlobalSta
       };
     }
 
-    case 'OPTIMISTIC_UPDATE': {
-      const { entity, id, data, tempId } = action;
-      const actualId = tempId || id;
-      const entityState = state.entities[entity] || {
-        data: {},
-        lists: {},
-        loading: {},
-        errors: {},
-        lastFetch: {},
-      };
-
-      // Add to individual data cache
-      const updatedData = {
-        ...entityState.data,
-        [actualId]: { ...data, _optimistic: true, _tempId: tempId },
-      };
-
-      // Also add to all list caches
-      const updatedLists = { ...entityState.lists };
-      Object.keys(updatedLists).forEach(listKey => {
-        const list = updatedLists[listKey];
-        if (Array.isArray(list)) {
-          updatedLists[listKey] = [...list, { ...data, _optimistic: true, _tempId: tempId }];
-        }
-      });
-
-      return {
-        ...state,
-        entities: {
-          ...state.entities,
-          [entity]: {
-            ...entityState,
-            data: updatedData,
-            lists: updatedLists,
-          },
-        },
-      };
-    }
-
-    case 'ROLLBACK_OPTIMISTIC': {
-      const { entity, tempId } = action;
-      const entityState = state.entities[entity];
-      if (!entityState) return state;
-
-      const { [tempId]: _, ...remainingData } = entityState.data;
-      return {
-        ...state,
-        entities: {
-          ...state.entities,
-          [entity]: {
-            ...entityState,
-            data: remainingData,
-          },
-        },
-      };
-    }
-
-    case 'CONFIRM_OPTIMISTIC': {
-      const { entity, tempId, realData } = action;
-      const entityState = state.entities[entity];
-      if (!entityState) return state;
-
-      const { [tempId]: _, ...remainingData } = entityState.data;
-
-      // Also update lists by replacing the optimistic item with real data
-      const updatedLists = { ...entityState.lists };
-      Object.keys(updatedLists).forEach(listKey => {
-        const list = updatedLists[listKey];
-        if (Array.isArray(list)) {
-          updatedLists[listKey] = list.map(item =>
-            (item as any)._tempId === tempId ? realData : item
-          );
-        }
-      });
-
-      return {
-        ...state,
-        entities: {
-          ...state.entities,
-          [entity]: {
-            ...entityState,
-            data: {
-              ...remainingData,
-              [realData.id]: realData,
-            },
-            lists: updatedLists,
-          },
-        },
-      };
-    }
-
     default:
       return state;
   }
@@ -309,17 +215,8 @@ export function useEntityState<T = any>(entity: string) {
       clearCache: () => dispatch({ type: 'CLEAR_ENTITY_CACHE', entity }),
 
       invalidate: () => dispatch({ type: 'INVALIDATE_ENTITY', entity }),
-
-      optimisticUpdate: (id: string, data: T, tempId?: string) =>
-        dispatch({ type: 'OPTIMISTIC_UPDATE', entity, id, data, tempId }),
-
-      rollbackOptimistic: (tempId: string) =>
-        dispatch({ type: 'ROLLBACK_OPTIMISTIC', entity, tempId }),
-
-      confirmOptimistic: (tempId: string, realData: T) =>
-        dispatch({ type: 'CONFIRM_OPTIMISTIC', entity, tempId, realData }),
     }),
-    [dispatch]
+    [dispatch, entity]
   );
 
   return {

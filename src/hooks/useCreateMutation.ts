@@ -35,7 +35,6 @@ function extractDefaultValues(schema: z.ZodSchema<any>): Record<string, any> {
 
 interface UseCreateMutationOptions {
   globalState?: boolean;
-  optimistic?: boolean;
   entitySchema?: z.ZodSchema<any>;
 }
 
@@ -50,8 +49,7 @@ export function useCreateMutation<TInput, TOutput>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorResponse | null>(null);
 
-  // Extract options to avoid recreating callback dependencies
-  const { optimistic, entitySchema } = options;
+  const { entitySchema } = options;
 
   // Only get entity state if global state is enabled
   const entityState = useEntityState<TOutput>(entity);
@@ -62,9 +60,6 @@ export function useCreateMutation<TInput, TOutput>(
       setLoading(true);
       setError(null);
 
-      // Generate temporary ID for optimistic updates
-      const tempId = optimistic ? `temp_${Date.now()}_${Math.random()}` : null;
-
       try {
         if (schema) {
           const validationResult = schema.safeParse(input);
@@ -73,13 +68,6 @@ export function useCreateMutation<TInput, TOutput>(
             setError(errorResponse);
             return errorResponse;
           }
-        }
-
-        // Optimistic update for global state
-        if (optimistic && globalState && entityState && tempId) {
-          // Note: addOptimistic method needs to be implemented in entityState
-          // const optimisticData = { ...input, id: tempId } as unknown as TOutput;
-          // entityState.actions.addOptimistic(tempId, optimisticData);
         }
 
         // Apply default values from entitySchema if provided
@@ -94,61 +82,35 @@ export function useCreateMutation<TInput, TOutput>(
         const response = await connector.post<TOutput>(requestEndpoint, dataToSend);
 
         if (response.success) {
-          // Handle global state updates
           if (globalState && entityState) {
-            // Add new item to global state (both optimistic and regular paths)
-
             // Store individual entity data for useById compatibility
             if (response.data && (response.data as any).id) {
-              const requestEndpoint = endpoint || entity;
               const individualCacheKey = `${requestEndpoint}/${(response.data as any).id}`;
               entityState.actions.setData(individualCacheKey, response.data);
             }
 
             // Add to the specific list for this endpoint (prepend to show newest first)
-            const requestEndpointForCache = endpoint || entity;
-            const specificCacheKey = `list:${requestEndpointForCache}`;
+            const specificCacheKey = `list:${requestEndpoint}`;
 
-            // Safe check before accessing entityState.lists
             if (entityState.lists && typeof entityState.lists === 'object') {
               Object.keys(entityState.lists).forEach(listKey => {
-                // Only update lists that match this endpoint pattern
                 if (listKey.startsWith(specificCacheKey)) {
                   const currentList = entityState.lists[listKey];
                   if (Array.isArray(currentList)) {
-                    // Add the new item to the beginning of this specific list
                     entityState.actions.setList(listKey, [response.data, ...currentList]);
                   }
                 }
               });
             }
-
-            if (optimistic && tempId) {
-              // Replace optimistic data with real data (if needed)
-              // entityState.actions.confirmOptimistic(tempId, response.data);
-            }
-
-            // No need to invalidate - we've updated the state directly
-            // This prevents the flash from refetching
           }
 
           return response;
         } else {
           const errorResponse = response as ErrorResponse;
-
-          // Rollback optimistic update on error
-          if (optimistic && globalState && entityState && tempId) {
-            entityState.actions.rollbackOptimistic(tempId);
-          }
-
           setError(errorResponse);
           return errorResponse;
         }
       } catch (err) {
-        if (optimistic && globalState && entityState && tempId) {
-          entityState.actions.rollbackOptimistic(tempId);
-        }
-
         const errorResponse = toUnknownErrorResponse(err);
         setError(errorResponse);
         return errorResponse;
@@ -156,7 +118,7 @@ export function useCreateMutation<TInput, TOutput>(
         setLoading(false);
       }
     },
-    [connector, entity, endpoint, schema, globalState, optimistic, entityState, entitySchema]
+    [connector, entity, endpoint, schema, globalState, entityState, entitySchema]
   );
 
   return {

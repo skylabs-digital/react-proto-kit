@@ -51,6 +51,21 @@ export class InvalidationManager {
     return invalidatedEntities;
   }
 
+  /**
+   * Invalidate every entity that currently has subscribers. Used by
+   * `useInvalidation().invalidateAll()` to refresh the entire cache.
+   */
+  invalidateAll(): string[] {
+    const allEntities = Array.from(this.subscribers.keys());
+    allEntities.forEach(entity => {
+      const callbacks = this.subscribers.get(entity);
+      if (callbacks) {
+        callbacks.forEach(callback => callback());
+      }
+    });
+    return allEntities;
+  }
+
   getInvalidationTargets(entity: string): string[] {
     const rule = this.rules.get(entity);
     return rule ? [entity, ...rule.invalidates] : [entity];
