@@ -9,7 +9,10 @@ import {
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
 import { useRefetchBehavior } from '../context/RefetchBehaviorContext';
+import { globalInvalidationManager } from '../context/InvalidationManager';
 import { toUnknownErrorResponse } from '../utils/mutationHelpers';
+import { listCacheKey } from '../utils/cacheKey';
+import { dedupeRequest } from '../utils/requestDedup';
 
 interface UseListOptions {
   enabled?: boolean;
@@ -43,10 +46,7 @@ export function useList<T>(
   const isCurrentlyFetchingRef = useRef(false);
 
   // Determine which state to use - include endpoint, params AND queryParams
-  const cacheKeyParts = [endpoint];
-  if (params) cacheKeyParts.push(JSON.stringify(params));
-  if (options?.queryParams) cacheKeyParts.push(JSON.stringify(options.queryParams));
-  const cacheKey = `list:${cacheKeyParts.join(':')}`;
+  const cacheKey = listCacheKey(endpoint, params, options?.queryParams);
 
   // Get refetch behavior from context or options (default: stale-while-revalidate)
   const contextBehavior = useRefetchBehavior();
@@ -155,7 +155,11 @@ export function useList<T>(
       try {
         // Merge ListParams with queryParams
         const mergedParams = { ...params, ...options?.queryParams };
-        const response = await connector.get<T[]>(endpoint, mergedParams);
+        // Dedupe concurrent GETs for the same cacheKey so sibling components
+        // sharing the same list data only hit the backend once.
+        const response = await dedupeRequest(`get:${cacheKey}`, () =>
+          connector.get<T[]>(endpoint, mergedParams)
+        );
 
         if (response.success) {
           if (currentEntityState) {
@@ -212,6 +216,11 @@ export function useList<T>(
     await fetchData(true); // Force refetch
   }, [fetchData]);
 
+  // Keep a ref to the latest fetchData so invalidation subscribers always call
+  // the current closure (with the current cacheKey/params) instead of a stale one.
+  const fetchDataRef = useRef(fetchData);
+  fetchDataRef.current = fetchData;
+
   // Reset fetch flags and refetch when key parameters change
   useEffect(() => {
     hasFetchedRef.current = false;
@@ -222,6 +231,19 @@ export function useList<T>(
       fetchData();
     }
   }, [endpoint, cacheKey]); // Don't include fetchData to avoid loops
+
+  // Subscribe to invalidations when global state is enabled so that mutations
+  // on this entity (or any entity that declares a dependency on it) trigger a
+  // background refetch via stale-while-revalidate. Uses fetchDataRef so the
+  // subscriber always calls the latest closure instead of a stale one.
+  useEffect(() => {
+    if (!globalState) return;
+    const unsubscribe = globalInvalidationManager.subscribe(entity, () => {
+      hasFetchedRef.current = false;
+      fetchDataRef.current(true);
+    });
+    return unsubscribe;
+  }, [entity, globalState]);
 
   return {
     data,

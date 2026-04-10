@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { UseQueryResult, ErrorResponse } from '../types';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
+import { globalInvalidationManager } from '../context/InvalidationManager';
 import { toUnknownErrorResponse } from '../utils/mutationHelpers';
+import { recordCacheKey } from '../utils/cacheKey';
+import { dedupeRequest } from '../utils/requestDedup';
 
 interface UseRecordOptions {
   enabled?: boolean;
@@ -49,10 +52,9 @@ export function useRecord<T>(
   const isCurrentlyFetchingRef = useRef(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Cache key is the endpoint + query params
-  const cacheKey = queryParams
-    ? `${endpoint}?${new URLSearchParams(queryParams as Record<string, string>).toString()}`
-    : endpoint;
+  // Cache key: endpoint plus deterministic query-params suffix so that
+  // `withQuery` variants don't collide and mutations target the same key.
+  const cacheKey = recordCacheKey(endpoint, queryParams);
 
   // Get current data
   const data = globalState && entityState ? entityState.data?.[cacheKey] || null : localData;
@@ -99,7 +101,10 @@ export function useRecord<T>(
       }
 
       try {
-        const response = await connector.get<T>(endpoint, queryParams);
+        // Dedupe concurrent GETs for the same cacheKey.
+        const response = await dedupeRequest(`get:${cacheKey}`, () =>
+          connector.get<T>(endpoint, queryParams)
+        );
 
         if (response.success) {
           if (currentEntityState) {
@@ -152,24 +157,39 @@ export function useRecord<T>(
     await fetchData(true);
   }, [fetchData]);
 
-  // Reset fetch flags when endpoint changes
+  // Keep a ref to the latest fetchData so interval/subscriber callbacks always
+  // invoke the current closure instead of a stale one.
+  const fetchDataRef = useRef(fetchData);
+  fetchDataRef.current = fetchData;
+
+  // Reset fetch flags and refetch when endpoint/cacheKey change. Previously
+  // the reset effect didn't trigger a fetch, leaving the hook showing stale
+  // data after the endpoint changed. fetchData is intentionally omitted from
+  // deps (the effect is already keyed on cacheKey) to avoid re-firing when
+  // the callback reference changes.
   useEffect(() => {
     hasFetchedRef.current = false;
     isCurrentlyFetchingRef.current = false;
-  }, [endpoint, cacheKey]);
-
-  // Initial fetch on mount
-  useEffect(() => {
-    if (refetchOnMount && !hasFetchedRef.current && enabled) {
-      fetchData();
+    if (refetchOnMount && enabled) {
+      fetchDataRef.current();
     }
-  }, [enabled]);
+  }, [endpoint, cacheKey, refetchOnMount, enabled]);
+
+  // Subscribe to invalidations when global state is enabled.
+  useEffect(() => {
+    if (!globalState) return;
+    const unsubscribe = globalInvalidationManager.subscribe(entity, () => {
+      hasFetchedRef.current = false;
+      fetchDataRef.current(true);
+    });
+    return unsubscribe;
+  }, [entity, globalState]);
 
   // Setup refetch interval
   useEffect(() => {
     if (refetchInterval && refetchInterval > 0 && enabled) {
       intervalRef.current = setInterval(() => {
-        fetchData(true);
+        fetchDataRef.current(true);
       }, refetchInterval);
 
       return () => {
@@ -179,7 +199,7 @@ export function useRecord<T>(
         }
       };
     }
-  }, [refetchInterval, enabled, fetchData]);
+  }, [refetchInterval, enabled]);
 
   return {
     data,

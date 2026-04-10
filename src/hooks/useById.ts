@@ -5,6 +5,8 @@ import { useEntityState } from '../context/GlobalStateProvider';
 import { globalInvalidationManager } from '../context/InvalidationManager';
 import { useRefetchBehavior } from '../context/RefetchBehaviorContext';
 import { toUnknownErrorResponse } from '../utils/mutationHelpers';
+import { byIdCacheKey } from '../utils/cacheKey';
+import { dedupeRequest } from '../utils/requestDedup';
 
 interface UseByIdOptions {
   enabled?: boolean;
@@ -38,8 +40,12 @@ export function useById<T>(
   const hasFetchedRef = useRef(false);
   const isCurrentlyFetchingRef = useRef(false);
 
-  // Determine which state to use
-  const cacheKey = endpoint || `${entity}${params ? JSON.stringify(params) : ''}`;
+  // Determine which state to use. The endpoint already includes the id
+  // (e.g. `'users/123'`) when building via createDomainApi. If no endpoint is
+  // provided we fall back to a stable key derived from entity + params.
+  const cacheKey = endpoint
+    ? byIdCacheKey(endpoint)
+    : byIdCacheKey(`${entity}${params ? JSON.stringify(params) : ''}`);
 
   // Get refetch behavior from context or options
   const contextBehavior = useRefetchBehavior();
@@ -144,8 +150,11 @@ export function useById<T>(
       }
 
       try {
-        // Use the endpoint directly (it's already complete from createDomainApi)
-        const response = await connector.get<T>(endpoint, params);
+        // Use the endpoint directly (it's already complete from createDomainApi).
+        // Dedupe concurrent GETs sharing the same cacheKey.
+        const response = await dedupeRequest(`get:${cacheKey}`, () =>
+          connector.get<T>(endpoint, params)
+        );
 
         if (response.success) {
           if (currentEntityState) {
@@ -188,29 +197,34 @@ export function useById<T>(
     await fetchData(true); // Force refetch
   }, [fetchData]);
 
-  // Reset fetch flags when key parameters change
+  // Keep a ref to the latest fetchData so invalidation subscribers always call
+  // the current closure (with the current cacheKey/params) instead of a stale one.
+  const fetchDataRef = useRef(fetchData);
+  fetchDataRef.current = fetchData;
+
+  // Reset fetch flags and refetch when endpoint/cacheKey change. Previously
+  // this effect only reset flags without triggering a fetch, which left
+  // components showing stale data after navigating between ids. fetchData is
+  // intentionally omitted from deps (the effect is already keyed on cacheKey
+  // which captures the inputs that matter) to avoid re-firing when the
+  // callback reference changes.
   useEffect(() => {
     hasFetchedRef.current = false;
     isCurrentlyFetchingRef.current = false;
-  }, [endpoint, cacheKey]);
+    if (refetchOnMount !== false && endpoint && enabled !== false) {
+      fetchDataRef.current();
+    }
+  }, [endpoint, cacheKey, refetchOnMount, enabled]);
 
   // Subscribe to invalidations only for global state
   useEffect(() => {
-    if (globalState) {
-      const unsubscribe = globalInvalidationManager.subscribe(entity, () => {
-        hasFetchedRef.current = false; // Allow refetch on invalidation
-        fetchData(true);
-      });
-      return unsubscribe;
-    }
-  }, [entity, globalState]); // Removed fetchData dependency
-
-  // Initial fetch on mount - only runs once
-  useEffect(() => {
-    if (refetchOnMount !== false && !hasFetchedRef.current) {
-      fetchData();
-    }
-  }, []); // Empty dependency array - only runs on mount
+    if (!globalState) return;
+    const unsubscribe = globalInvalidationManager.subscribe(entity, () => {
+      hasFetchedRef.current = false; // Allow refetch on invalidation
+      fetchDataRef.current(true);
+    });
+    return unsubscribe;
+  }, [entity, globalState]);
 
   return {
     data,

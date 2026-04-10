@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '../provider/ApiClientProvider';
 import { useEntityState } from '../context/GlobalStateProvider';
+import { globalInvalidationManager } from '../context/InvalidationManager';
 import { toUnknownErrorResponse } from '../utils/mutationHelpers';
 import { ApiResponse, ErrorResponse } from '../types';
+import { byIdCacheKey, listCacheKey } from '../utils/cacheKey';
 
 export interface UseDeleteMutationResult {
   mutate: (id: string) => Promise<ApiResponse<void>>;
@@ -35,34 +37,28 @@ export function useDeleteMutation<TEntity>(
         const response = await connector.delete<void>(deleteEndpoint);
 
         if (response.success) {
-          // Handle global state if enabled and available
           if (globalState && entityState) {
-            // Remove individual entity data for useById compatibility
-            const baseEndpoint = endpoint || entity;
-            const individualCacheKey = `${baseEndpoint}/${id}`;
+            // Fast path: drop the record from the cache.
+            const individualCacheKey = byIdCacheKey(`${baseEndpoint}/${id}`);
             entityState.actions.setData(individualCacheKey, undefined as any);
 
-            // Remove from specific lists for this endpoint
-            const baseEndpointForCache = endpoint || entity;
-            const specificCacheKey = `list:${baseEndpointForCache}`;
-
-            // Safe check before accessing entityState.lists
+            // Remove the item from every list cached under this endpoint.
+            const baseListKey = listCacheKey(baseEndpoint);
             if (entityState.lists && typeof entityState.lists === 'object') {
-              Object.keys(entityState.lists).forEach(listKey => {
-                // Only update lists that match this endpoint pattern
-                if (listKey.startsWith(specificCacheKey)) {
-                  const list = entityState.lists[listKey];
+              Object.keys(entityState.lists).forEach(key => {
+                if (key === baseListKey || key.startsWith(`${baseListKey}:`)) {
+                  const list = entityState.lists[key];
                   if (Array.isArray(list)) {
                     const filteredList = list.filter((item: any) => item.id !== id);
-                    entityState.actions.setList(listKey, filteredList);
+                    entityState.actions.setList(key, filteredList);
                   }
                 }
               });
             }
-
-            // No invalidation - we've updated the state directly
-            // This prevents the flash from refetching
           }
+
+          // Background refetch via stale-while-revalidate.
+          globalInvalidationManager.invalidate(entity);
 
           return response;
         } else {
