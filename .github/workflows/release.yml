@@ -2,9 +2,9 @@ name: Release and Publish
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 permissions:
   contents: read
@@ -51,8 +51,10 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-      packages: write
       id-token: write
+    outputs:
+      new-release: ${{ steps.release.outputs.new-release-published }}
+      version: ${{ steps.release.outputs.new-release-version }}
     steps:
       - name: Generate GitHub App Token
         id: app-token
@@ -86,11 +88,38 @@ jobs:
       - name: Build
         run: yarn build
 
-      - name: Release to npmjs.org
-        id: semantic-release
+      - name: Release
+        id: release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: yarn release
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: |
+          yarn release
+
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          if [ "$LATEST_TAG" != "none" ]; then
+            echo "new-release-published=true" >> "$GITHUB_OUTPUT"
+            echo "new-release-version=${LATEST_TAG#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Dual publish: also push to GitHub Packages so internal projects
+  # can resolve all @skylabs-digital/* packages from a single registry.
+  publish-gpr:
+    needs: release
+    if: needs.release.outputs.new-release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Setup Node.js for GitHub Packages
         uses: actions/setup-node@v4
@@ -99,16 +128,13 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@skylabs-digital'
 
-      - name: Publish to GitHub Packages
-        run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          # Skip if this version already exists on GitHub Packages
-          npm view "@skylabs-digital/react-proto-kit@${CURRENT_VERSION}" version --registry=https://npm.pkg.github.com 2>/dev/null && {
-            echo "Version ${CURRENT_VERSION} already exists on GitHub Packages, skipping."
-            exit 0
-          } || true
+      - name: Install dependencies
+        run: yarn install --immutable
 
-          echo "Publishing version ${CURRENT_VERSION} to GitHub Packages..."
-          npm publish --registry=https://npm.pkg.github.com
+      - name: Build
+        run: yarn build
+
+      - name: Publish to GitHub Packages
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
