@@ -95,12 +95,16 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
         run: |
+          BEFORE_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+
           yarn release
 
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
-          if [ "$LATEST_TAG" != "none" ]; then
+          AFTER_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          if [ "$AFTER_TAG" != "none" ] && [ "$AFTER_TAG" != "$BEFORE_TAG" ]; then
             echo "new-release-published=true" >> "$GITHUB_OUTPUT"
-            echo "new-release-version=${LATEST_TAG#v}" >> "$GITHUB_OUTPUT"
+            echo "new-release-version=${AFTER_TAG#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No new release: BEFORE=$BEFORE_TAG AFTER=$AFTER_TAG"
           fi
 
   # Dual publish: also push to GitHub Packages so internal projects
