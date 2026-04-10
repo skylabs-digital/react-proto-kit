@@ -1,3 +1,13 @@
+# [2.1.0](https://github.com/skylabs-digital/react-proto-kit/compare/v2.0.0...v2.1.0) (2026-04-10)
+
+
+### Features
+
+* **cache:** milestone 2 - functional cache layer with dedup and invalidation ([50fc9a3](https://github.com/skylabs-digital/react-proto-kit/commit/50fc9a3869c799a6b8df58f6653ae828d5dba2a3))
+* **factory:** milestone 3 - withQuery propagates to mutations end-to-end ([8255e8b](https://github.com/skylabs-digital/react-proto-kit/commit/8255e8b8e876bbeef09b1789161ef3854d8fcca2))
+* **kit:** milestones 5-7 - types polish, useInvalidation, forms fixes, docs cleanup ([235610b](https://github.com/skylabs-digital/react-proto-kit/commit/235610bc093e940a4751ce751249bff1e1304824)), closes [#4](https://github.com/skylabs-digital/react-proto-kit/issues/4)
+* **orchestrator:** milestone 4 - hook self-sufficient, strict types, better memo ([60b59e3](https://github.com/skylabs-digital/react-proto-kit/commit/60b59e3d489d4d70ef6f11f9b53ea8fa956c6b78))
+
 # [2.0.0](https://github.com/skylabs-digital/react-proto-kit/compare/v1.38.0...v2.0.0) (2026-04-10)
 
 
