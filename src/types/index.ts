@@ -102,6 +102,11 @@ export type RefetchBehavior = 'stale-while-revalidate' | 'blocking';
 
 // Global state configuration
 export interface GlobalStateConfig {
+  /**
+   * @deprecated Optimistic updates are not implemented. This flag is a no-op and
+   * kept only for type compatibility. Mutations update the cache directly and
+   * trigger a background refetch via the invalidation manager.
+   */
   optimistic?: boolean;
   cacheTime?: number;
   syncStrategy?: 'immediate' | 'debounced';

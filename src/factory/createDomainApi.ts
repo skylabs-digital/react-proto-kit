@@ -235,7 +235,6 @@ export function createDomainApi<TEntity extends z.ZodSchema, TUpsert extends z.Z
         currentPath, // Endpoint for requests: 'todos/123/comments'
         upsertSchema as z.ZodSchema<z.infer<TUpsert>>,
         {
-          optimistic: config?.optimistic,
           entitySchema: _entitySchema as z.ZodSchema<any>,
         }
       );
