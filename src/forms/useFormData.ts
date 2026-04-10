@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { z } from 'zod';
 import { zodIssuesToFieldMap } from '../utils/mutationHelpers';
 
@@ -66,8 +66,22 @@ export interface UseFormDataReturn<T> {
   errors: FormErrors;
   generalError: string | null;
   isValid: boolean;
+  /**
+   * @deprecated Use `isDirty` instead. `dirty` and `isDirty` carry the same
+   * value; `dirty` is kept only for backwards compatibility.
+   */
   dirty: boolean;
   isDirty: boolean;
+  /**
+   * Map of field names (or dotted paths for nested fields) that the user has
+   * interacted with via `handleChange` or `handleInputChange`. Use it together
+   * with `errors` to show error messages only after a field has been touched:
+   *
+   * ```tsx
+   * {touched.email && errors.email && <span>{errors.email}</span>}
+   * ```
+   */
+  touched: Record<string, boolean>;
   handleChange: (name: keyof T | string, value: FormFieldValue) => void;
   handleInputChange: (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -93,14 +107,24 @@ export function useFormData<T extends Record<string, any>>(
   const [errors, setErrors] = useState<FormErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // Keep a ref to the latest values so validateField can read them without
+  // depending on `values`, which was causing the callback to be recreated on
+  // every keystroke and cascading into handleChange etc.
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+
+  // Same idea for initialValues: `reset` used to capture the initial-mount
+  // initialValues with empty deps, so callers that passed new defaults after
+  // loading a record would reset to the stale ones. The ref is updated every
+  // render so reset() without arguments always targets the current initialValues.
+  const initialValuesRef = useRef(initialValues);
+  initialValuesRef.current = initialValues;
 
   const isValid = useMemo(() => {
     return Object.keys(errors).length === 0 && !generalError;
   }, [errors, generalError]);
-
-  const dirty = useMemo(() => {
-    return isDirty;
-  }, [isDirty]);
 
   const validateField = useCallback(
     (name: keyof T | string, value: any) => {
@@ -110,7 +134,7 @@ export function useFormData<T extends Record<string, any>>(
         if (fieldSchema) {
           fieldSchema.parse(value);
         } else {
-          const testValues = setDeepValue(values as any, path, value);
+          const testValues = setDeepValue(valuesRef.current as any, path, value);
           schema.parse(testValues);
         }
 
@@ -146,11 +170,11 @@ export function useFormData<T extends Record<string, any>>(
         return false;
       }
     },
-    [schema, values]
+    [schema]
   );
 
   const validateAll = useCallback(() => {
-    const result = schema.safeParse(values);
+    const result = schema.safeParse(valuesRef.current);
     if (result.success) {
       setErrors({});
       setGeneralError(null);
@@ -159,13 +183,14 @@ export function useFormData<T extends Record<string, any>>(
     setErrors(zodIssuesToFieldMap(result.error.issues));
     setGeneralError('Please fix the errors below');
     return false;
-  }, [schema, values]);
+  }, [schema]);
 
   const handleChange = useCallback(
     (name: keyof T | string, value: FormFieldValue) => {
       const path = String(name);
       setValues(prev => setDeepValue(prev as any, path, value));
       setIsDirty(true);
+      setTouched(prev => (prev[path] ? prev : { ...prev, [path]: true }));
 
       if (validateOnChange) {
         validateField(path, value);
@@ -208,22 +233,25 @@ export function useFormData<T extends Record<string, any>>(
 
         if (validateAll()) {
           try {
-            await onSubmit(values as T);
+            await onSubmit(valuesRef.current as T);
           } catch (error) {
             setGeneralError(error instanceof Error ? error.message : 'An error occurred');
           }
         }
       };
     },
-    [values, validateAll]
+    [validateAll]
   );
 
   const reset = useCallback((newInitialValues?: Partial<T>) => {
-    const resetValues = newInitialValues || initialValues;
+    // Read initialValues from the ref so callers that rely on the hook's
+    // current initialValues (not the ones at first mount) get the right values.
+    const resetValues = newInitialValues ?? initialValuesRef.current;
     setValues(resetValues);
     setErrors({});
     setGeneralError(null);
     setIsDirty(false);
+    setTouched({});
   }, []);
 
   const loadData = useCallback((data: Partial<T>) => {
@@ -231,6 +259,7 @@ export function useFormData<T extends Record<string, any>>(
     setErrors({});
     setGeneralError(null);
     setIsDirty(false);
+    setTouched({});
   }, []);
 
   const setFieldError = useCallback((field: keyof T | string, error: string) => {
@@ -254,8 +283,9 @@ export function useFormData<T extends Record<string, any>>(
     errors,
     generalError,
     isValid,
-    dirty,
+    dirty: isDirty,
     isDirty,
+    touched,
     handleChange,
     handleInputChange,
     handleSubmit,

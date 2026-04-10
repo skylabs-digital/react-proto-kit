@@ -155,6 +155,12 @@ export interface UseQueryResult<T> {
   refetch: () => Promise<void>;
 }
 
+/**
+ * @deprecated Use the operation-specific result types instead:
+ * `UseCreateMutationResult`, `UseUpdateMutationResult`, `UsePatchMutationResult`,
+ * `UseDeleteMutationResult`. This generic interface describes a signature no
+ * hook ever implemented and is kept only for backwards compatibility.
+ */
 export interface UseMutationResult<TInput, TOutput = void> {
   mutate: (id: string, input?: TInput, field?: string) => Promise<ApiResponse<TOutput>>;
   loading: boolean;

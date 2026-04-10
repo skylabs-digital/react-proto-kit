@@ -275,99 +275,40 @@ function UserProfile({ userId }: { userId: string }) {
 
 ### Manual Cache Control
 
+Most of the time you don't need manual cache control: mutations from the generated api methods (`useCreate`, `useUpdate`, `usePatch`, `useDelete`) invalidate their entity automatically. Use `useInvalidation` when you need to refresh data after an action the library doesn't know about — a websocket event, a custom mutation endpoint, a user-triggered refresh button, etc.
+
 ```tsx
 import { useInvalidation } from '@skylabs-digital/react-proto-kit';
 
 function CacheManager() {
-  const { invalidate, invalidateAll, clearCache } = useInvalidation();
-  
+  const { invalidate, invalidateAll } = useInvalidation();
+
   const refreshUsers = () => {
-    invalidate('users'); // Invalidate all user-related cache
+    // Refetch every subscribed useList / useById / useRecord for `users`.
+    invalidate('users');
   };
-  
-  const refreshSpecificList = () => {
-    invalidate('users:list:status=active'); // Invalidate specific list
-  };
-  
+
   const refreshEverything = () => {
-    invalidateAll(); // Invalidate all cache
+    // Refetch every subscribed entity in the app. Use sparingly.
+    invalidateAll();
   };
-  
-  const clearEverything = () => {
-    clearCache(); // Remove all cached data
-  };
-  
+
   return (
     <div>
       <button onClick={refreshUsers}>Refresh Users</button>
-      <button onClick={refreshSpecificList}>Refresh Active Users</button>
       <button onClick={refreshEverything}>Refresh Everything</button>
-      <button onClick={clearEverything}>Clear Cache</button>
     </div>
   );
 }
 ```
+
+Invalidation calls are coalesced: if five components listen for the same entity, they share a single network request via the built-in request deduplication layer.
 
 ## Optimistic Updates
 
-### Automatic Optimistic Updates
-
-Enable optimistic updates for immediate UI feedback:
-
-```tsx
-const todoApi = createDomainApi('todos', todoSchema, todoSchema, {
-  optimistic: true // Enable optimistic updates
-});
-
-function TodoItem({ todo }: { todo: Todo }) {
-  const { mutate: updateTodo } = todoApi.useUpdate();
-  
-  const toggleCompleted = () => {
-    // UI updates immediately, then syncs with server
-    updateTodo(todo.id, { ...todo, completed: !todo.completed });
-  };
-  
-  return (
-    <div className={todo.completed ? 'completed' : ''}>
-      <span>{todo.text}</span>
-      <button onClick={toggleCompleted}>
-        {todo.completed ? 'Undo' : 'Complete'}
-      </button>
-    </div>
-  );
-}
-```
-
-### Custom Optimistic Logic
-
-```tsx
-import { useOptimisticUpdate } from '@skylabs-digital/react-proto-kit';
-
-function CustomOptimisticComponent() {
-  const { mutate: updateUser } = userApi.useUpdate();
-  const { optimisticUpdate, rollback } = useOptimisticUpdate();
-  
-  const handleUpdate = async (userId: string, newData: any) => {
-    // Apply optimistic update
-    const rollbackFn = optimisticUpdate('users', userId, newData);
-    
-    try {
-      await updateUser(userId, newData);
-      // Success - optimistic update is kept
-    } catch (error) {
-      // Error - rollback optimistic update
-      rollbackFn();
-      throw error;
-    }
-  };
-  
-  return (
-    <button onClick={() => handleUpdate('123', { name: 'New Name' })}>
-      Update User
-    </button>
-  );
-}
-```
+> **Status:** Not implemented. The `optimistic` flag on `GlobalStateConfig` is a no-op kept for type compatibility. Mutations instead use a **direct cache write plus background refetch** strategy: the cache is updated immediately after a successful response for a snappy UI, and an invalidation is emitted so subscribed queries reconcile against the backend. This keeps the backend as the source of truth without an optimistic rollback story.
+>
+> If you need true optimistic UI (apply the change before the request resolves, roll back on failure), you can build it in userland by reading from and writing to the global state directly, or open an issue requesting the feature as a follow-up.
 
 ## Real-time Synchronization
 
@@ -442,58 +383,15 @@ function useServerSentEvents() {
 
 ### Selective Subscriptions
 
-Subscribe only to specific parts of the state:
+> **Status:** `useGlobalStateSelector` and `createSelector` are not implemented. Until they land, derive computed values from the hook results directly with `useMemo`, or compose smaller hooks that consume `useList` / `useRecord` and transform the output. If selective subscription becomes a bottleneck, open an issue so we can prioritize it.
 
 ```tsx
-import { useGlobalStateSelector } from '@skylabs-digital/react-proto-kit';
-
+// Build your own in userland: useList already gives you the array,
+// useMemo narrows re-renders to the derivation you care about.
 function UserCount() {
-  // Only re-renders when user count changes
-  const userCount = useGlobalStateSelector(
-    state => Object.keys(state.entities.users || {}).length
-  );
-  
-  return <div>Total Users: {userCount}</div>;
-}
-
-function ActiveUserCount() {
-  // Only re-renders when active user count changes
-  const activeUserCount = useGlobalStateSelector(
-    state => Object.values(state.entities.users || {})
-      .filter(user => user.status === 'active').length
-  );
-  
-  return <div>Active Users: {activeUserCount}</div>;
-}
-```
-
-### Memoized Selectors
-
-```tsx
-import { createSelector } from '@skylabs-digital/react-proto-kit';
-
-const getUserStats = createSelector(
-  (state) => state.entities.users,
-  (users) => {
-    const userArray = Object.values(users || {});
-    return {
-      total: userArray.length,
-      active: userArray.filter(u => u.status === 'active').length,
-      inactive: userArray.filter(u => u.status === 'inactive').length,
-    };
-  }
-);
-
-function UserStats() {
-  const stats = useGlobalStateSelector(getUserStats);
-  
-  return (
-    <div>
-      <div>Total: {stats.total}</div>
-      <div>Active: {stats.active}</div>
-      <div>Inactive: {stats.inactive}</div>
-    </div>
-  );
+  const { data: users } = userApi.useList();
+  const count = useMemo(() => users?.length ?? 0, [users]);
+  return <div>Total Users: {count}</div>;
 }
 ```
 
@@ -550,55 +448,27 @@ function UserProfile({ userId }: { userId: string }) {
 
 ### Computed Properties
 
-Add computed properties to entities:
+> **Status:** `useComputedEntities` is not implemented. Compose the derivation in a regular hook instead:
 
 ```tsx
-import { useComputedEntities } from '@skylabs-digital/react-proto-kit';
-
 function useEnhancedUsers() {
-  return useComputedEntities('users', (user) => ({
-    ...user,
-    fullName: `${user.firstName} ${user.lastName}`,
-    isActive: user.lastLoginAt > Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days
-    avatar: user.avatar || '/default-avatar.png'
-  }));
-}
-
-function UserList() {
-  const { data: users } = useEnhancedUsers();
-  
-  return (
-    <div>
-      {users?.map(user => (
-        <div key={user.id}>
-          <img src={user.avatar} alt={user.fullName} />
-          <span className={user.isActive ? 'active' : 'inactive'}>
-            {user.fullName}
-          </span>
-        </div>
-      ))}
-    </div>
+  const { data: users } = userApi.useList();
+  return useMemo(
+    () =>
+      users?.map(user => ({
+        ...user,
+        fullName: `${user.firstName} ${user.lastName}`,
+        isActive: user.lastLoginAt > Date.now() - 30 * 24 * 60 * 60 * 1000,
+        avatar: user.avatar || '/default-avatar.png',
+      })),
+    [users]
   );
 }
 ```
 
 ### State Persistence
 
-Persist global state to localStorage:
-
-```tsx
-import { useStatePersistence } from '@skylabs-digital/react-proto-kit';
-
-function App() {
-  useStatePersistence({
-    key: 'app-state',
-    entities: ['users', 'settings'], // Only persist specific entities
-    ttl: 24 * 60 * 60 * 1000 // 24 hours
-  });
-  
-  return <YourApp />;
-}
-```
+> **Status:** `useStatePersistence` is not implemented. For offline prototyping, use the `LocalStorageConnector`, which persists request/response data transparently. For selective persistence of specific cache slices, open an issue describing your use case.
 
 ## Troubleshooting
 
@@ -615,8 +485,7 @@ configureDebugLogging(true, '[GLOBAL-STATE]');
 // You'll see logs like:
 // [GLOBAL-STATE] Cache hit: users:list:page=1
 // [GLOBAL-STATE] Cache miss: users:query:id=123
-// [GLOBAL-STATE] Optimistic update: users:123
-// [GLOBAL-STATE] Rollback: users:123
+// [GLOBAL-STATE] Invalidating: users (triggered by useUpdate)
 ```
 
 ### Common Issues
@@ -690,20 +559,18 @@ invalidate('live-data');
 
 **Problem**: Too many re-renders or slow updates
 
-**Solution**: Use selective subscriptions and memoization:
+**Solution**: Narrow what each component reads and memoize derivations:
 
 ```tsx
-// ❌ Wrong - subscribes to entire state
-function UserCount() {
-  const { state } = useGlobalState();
-  return <div>{Object.keys(state.entities.users || {}).length}</div>;
+// ❌ Wrong - reads the full list on every parent re-render
+function UserCount({ users }: { users: User[] }) {
+  return <div>{users.length}</div>;
 }
 
-// ✅ Correct - selective subscription
+// ✅ Better - let the hook and useMemo handle the narrowing
 function UserCount() {
-  const count = useGlobalStateSelector(
-    state => Object.keys(state.entities.users || {}).length
-  );
+  const { data: users } = userApi.useList();
+  const count = useMemo(() => users?.length ?? 0, [users]);
   return <div>{count}</div>;
 }
 ```

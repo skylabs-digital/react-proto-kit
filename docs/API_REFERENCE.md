@@ -1039,24 +1039,23 @@ interface AccordionHelpersMultiple {
 
 ---
 
-### `useUrlSelector(key, parser, options?)`
+### `useUrlParam(key, options?)`
 
-Low-level hook for synchronizing any component state with URL parameters.
+Low-level hook for synchronizing any component state with URL parameters. Renamed from `useUrlSelector` in `docs/RFC_URL_NAVIGATION.md`; the old name is no longer exported.
 
 ```tsx
-import { useUrlSelector } from '@skylabs-digital/react-proto-kit';
+import { useUrlParam } from '@skylabs-digital/react-proto-kit';
 
 function TodoList() {
-  const [filter, setFilter] = useUrlSelector(
-    'filter', 
-    (value: string) => value as 'all' | 'active' | 'completed',
-    { defaultValue: 'all' }
-  );
-  
-  const [page, setPage] = useUrlSelector(
-    'page',
-    (value: string) => parseInt(value) || 1
-  );
+  const [filter, setFilter] = useUrlParam('filter', {
+    defaultValue: 'all',
+    transform: (value: string) => value as 'all' | 'active' | 'completed',
+  });
+
+  const [page, setPage] = useUrlParam('page', {
+    defaultValue: 1,
+    transform: (value: string) => parseInt(value, 10) || 1,
+  });
 
   return (
     <div>

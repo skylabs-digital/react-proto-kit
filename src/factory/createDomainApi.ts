@@ -61,7 +61,18 @@ export interface DomainApi<TEntity, TUpsert> {
   };
 }
 
-// Type extraction utilities - extract from the return type of createDomainApi or createSingleRecordApi
+/**
+ * Extracts the entity type from the return value of createDomainApi or
+ * createSingleRecordApi.
+ *
+ * - For `createDomainApi`: returns the `CompleteEntity<T>` that useById/useList
+ *   resolve to, which includes the server-generated `id`, `createdAt`, and
+ *   `updatedAt` fields.
+ * - For `createSingleRecordApi` / `createSingleRecordReadOnlyApi`: returns the
+ *   raw schema-inferred type, **without** the id/timestamp augmentation.
+ *   Single-record endpoints (settings, config, dashboard stats) often do not
+ *   carry those fields.
+ */
 export type ExtractEntityType<T> = T extends {
   useById: (id: any) => { data: infer U };
 }
@@ -70,6 +81,10 @@ export type ExtractEntityType<T> = T extends {
     ? NonNullable<U>
     : never;
 
+/**
+ * Extracts the upsert input type accepted by useCreate on a domain api.
+ * For read-only apis (no useCreate), this resolves to `never`.
+ */
 export type ExtractInputType<T> = T extends {
   useCreate: () => { mutate: (input: infer U) => any };
 }
