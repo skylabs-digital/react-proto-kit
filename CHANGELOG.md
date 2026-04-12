@@ -1,3 +1,10 @@
+## [2.1.2](https://github.com/skylabs-digital/react-proto-kit/compare/v2.1.1...v2.1.2) (2026-04-12)
+
+
+### Bug Fixes
+
+* resolve stack overflow in createReadOnlyApi.withParams() ([e99509e](https://github.com/skylabs-digital/react-proto-kit/commit/e99509e2e14fea1bf733f56c2fcaaf1a013ecd58))
+
 ## [2.1.1](https://github.com/skylabs-digital/react-proto-kit/compare/v2.1.0...v2.1.1) (2026-04-10)
 
 
