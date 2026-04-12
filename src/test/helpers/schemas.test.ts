@@ -72,6 +72,36 @@ describe('Schema Helpers', () => {
       expect((api as any).useDelete).toBeUndefined();
       expect((api as any).usePatch).toBeUndefined();
     });
+
+    it('should not stack overflow when calling withParams on a path with params', () => {
+      const schema = createEntitySchema({
+        name: z.string(),
+      });
+
+      const api = createReadOnlyApi('zones:zoneId/items', schema);
+
+      // This would cause a stack overflow before the fix
+      const resolved = api.withParams({ zoneId: 'abc' });
+
+      expect(resolved).toBeDefined();
+      expect(resolved.useList).toBeDefined();
+      expect(resolved.useById).toBeDefined();
+      expect(resolved.withParams).toBeDefined();
+      expect(resolved.withQuery).toBeDefined();
+    });
+
+    it('should allow chaining withParams and withQuery', () => {
+      const schema = createEntitySchema({
+        name: z.string(),
+      });
+
+      const api = createReadOnlyApi('zones:zoneId/items', schema);
+
+      const resolved = api.withParams({ zoneId: 'abc' }).withQuery({ filter: 'active' });
+
+      expect(resolved).toBeDefined();
+      expect(resolved.useList).toBeDefined();
+    });
   });
 
   // TODO: Uncomment and update these tests when helper functions are updated for new createDomainApi signature
