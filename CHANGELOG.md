@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/skylabs-digital/react-proto-kit/compare/v2.1.2...v2.2.0) (2026-05-01)
+
+
+### Features
+
+* **security:** add standardized security scan ([3cf1bdd](https://github.com/skylabs-digital/react-proto-kit/commit/3cf1bddad8597cdec80d051a7c54224925407265))
+
 ## [2.1.2](https://github.com/skylabs-digital/react-proto-kit/compare/v2.1.1...v2.1.2) (2026-04-12)
 
 
